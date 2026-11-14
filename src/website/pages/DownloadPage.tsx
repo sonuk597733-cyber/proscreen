@@ -17,6 +17,8 @@ import {
   Sparkles,
   Chrome,
   Archive,
+  ShieldAlert,
+  Info,
 } from 'lucide-react';
 
 export const DownloadPage: React.FC = () => {
@@ -432,48 +434,6 @@ export const DownloadPage: React.FC = () => {
           </div>
         </div>
 
-        {/* Windows Defender SmartScreen Transparency & Security Notice */}
-        <div className="rounded-3xl bg-slate-900/60 border border-blue-500/30 p-8 shadow-2xl space-y-6">
-          <div className="flex items-start gap-4">
-            <div className="p-3 rounded-2xl bg-blue-500/10 border border-blue-500/25 text-blue-400 shrink-0">
-              <ShieldCheck className="w-6 h-6" />
-            </div>
-            <div className="space-y-2">
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-mono font-semibold bg-blue-500/15 border border-blue-500/30 text-blue-300">
-                <span>Windows Security Transparency Notice</span>
-              </div>
-              <h3 className="text-xl sm:text-2xl font-bold text-white">
-                Seeing &quot;Windows protected your PC&quot; (Microsoft Defender SmartScreen)?
-              </h3>
-              <p className="text-sm text-slate-300 leading-relaxed">
-                When running newly released software downloaded from the web, Microsoft Defender SmartScreen displays a warning stating <strong className="text-white">&quot;Microsoft Defender SmartScreen prevented an unrecognized app from starting&quot;</strong>. This is standard Windows behavior for newly compiled applications before global download telemetry accumulates.
-              </p>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2 text-xs">
-            <div className="p-4 rounded-xl bg-slate-950/80 border border-slate-800 space-y-2">
-              <div className="font-semibold text-white flex items-center gap-2">
-                <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-                <span>Why This Warning Occurs</span>
-              </div>
-              <p className="text-slate-300 leading-relaxed">
-                SmartScreen relies on cloud reputation scores based on hundreds of thousands of downloads over time. Independent, newly published release binaries initially have zero telemetry in Microsoft&apos;s cloud database regardless of code safety.
-              </p>
-            </div>
-
-            <div className="p-4 rounded-xl bg-slate-950/80 border border-slate-800 space-y-2">
-              <div className="font-semibold text-white flex items-center gap-2">
-                <CheckCircle2 className="w-4 h-4 text-sky-400" />
-                <span>How to Verify and Run Safely</span>
-              </div>
-              <p className="text-slate-300 leading-relaxed">
-                Verify the downloaded file&apos;s SHA-256 hash using the PowerShell command below to ensure it matches our official published build. Then click <strong className="text-white">More info &rarr; Run anyway</strong> to launch ProScreen with complete confidence.
-              </p>
-            </div>
-          </div>
-        </div>
-
         {/* PowerShell Checksum Verification Snippet */}
         <div className="rounded-2xl bg-slate-950 border border-slate-800 p-6 space-y-3 font-mono text-xs">
           <div className="flex items-center justify-between text-slate-400">
@@ -485,6 +445,48 @@ export const DownloadPage: React.FC = () => {
           </div>
           <div className="p-3 bg-slate-900/90 rounded-lg text-slate-300 overflow-x-auto select-all border border-slate-800">
             Get-FileHash -Path &quot;$HOME\Downloads\ProScreen-Setup-1.0.0.exe&quot; -Algorithm SHA256
+          </div>
+        </div>
+
+        {/* Windows Defender SmartScreen & First Launch Transparency */}
+        <div className="rounded-3xl bg-slate-900/50 border border-blue-500/20 p-8 sm:p-10 space-y-6">
+          <div className="flex items-start gap-4">
+            <div className="p-3 rounded-2xl bg-blue-500/10 border border-blue-500/20 text-blue-400 shrink-0">
+              <ShieldAlert className="w-6 h-6" />
+            </div>
+            <div className="space-y-1">
+              <h3 className="text-xl sm:text-2xl font-bold text-white">
+                Windows Defender SmartScreen Transparency
+              </h3>
+              <p className="text-sm text-slate-300 leading-relaxed">
+                Why does Windows show <span className="text-white font-semibold">&quot;Windows protected your PC — Microsoft Defender SmartScreen prevented an unrecognized app from starting&quot;</span>?
+              </p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-xs sm:text-sm text-slate-300">
+            <div className="p-5 rounded-2xl bg-slate-950/70 border border-slate-800/80 space-y-2.5">
+              <h4 className="font-semibold text-white flex items-center gap-2">
+                <Info className="w-4 h-4 text-blue-400" />
+                <span>The Cause: New Software Reputation</span>
+              </h4>
+              <p className="leading-relaxed text-slate-300">
+                Microsoft Defender SmartScreen uses cloud telemetry reputation algorithms. Whenever independent, newly released open-source software is published, SmartScreen flags it until thousands of global downloads have been recorded in Microsoft telemetry. This is standard Windows behavior for independent desktop software.
+              </p>
+            </div>
+
+            <div className="p-5 rounded-2xl bg-slate-950/70 border border-slate-800/80 space-y-2.5">
+              <h4 className="font-semibold text-white flex items-center gap-2">
+                <ShieldCheck className="w-4 h-4 text-emerald-400" />
+                <span>How to Launch ProScreen Safely</span>
+              </h4>
+              <ol className="list-decimal pl-4 space-y-1.5 text-slate-300">
+                <li>On the blue SmartScreen prompt, click <strong className="text-white">&quot;More info&quot;</strong>.</li>
+                <li>Confirm the Application name is <strong className="text-blue-300">ProScreen-Setup-1.0.0.exe</strong> or <strong className="text-sky-300">ProScreen-Portable-1.0.0.exe</strong>.</li>
+                <li>Click the <strong className="text-white">&quot;Run anyway&quot;</strong> button to start.</li>
+                <li>Compare our published SHA-256 hash above using PowerShell for 100% verification.</li>
+              </ol>
+            </div>
           </div>
         </div>
       </div>

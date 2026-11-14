@@ -463,6 +463,13 @@ export const FAQS: FaqItem[] = [
     category: 'shortcuts',
   },
   {
+    id: 'windows-smartscreen-warning',
+    question: 'Why does Windows show "Microsoft Defender SmartScreen prevented an unrecognized app from starting"?',
+    answer:
+      'Windows Defender SmartScreen displays this alert on all newly released software that has not yet established global download volume in Microsoft cloud telemetry. Because ProScreen is an independent, privacy-first software with zero tracking, it takes time to accumulate Microsoft reputation telemetry. ProScreen is 100% clean, verified, and open source with zero malware. To start the application: click "More info" on the blue dialog, confirm the application is ProScreen, and click "Run anyway". You can also verify the SHA-256 checksum in PowerShell to confirm complete file integrity.',
+    category: 'security',
+  },
+  {
     id: 'telemetry-privacy',
     question: 'Does ProScreen collect telemetry, analytics, or store my screen data in the cloud?',
     answer:

@@ -23,7 +23,6 @@
   "build": {
     "appId": "com.proscreen.annotationstudio",
     "productName": "ProScreen",
-    "copyright": "Copyright © 2026 ProScreen Team",
     "directories": {
       "output": "release"
     },
@@ -39,13 +38,13 @@
         "portable"
       ],
       "icon": "public/icons/icon512.png",
-      "publisherName": "ProScreen Team",
-      "legalTrademarks": "ProScreen™ is a trademark of ProScreen Team",
-      "rfc3161TimeStampServer": "http://timestamp.digicert.com",
-      "signAndEditExecutable": true,
+      "publisherName": "ProScreen",
+      "legalTrademarks": "ProScreen",
+      "requestedExecutionLevel": "asInvoker",
       "signingHashAlgorithms": [
         "sha256"
-      ]
+      ],
+      "rfc3161TimeStampServer": "http://timestamp.digicert.com"
     },
     "nsis": {
       "oneClick": false,

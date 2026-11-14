@@ -432,6 +432,48 @@ export const DownloadPage: React.FC = () => {
           </div>
         </div>
 
+        {/* Windows Defender SmartScreen Transparency & Security Notice */}
+        <div className="rounded-3xl bg-slate-900/60 border border-blue-500/30 p-8 shadow-2xl space-y-6">
+          <div className="flex items-start gap-4">
+            <div className="p-3 rounded-2xl bg-blue-500/10 border border-blue-500/25 text-blue-400 shrink-0">
+              <ShieldCheck className="w-6 h-6" />
+            </div>
+            <div className="space-y-2">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-mono font-semibold bg-blue-500/15 border border-blue-500/30 text-blue-300">
+                <span>Windows Security Transparency Notice</span>
+              </div>
+              <h3 className="text-xl sm:text-2xl font-bold text-white">
+                Seeing &quot;Windows protected your PC&quot; (Microsoft Defender SmartScreen)?
+              </h3>
+              <p className="text-sm text-slate-300 leading-relaxed">
+                When running newly released software downloaded from the web, Microsoft Defender SmartScreen displays a warning stating <strong className="text-white">&quot;Microsoft Defender SmartScreen prevented an unrecognized app from starting&quot;</strong>. This is standard Windows behavior for newly compiled applications before global download telemetry accumulates.
+              </p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2 text-xs">
+            <div className="p-4 rounded-xl bg-slate-950/80 border border-slate-800 space-y-2">
+              <div className="font-semibold text-white flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                <span>Why This Warning Occurs</span>
+              </div>
+              <p className="text-slate-300 leading-relaxed">
+                SmartScreen relies on cloud reputation scores based on hundreds of thousands of downloads over time. Independent, newly published release binaries initially have zero telemetry in Microsoft&apos;s cloud database regardless of code safety.
+              </p>
+            </div>
+
+            <div className="p-4 rounded-xl bg-slate-950/80 border border-slate-800 space-y-2">
+              <div className="font-semibold text-white flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4 text-sky-400" />
+                <span>How to Verify and Run Safely</span>
+              </div>
+              <p className="text-slate-300 leading-relaxed">
+                Verify the downloaded file&apos;s SHA-256 hash using the PowerShell command below to ensure it matches our official published build. Then click <strong className="text-white">More info &rarr; Run anyway</strong> to launch ProScreen with complete confidence.
+              </p>
+            </div>
+          </div>
+        </div>
+
         {/* PowerShell Checksum Verification Snippet */}
         <div className="rounded-2xl bg-slate-950 border border-slate-800 p-6 space-y-3 font-mono text-xs">
           <div className="flex items-center justify-between text-slate-400">

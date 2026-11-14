@@ -478,13 +478,21 @@ export const DownloadPage: React.FC = () => {
             <div className="p-5 rounded-2xl bg-slate-950/70 border border-slate-800/80 space-y-2.5">
               <h4 className="font-semibold text-white flex items-center gap-2">
                 <ShieldCheck className="w-4 h-4 text-emerald-400" />
-                <span>How to Launch ProScreen Safely</span>
+                <span>Verification-First Security Checklist</span>
               </h4>
-              <ol className="list-decimal pl-4 space-y-1.5 text-slate-300">
-                <li>On the blue SmartScreen prompt, click <strong className="text-white">&quot;More info&quot;</strong>.</li>
-                <li>Confirm the Application name is <strong className="text-blue-300">ProScreen-Setup-1.0.0.exe</strong> or <strong className="text-sky-300">ProScreen-Portable-1.0.0.exe</strong>.</li>
-                <li>Click the <strong className="text-white">&quot;Run anyway&quot;</strong> button to start.</li>
-                <li>Compare our published SHA-256 hash above using PowerShell for 100% verification.</li>
+              <ol className="list-decimal pl-4 space-y-2 text-slate-300">
+                <li>
+                  <strong className="text-white">Verify SHA-256 Hash First:</strong> Before executing, run the PowerShell command above to ensure your downloaded file matches our official published checksum byte-for-byte. If the hash does not match, do not run the file.
+                </li>
+                <li>
+                  <strong className="text-white">Confirm Publisher & File Name:</strong> On the blue SmartScreen dialog, click <strong className="text-white">&quot;More info&quot;</strong> and verify the file name corresponds to <code className="text-blue-300">ProScreen-Setup-1.0.0.exe</code> or <code className="text-sky-300">ProScreen-Portable-1.0.0.exe</code>.
+                </li>
+                <li>
+                  <strong className="text-white">Independent Antivirus Scan:</strong> You can right-click the file to scan with Microsoft Defender or upload to VirusTotal for independent multi-engine verification.
+                </li>
+                <li>
+                  <strong className="text-white">Run Once Verified:</strong> Only after confirming cryptographic integrity and clean scan results, click <strong className="text-white">&quot;Run anyway&quot;</strong> to start ProScreen.
+                </li>
               </ol>
             </div>
           </div>

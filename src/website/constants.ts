@@ -15,7 +15,11 @@ export const getReleaseDownloadUrl = (fileName: string): string => {
   return `https://github.com/${GITHUB_REPO}/releases/download/v1.0.0/${fileName}`;
 };
 
-export const OFFICIAL_RELEASES: { installer: ReleaseAsset; portable: ReleaseAsset } = {
+export const OFFICIAL_RELEASES: {
+  installer: ReleaseAsset;
+  portable: ReleaseAsset;
+  extensionZip: ReleaseAsset;
+} = {
   installer: {
     fileName: 'ProScreen-Setup-1.0.0.exe',
     version: '1.0.0',
@@ -54,6 +58,26 @@ export const OFFICIAL_RELEASES: { installer: ReleaseAsset; portable: ReleaseAsse
       'Ideal for USB drives and restricted enterprise PCs',
       'Leaves zero registry residue on your system',
       'Same native zero-latency overlay and hotkeys',
+    ],
+  },
+  extensionZip: {
+    fileName: 'ProScreen-Chrome-Extension-1.0.0.zip',
+    version: '1.0.0',
+    sizeBytes: 798637,
+    sizeFormatted: '779.9 KB',
+    sha256: '40B58190175316611860DAC801D91E12DA3E4821E2637313C49B520F647E6D7A',
+    downloadUrl: `https://github.com/${GITHUB_REPO}/releases/download/v1.0.0/ProScreen-Chrome-Extension-1.0.0.zip`,
+    releaseDate: 'November 2026',
+    targetOS: 'Chromium Browsers (Chrome, Edge, Brave, Opera, Vivaldi)',
+    architecture: 'Universal Manifest V3',
+    type: 'portable' as const,
+    description:
+      'Production Manifest V3 extension package ready to load unpacked or distribute.',
+    highlights: [
+      'Universal support across all Chromium v116+ browsers',
+      'Zero native installation needed — load directly in Developer mode',
+      'Shadow DOM encapsulated styles with CSP bypass architecture',
+      'Per-tab isolated drawing layers and screen recorder',
     ],
   },
 };

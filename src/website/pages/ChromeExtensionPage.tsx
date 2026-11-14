@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { OFFICIAL_RELEASES } from '../constants';
 import { useRouter } from '../router';
 import {
   Chrome,
@@ -14,16 +15,26 @@ import {
   Sparkles,
   Download,
   AlertTriangle,
+  Archive,
+  FileCheck,
 } from 'lucide-react';
 
 export const ChromeExtensionPage: React.FC = () => {
   const { navigate } = useRouter();
   const [copiedCode, setCopiedCode] = useState(false);
+  const [copiedSha, setCopiedSha] = useState(false);
+  const { extensionZip } = OFFICIAL_RELEASES;
 
   const copyPath = () => {
     navigator.clipboard.writeText('chrome://extensions/');
     setCopiedCode(true);
     setTimeout(() => setCopiedCode(false), 2000);
+  };
+
+  const copyChecksum = () => {
+    navigator.clipboard.writeText(extensionZip.sha256);
+    setCopiedSha(true);
+    setTimeout(() => setCopiedSha(false), 2000);
   };
 
   const supportedBrowsers = [
@@ -85,11 +96,21 @@ export const ChromeExtensionPage: React.FC = () => {
                   <span>Add to Chrome — Coming Soon</span>
                 </button>
 
+                {/* Direct ZIP download button */}
+                <a
+                  href={extensionZip.downloadUrl}
+                  download={extensionZip.fileName}
+                  className="px-6 py-3.5 rounded-xl bg-gradient-to-r from-amber-600 via-amber-500 to-yellow-500 hover:from-amber-500 hover:to-yellow-400 text-white font-bold text-sm shadow-xl shadow-amber-500/20 transition-all hover:scale-[1.02] active:scale-100 flex items-center gap-2.5"
+                >
+                  <Archive className="w-4 h-4" />
+                  <span>Download Extension ZIP ({extensionZip.sizeFormatted})</span>
+                </a>
+
                 <a
                   href="#unpacked-guide"
                   className="px-5 py-3.5 rounded-xl bg-amber-600/20 hover:bg-amber-600/30 border border-amber-500/40 text-amber-200 font-semibold text-sm transition-all flex items-center gap-2"
                 >
-                  <span>Load Unpacked Build Now</span>
+                  <span>Load Unpacked Guide</span>
                   <ArrowRight className="w-4 h-4" />
                 </a>
               </div>
@@ -178,9 +199,9 @@ export const ChromeExtensionPage: React.FC = () => {
               <div className="w-8 h-8 rounded-lg bg-amber-500/20 text-amber-300 flex items-center justify-center font-mono font-bold text-sm">
                 03
               </div>
-              <h4 className="text-base font-bold text-white">Select Production dist/</h4>
+              <h4 className="text-base font-bold text-white">Select Extension Directory</h4>
               <p className="text-xs text-slate-300 leading-relaxed">
-                Click <strong className="text-white">Load unpacked</strong> and select the directory:
+                Click <strong className="text-white">Load unpacked</strong> and select either your extracted ZIP folder or the local build directory:
               </p>
               <div className="p-2.5 rounded-lg bg-slate-950 border border-slate-800 text-[11px] text-slate-300 font-mono break-all">
                 C:\Users\dell\Desktop\proscreen\dist

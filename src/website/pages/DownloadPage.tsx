@@ -15,6 +15,8 @@ import {
   HelpCircle,
   ExternalLink,
   Sparkles,
+  Chrome,
+  Archive,
 } from 'lucide-react';
 
 export const DownloadPage: React.FC = () => {
@@ -27,7 +29,7 @@ export const DownloadPage: React.FC = () => {
     setTimeout(() => setCopiedSha(null), 2500);
   };
 
-  const { installer, portable } = OFFICIAL_RELEASES;
+  const { installer, portable, extensionZip } = OFFICIAL_RELEASES;
 
   return (
     <div className="w-full py-16 sm:py-24">
@@ -36,25 +38,25 @@ export const DownloadPage: React.FC = () => {
         <div className="text-center max-w-3xl mx-auto space-y-4">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-mono font-medium bg-blue-500/10 border border-blue-500/25 text-blue-300">
             <Download className="w-3.5 h-3.5" />
-            <span>Official Windows Release Center</span>
+            <span>Official Download & Release Center</span>
           </div>
 
           <h1 className="text-4xl sm:text-6xl font-extrabold text-white tracking-tight">
             Download ProScreen{' '}
             <span className="bg-gradient-to-r from-blue-400 via-sky-300 to-indigo-400 bg-clip-text text-transparent">
-              for Windows
+              v1.0.0
             </span>
           </h1>
 
           <p className="text-base sm:text-lg text-slate-300 leading-relaxed">
-            Free, fast, and production-ready. Certified for Windows 11 and Windows 10 (64-bit). No license keys or registration required.
+            Free, fast, and production-ready. Available for Windows 10/11 Desktop and all modern Chromium browsers. No license keys, ads, or account registration required.
           </p>
         </div>
 
-        {/* Dual Release Cards */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        {/* 3-Column Release Cards Grid */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* 1. Windows Installer Card */}
-          <div className="rounded-3xl bg-gradient-to-br from-slate-900 via-[#0B1123] to-slate-950 border-2 border-blue-500/40 p-8 sm:p-10 shadow-2xl relative flex flex-col justify-between space-y-8">
+          <div className="rounded-3xl bg-gradient-to-br from-slate-900 via-[#0B1123] to-slate-950 border-2 border-blue-500/40 p-8 shadow-2xl relative flex flex-col justify-between space-y-8">
             <div className="space-y-6">
               <div className="flex items-center justify-between">
                 <span className="px-3 py-1 rounded-full text-xs font-mono font-bold bg-blue-500/20 text-blue-300 border border-blue-500/30">
@@ -64,10 +66,10 @@ export const DownloadPage: React.FC = () => {
               </div>
 
               <div>
-                <h3 className="text-2xl sm:text-3xl font-extrabold text-white">
+                <h3 className="text-2xl font-extrabold text-white">
                   Windows Installer (.exe)
                 </h3>
-                <p className="text-xs font-mono text-blue-400 mt-1">
+                <p className="text-xs font-mono text-blue-400 mt-1 break-all">
                   {installer.fileName}
                 </p>
                 <p className="text-sm text-slate-300 mt-3 leading-relaxed">
@@ -144,7 +146,7 @@ export const DownloadPage: React.FC = () => {
           </div>
 
           {/* 2. Windows Portable Card */}
-          <div className="rounded-3xl bg-gradient-to-br from-slate-900 via-[#0B1123] to-slate-950 border border-slate-800 p-8 sm:p-10 shadow-2xl relative flex flex-col justify-between space-y-8">
+          <div className="rounded-3xl bg-gradient-to-br from-slate-900 via-[#0B1123] to-slate-950 border border-slate-800 p-8 shadow-2xl relative flex flex-col justify-between space-y-8">
             <div className="space-y-6">
               <div className="flex items-center justify-between">
                 <span className="px-3 py-1 rounded-full text-xs font-mono font-bold bg-sky-500/20 text-sky-300 border border-sky-500/30">
@@ -154,10 +156,10 @@ export const DownloadPage: React.FC = () => {
               </div>
 
               <div>
-                <h3 className="text-2xl sm:text-3xl font-extrabold text-white">
+                <h3 className="text-2xl font-extrabold text-white">
                   Windows Portable (.exe)
                 </h3>
-                <p className="text-xs font-mono text-sky-400 mt-1">
+                <p className="text-xs font-mono text-sky-400 mt-1 break-all">
                   {portable.fileName}
                 </p>
                 <p className="text-sm text-slate-300 mt-3 leading-relaxed">
@@ -232,6 +234,96 @@ export const DownloadPage: React.FC = () => {
               </p>
             </div>
           </div>
+
+          {/* 3. Chrome Extension Package Card */}
+          <div className="rounded-3xl bg-gradient-to-br from-slate-900 via-[#13120E] to-slate-950 border border-amber-500/30 p-8 shadow-2xl relative flex flex-col justify-between space-y-8">
+            <div className="space-y-6">
+              <div className="flex items-center justify-between">
+                <span className="px-3 py-1 rounded-full text-xs font-mono font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                  Universal Chromium Package
+                </span>
+                <span className="text-xs font-mono text-slate-400">v{extensionZip.version} MV3</span>
+              </div>
+
+              <div>
+                <h3 className="text-2xl font-extrabold text-white">
+                  Chrome Extension (.zip)
+                </h3>
+                <p className="text-xs font-mono text-amber-400 mt-1 break-all">
+                  {extensionZip.fileName}
+                </p>
+                <p className="text-sm text-slate-300 mt-3 leading-relaxed">
+                  {extensionZip.description}
+                </p>
+              </div>
+
+              {/* Specs & Highlights */}
+              <div className="space-y-2.5 pt-2">
+                {extensionZip.highlights.map((h, idx) => (
+                  <div key={idx} className="flex items-center gap-2.5 text-xs text-slate-200">
+                    <CheckCircle2 className="w-4 h-4 text-amber-400 shrink-0" />
+                    <span>{h}</span>
+                  </div>
+                ))}
+              </div>
+
+              {/* Metadata Badges */}
+              <div className="grid grid-cols-2 gap-3 pt-2 font-mono text-xs">
+                <div className="p-3 rounded-xl bg-slate-950/70 border border-slate-800">
+                  <div className="text-slate-400 text-[10px]">PACKAGE SIZE</div>
+                  <div className="text-white font-bold text-sm">{extensionZip.sizeFormatted}</div>
+                </div>
+                <div className="p-3 rounded-xl bg-slate-950/70 border border-slate-800">
+                  <div className="text-slate-400 text-[10px]">COMPATIBILITY</div>
+                  <div className="text-white font-bold text-sm">Chrome, Edge, Brave</div>
+                </div>
+              </div>
+
+              {/* SHA256 Checksum block */}
+              <div className="p-3.5 rounded-xl bg-slate-950/80 border border-slate-800 space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-mono text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+                    <FileCheck className="w-3.5 h-3.5 text-amber-400" />
+                    Verified SHA-256 Checksum
+                  </span>
+                  <button
+                    onClick={() => copyChecksum(extensionZip.sha256, 'extension')}
+                    className="text-[11px] font-mono text-amber-400 hover:text-amber-300 flex items-center gap-1 transition-colors"
+                  >
+                    {copiedSha === 'extension' ? (
+                      <>
+                        <Check className="w-3 h-3 text-emerald-400" />
+                        <span className="text-emerald-400">Copied!</span>
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="w-3 h-3" />
+                        <span>Copy SHA</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+                <div className="font-mono text-[10px] text-slate-400 break-all bg-slate-900/90 p-2 rounded border border-slate-800 select-all">
+                  {extensionZip.sha256}
+                </div>
+              </div>
+            </div>
+
+            {/* Direct Download Button */}
+            <div className="pt-4">
+              <a
+                href={extensionZip.downloadUrl}
+                download={extensionZip.fileName}
+                className="w-full flex items-center justify-center gap-3 px-6 py-4 rounded-xl text-base font-bold text-white bg-gradient-to-r from-amber-600 via-amber-500 to-yellow-500 hover:from-amber-500 hover:to-yellow-400 shadow-xl shadow-amber-500/20 transition-all hover:scale-[1.02] active:scale-100"
+              >
+                <Archive className="w-5 h-5" />
+                <span>Download Extension ZIP ({extensionZip.sizeFormatted})</span>
+              </a>
+              <p className="text-center text-[11px] text-slate-400 mt-2 font-mono">
+                Direct ZIP package • Load unpacked in Developer mode
+              </p>
+            </div>
+          </div>
         </div>
 
         {/* System Requirements Grid */}
@@ -284,7 +376,7 @@ export const DownloadPage: React.FC = () => {
         </div>
 
         {/* Installation Instructions & Verification Guide */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
           {/* Step-by-step Installer */}
           <div className="rounded-2xl bg-slate-900/60 border border-slate-800 p-6 space-y-4">
             <h4 className="text-lg font-bold text-white flex items-center gap-2">
@@ -318,6 +410,24 @@ export const DownloadPage: React.FC = () => {
               <li>Double-click to run immediately. No administrative prompt or registry writes.</li>
               <li>All user tool settings are saved locally alongside the executable.</li>
               <li>To remove, simply delete the single .exe file.</li>
+            </ol>
+          </div>
+
+          {/* Step-by-step Extension */}
+          <div className="rounded-2xl bg-slate-900/60 border border-slate-800 p-6 space-y-4">
+            <h4 className="text-lg font-bold text-white flex items-center gap-2">
+              <Chrome className="w-5 h-5 text-amber-400" />
+              <span>Chrome Extension Guide</span>
+            </h4>
+            <ol className="space-y-3 text-xs sm:text-sm text-slate-300 list-decimal pl-5 leading-relaxed">
+              <li>
+                Click <strong className="text-white">Download Extension ZIP</strong> to save{' '}
+                <code className="text-amber-300 bg-slate-950 px-1 rounded">ProScreen-Chrome-Extension-1.0.0.zip</code>.
+              </li>
+              <li>Extract the ZIP file into any folder on your computer.</li>
+              <li>Open <code className="text-amber-300 bg-slate-950 px-1 rounded">chrome://extensions</code> in Chrome or Edge.</li>
+              <li>Enable <strong>Developer mode</strong> in the top-right corner.</li>
+              <li>Click <strong>Load unpacked</strong> and select the extracted folder.</li>
             </ol>
           </div>
         </div>

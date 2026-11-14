@@ -1,7 +1,7 @@
 import { ReleaseAsset, FeatureItem, FaqItem, ChangelogRelease } from './types';
 
 // GitHub Release Distribution Configuration
-export const GITHUB_USERNAME = (import.meta as any).env?.VITE_GITHUB_USERNAME || 'sonuk597733';
+export const GITHUB_USERNAME = (import.meta as any).env?.VITE_GITHUB_USERNAME || 'sonuk597733-cyber';
 export const GITHUB_REPO = (import.meta as any).env?.VITE_GITHUB_REPO || `${GITHUB_USERNAME}/proscreen`;
 
 export const getReleaseDownloadUrl = (fileName: string): string => {

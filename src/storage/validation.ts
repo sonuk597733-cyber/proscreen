@@ -94,6 +94,7 @@ export function createDefaultSettings(): UserSettings {
     recentColors: ['#2563EB', '#EF4444', '#FACC15', '#10B981', '#8B5CF6', '#0F172A'],
     favoriteColors: ['#2563EB', '#EF4444', '#FACC15', '#10B981'],
     shortcuts: DEFAULT_SHORTCUTS.map((s) => ({ ...s })),
+    hasSeenOnboarding: false,
   };
 }
 

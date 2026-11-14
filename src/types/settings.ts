@@ -123,6 +123,7 @@ export interface UserSettings {
   recentColors: string[];
   favoriteColors: string[];
   shortcuts: ShortcutBinding[];
+  hasSeenOnboarding?: boolean;
   startWithWindows?: boolean;
   multiMonitorMode?: 'all' | 'primary';
 }

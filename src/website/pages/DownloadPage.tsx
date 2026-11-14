@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { OFFICIAL_RELEASES, SYSTEM_REQUIREMENTS } from '../constants';
+import { OFFICIAL_RELEASES, SYSTEM_REQUIREMENTS, ReleaseAsset } from '../constants';
 import { useRouter } from '../router';
 import {
   Download,
@@ -19,16 +19,28 @@ import {
   Archive,
   ShieldAlert,
   Info,
+  X,
+  RotateCw,
+  Zap,
+  MousePointer,
+  Eye,
+  Trash2,
+  Keyboard,
 } from 'lucide-react';
 
 export const DownloadPage: React.FC = () => {
   const { navigate } = useRouter();
   const [copiedSha, setCopiedSha] = useState<string | null>(null);
+  const [downloadedAsset, setDownloadedAsset] = useState<ReleaseAsset | null>(null);
 
   const copyChecksum = (hash: string, id: string) => {
     navigator.clipboard.writeText(hash);
     setCopiedSha(id);
     setTimeout(() => setCopiedSha(null), 2500);
+  };
+
+  const handleDownloadClick = (asset: ReleaseAsset) => {
+    setDownloadedAsset(asset);
   };
 
   const { installer, portable, extensionZip } = OFFICIAL_RELEASES;
@@ -53,6 +65,22 @@ export const DownloadPage: React.FC = () => {
           <p className="text-base sm:text-lg text-slate-300 leading-relaxed">
             Free, fast, and production-ready. Available for Windows 10/11 Desktop and all modern Chromium browsers. No license keys, ads, or account registration required.
           </p>
+
+          {/* Quick Choice Highlights */}
+          <div className="pt-2 flex flex-wrap items-center justify-center gap-3 text-xs font-mono">
+            <span className="px-3 py-1.5 rounded-xl bg-blue-500/10 border border-blue-500/25 text-blue-300 flex items-center gap-1.5">
+              <HardDrive className="w-3.5 h-3.5" />
+              <span>Installer: Daily Desktop Use</span>
+            </span>
+            <span className="px-3 py-1.5 rounded-xl bg-sky-500/10 border border-sky-500/25 text-sky-300 flex items-center gap-1.5">
+              <Monitor className="w-3.5 h-3.5" />
+              <span>Portable: Zero-Install / USB</span>
+            </span>
+            <span className="px-3 py-1.5 rounded-xl bg-amber-500/10 border border-amber-500/25 text-amber-300 flex items-center gap-1.5">
+              <Chrome className="w-3.5 h-3.5" />
+              <span>Extension: Browser Only</span>
+            </span>
+          </div>
         </div>
 
         {/* 3-Column Release Cards Grid */}
@@ -136,6 +164,7 @@ export const DownloadPage: React.FC = () => {
               <a
                 href={installer.downloadUrl}
                 download={installer.fileName}
+                onClick={() => handleDownloadClick(installer)}
                 className="w-full flex items-center justify-center gap-3 px-6 py-4 rounded-xl text-base font-bold text-white bg-gradient-to-r from-blue-600 via-blue-500 to-sky-500 hover:from-blue-500 hover:to-sky-400 shadow-xl shadow-blue-500/30 transition-all hover:scale-[1.02] active:scale-100"
               >
                 <Download className="w-5 h-5" />
@@ -226,6 +255,7 @@ export const DownloadPage: React.FC = () => {
               <a
                 href={portable.downloadUrl}
                 download={portable.fileName}
+                onClick={() => handleDownloadClick(portable)}
                 className="w-full flex items-center justify-center gap-3 px-6 py-4 rounded-xl text-base font-bold text-white bg-slate-800 hover:bg-slate-700 border border-slate-700 shadow-xl transition-all hover:scale-[1.02] active:scale-100"
               >
                 <Download className="w-5 h-5 text-sky-400" />
@@ -316,6 +346,7 @@ export const DownloadPage: React.FC = () => {
               <a
                 href={extensionZip.downloadUrl}
                 download={extensionZip.fileName}
+                onClick={() => handleDownloadClick(extensionZip)}
                 className="w-full flex items-center justify-center gap-3 px-6 py-4 rounded-xl text-base font-bold text-white bg-gradient-to-r from-amber-600 via-amber-500 to-yellow-500 hover:from-amber-500 hover:to-yellow-400 shadow-xl shadow-amber-500/20 transition-all hover:scale-[1.02] active:scale-100"
               >
                 <Archive className="w-5 h-5" />
@@ -448,6 +479,67 @@ export const DownloadPage: React.FC = () => {
           </div>
         </div>
 
+        {/* First-Launch & Getting Started Walkthrough */}
+        <div className="rounded-3xl bg-slate-950/80 border border-slate-800 p-8 sm:p-12 shadow-2xl space-y-8">
+          <div className="text-center max-w-2xl mx-auto space-y-3">
+            <span className="text-xs font-mono font-semibold text-blue-400 uppercase tracking-wider">
+              Seamless Experience
+            </span>
+            <h3 className="text-2xl sm:text-3xl font-extrabold text-white">
+              What to Expect on First Launch
+            </h3>
+            <p className="text-sm text-slate-300">
+              ProScreen is designed to sit peacefully over Windows without interrupting your desktop workflows.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            {/* Card 1 */}
+            <div className="rounded-2xl bg-slate-900/60 border border-slate-800 p-6 space-y-3">
+              <div className="w-10 h-10 rounded-xl bg-sky-500/20 text-sky-400 flex items-center justify-center">
+                <MousePointer className="w-5 h-5" />
+              </div>
+              <h4 className="text-base font-bold text-white">1. Starts in Pointer Mode</h4>
+              <p className="text-xs text-slate-300 leading-relaxed">
+                When launched, ProScreen defaults to passive Pointer mode. You can click, type, and drag windows normally without your mouse clicks getting trapped.
+              </p>
+            </div>
+
+            {/* Card 2 */}
+            <div className="rounded-2xl bg-slate-900/60 border border-slate-800 p-6 space-y-3">
+              <div className="w-10 h-10 rounded-xl bg-blue-500/20 text-blue-400 flex items-center justify-center">
+                <Keyboard className="w-5 h-5" />
+              </div>
+              <h4 className="text-base font-bold text-white">2. Global Alt+Shift+P Hotkey</h4>
+              <p className="text-xs text-slate-300 leading-relaxed">
+                Press <kbd className="bg-slate-800 px-1 py-0.5 rounded text-white font-mono text-[10px]">Alt+Shift+P</kbd> anytime to open the studio toolbar. Press <kbd className="bg-slate-800 px-1 py-0.5 rounded text-white font-mono text-[10px]">Alt+V</kbd> to return to Pointer mode.
+              </p>
+            </div>
+
+            {/* Card 3 */}
+            <div className="rounded-2xl bg-slate-900/60 border border-slate-800 p-6 space-y-3">
+              <div className="w-10 h-10 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center">
+                <Eye className="w-5 h-5" />
+              </div>
+              <h4 className="text-base font-bold text-white">3. Floating Eye Restore</h4>
+              <p className="text-xs text-slate-300 leading-relaxed">
+                Need a clean screen during presentations? Click the Eye button to collapse the toolbar into a tiny movable restore eye while keeping your annotations visible.
+              </p>
+            </div>
+
+            {/* Card 4 */}
+            <div className="rounded-2xl bg-slate-900/60 border border-slate-800 p-6 space-y-3">
+              <div className="w-10 h-10 rounded-xl bg-purple-500/20 text-purple-400 flex items-center justify-center">
+                <Trash2 className="w-5 h-5" />
+              </div>
+              <h4 className="text-base font-bold text-white">4. Clean Uninstallation</h4>
+              <p className="text-xs text-slate-300 leading-relaxed">
+                Installer uninstalls cleanly from Windows Settings with zero background services. Portable can be removed simply by deleting the single .exe file.
+              </p>
+            </div>
+          </div>
+        </div>
+
         {/* Windows Defender SmartScreen & First Launch Transparency */}
         <div className="rounded-3xl bg-slate-900/50 border border-blue-500/20 p-8 sm:p-10 space-y-6">
           <div className="flex items-start gap-4">
@@ -498,6 +590,116 @@ export const DownloadPage: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* Interactive Download Feedback Modal */}
+      {downloadedAsset && (
+        <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md select-none">
+          <div className="relative w-full max-w-xl rounded-3xl bg-gradient-to-br from-slate-900 via-[#0B1123] to-slate-950 border-2 border-blue-500/40 p-6 sm:p-8 shadow-2xl space-y-6">
+            <button
+              onClick={() => setDownloadedAsset(null)}
+              className="absolute top-4 right-4 p-2 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
+              title="Close"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            {/* Header */}
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 rounded-2xl bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center text-emerald-400 shrink-0">
+                <Check className="w-6 h-6 animate-pulse" />
+              </div>
+              <div>
+                <h3 className="text-xl sm:text-2xl font-bold text-white">
+                  Your Download Has Started!
+                </h3>
+                <p className="text-xs text-slate-400 font-mono mt-0.5">
+                  Check your browser&apos;s download tray (Ctrl + J)
+                </p>
+              </div>
+            </div>
+
+            {/* File info card */}
+            <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800/80 space-y-2">
+              <div className="flex items-center justify-between text-xs">
+                <span className="font-mono text-blue-300 font-semibold truncate max-w-[280px]">
+                  {downloadedAsset.fileName}
+                </span>
+                <span className="text-slate-400 font-mono text-[11px]">
+                  {downloadedAsset.sizeFormatted}
+                </span>
+              </div>
+              <div className="flex items-center justify-between pt-1 border-t border-slate-900 text-[11px] font-mono text-slate-400">
+                <span>SHA-256 Checksum:</span>
+                <button
+                  onClick={() => copyChecksum(downloadedAsset.sha256, 'modal')}
+                  className="text-blue-400 hover:text-blue-300 flex items-center gap-1 transition-colors"
+                >
+                  {copiedSha === 'modal' ? (
+                    <>
+                      <Check className="w-3 h-3 text-emerald-400" />
+                      <span className="text-emerald-400">Copied!</span>
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="w-3 h-3" />
+                      <span>Copy Hash</span>
+                    </>
+                  )}
+                </button>
+              </div>
+              <div className="text-[10px] font-mono text-slate-500 break-all select-all bg-slate-900/60 p-1.5 rounded">
+                {downloadedAsset.sha256}
+              </div>
+            </div>
+
+            {/* Next Steps */}
+            <div className="space-y-3">
+              <h4 className="text-xs font-mono uppercase tracking-wider text-slate-400 font-semibold">
+                Next Steps to Start Using ProScreen
+              </h4>
+              <div className="space-y-2 text-xs text-slate-300">
+                <div className="p-3 rounded-xl bg-slate-900/60 border border-slate-800 flex items-start gap-2.5">
+                  <span className="w-5 h-5 rounded-full bg-blue-500/20 text-blue-300 flex items-center justify-center font-mono text-[11px] shrink-0 font-bold">1</span>
+                  <p>
+                    Open the downloaded file from your Downloads folder or browser tray (<kbd className="bg-slate-800 px-1 py-0.5 rounded text-white font-mono text-[10px]">Ctrl+J</kbd>).
+                  </p>
+                </div>
+                <div className="p-3 rounded-xl bg-slate-900/60 border border-slate-800 flex items-start gap-2.5">
+                  <span className="w-5 h-5 rounded-full bg-blue-500/20 text-blue-300 flex items-center justify-center font-mono text-[11px] shrink-0 font-bold">2</span>
+                  <p>
+                    If Windows Defender SmartScreen shows an &quot;Unrecognized app&quot; alert, verify the SHA-256 hash in PowerShell, click <strong className="text-white">&quot;More info&quot;</strong>, then <strong className="text-white">&quot;Run anyway&quot;</strong>.
+                  </p>
+                </div>
+                <div className="p-3 rounded-xl bg-slate-900/60 border border-slate-800 flex items-start gap-2.5">
+                  <span className="w-5 h-5 rounded-full bg-blue-500/20 text-blue-300 flex items-center justify-center font-mono text-[11px] shrink-0 font-bold">3</span>
+                  <p>
+                    ProScreen starts in passive Pointer mode — press <kbd className="px-1.5 py-0.5 rounded bg-slate-800 text-blue-300 font-mono text-[10px]">Alt+Shift+P</kbd> anytime to open the studio toolbar!
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Fallback button & close */}
+            <div className="pt-2 flex flex-col sm:flex-row items-center justify-between gap-3">
+              <a
+                href={downloadedAsset.downloadUrl}
+                download={downloadedAsset.fileName}
+                className="text-xs text-blue-400 hover:text-blue-300 underline font-mono flex items-center gap-1"
+              >
+                <RotateCw className="w-3 h-3" />
+                <span>Download didn&apos;t start? Click here to retry</span>
+              </a>
+
+              <button
+                onClick={() => setDownloadedAsset(null)}
+                className="w-full sm:w-auto px-6 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs shadow-lg shadow-blue-500/25 transition-all"
+              >
+                Got it, Continue
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

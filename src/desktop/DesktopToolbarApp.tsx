@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { FloatingToolbar } from '../toolbar/FloatingToolbar';
 import { FloatingEyeRestoreButton } from '../components/FloatingEyeRestoreButton';
+import { FirstLaunchOnboardingModal } from '../components/FirstLaunchOnboardingModal';
 import { PopoutId } from '../toolbar/ToolbarPopouts';
 import { DesktopSharedState } from './desktopTypes';
 import { createDefaultSettings } from '../storage/validation';
@@ -12,6 +13,7 @@ export const DesktopToolbarApp: React.FC = () => {
   const desktop = typeof window !== 'undefined' ? window.proscreenDesktop : undefined;
 
   const [activePopout, setActivePopout] = useState<PopoutId | null>(null);
+  const [showOnboarding, setShowOnboarding] = useState(false);
   const [settings, setSettings] = useState<UserSettings>(() => createDefaultSettings());
   const [state, setState] = useState<DesktopSharedState>({
     activeTool: 'pointer',
@@ -41,9 +43,27 @@ export const DesktopToolbarApp: React.FC = () => {
   useEffect(() => {
     if (!desktop) return;
     void desktop.loadDesktopSettings().then((loaded) => {
-      if (loaded) setSettings(loaded);
+      if (loaded) {
+        setSettings(loaded);
+        if (loaded.hasSeenOnboarding === false) {
+          setShowOnboarding(true);
+        }
+      } else {
+        setShowOnboarding(true);
+      }
     });
   }, [desktop]);
+
+  const handleCloseOnboarding = (dontShowAgain: boolean) => {
+    setShowOnboarding(false);
+    if (dontShowAgain) {
+      setSettings((prev) => {
+        const next = { ...prev, hasSeenOnboarding: true };
+        desktop?.saveDesktopSettings(next);
+        return next;
+      });
+    }
+  };
 
   // Synchronize live state from Main process / Overlay
   useEffect(() => {
@@ -214,6 +234,11 @@ export const DesktopToolbarApp: React.FC = () => {
         onOpenEye={() => desktop?.setEye(true)}
         onToggleEye={() => desktop?.toggleEye()}
         onRestoreToolbar={() => desktop?.setEye(true)}
+      />
+
+      <FirstLaunchOnboardingModal
+        isOpen={showOnboarding}
+        onClose={handleCloseOnboarding}
       />
     </div>
   );

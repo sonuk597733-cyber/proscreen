@@ -1,0 +1,28 @@
+# Dependencies
+node_modules/
+
+# AI Studio and local agent artifacts
+.aistudio/
+
+# Build and distribution outputs
+build/
+dist/
+dist-electron/
+dist-website/
+release/
+public/downloads/
+*.exe
+*.blockmap
+
+# Test coverage
+coverage/
+
+# OS and temporary files
+.DS_Store
+*.log
+Thumbs.db
+
+# Environment variables
+.env*
+!.env.example
+

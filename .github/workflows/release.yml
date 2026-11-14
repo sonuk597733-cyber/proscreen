@@ -1,0 +1,70 @@
+name: Publish ProScreen Windows Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag_name:
+        description: 'Release Tag Name (e.g. v1.0.0)'
+        required: true
+        default: 'v1.0.0'
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Build Windows Binaries (NSIS Installer & Portable)
+        run: npm run dist:win
+
+      - name: Compute Checksums
+        id: hashes
+        shell: pwsh
+        run: |
+          $setupHash = (Get-FileHash release/ProScreen-Setup-1.0.0.exe -Algorithm SHA256).Hash
+          $portableHash = (Get-FileHash release/ProScreen-Portable-1.0.0.exe -Algorithm SHA256).Hash
+          echo "SETUP_HASH=$setupHash" >> $env:GITHUB_OUTPUT
+          echo "PORTABLE_HASH=$portableHash" >> $env:GITHUB_OUTPUT
+
+      - name: Publish GitHub Release Assets
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.event.inputs.tag_name || github.ref_name }}
+          name: ProScreen v1.0.0 — Production Release (Windows & Chrome)
+          draft: false
+          prerelease: false
+          body: |
+            # ProScreen v1.0.0 — Production Release
+
+            Professional Windows Desktop & Chrome Screen Annotation Studio.
+
+            ### Verified Binary Distribution & SHA-256 Checksums
+            | Asset | Description | Size | SHA-256 Checksum |
+            |---|---|---|---|
+            | `ProScreen-Setup-1.0.0.exe` | Windows NSIS Setup Installer | 132.7 MB | `${{ steps.hashes.outputs.SETUP_HASH }}` |
+            | `ProScreen-Portable-1.0.0.exe` | Windows Standalone Portable App | 118.4 MB | `${{ steps.hashes.outputs.PORTABLE_HASH }}` |
+
+            ### Verification in PowerShell
+            ```powershell
+            Get-FileHash -Path ProScreen-Setup-1.0.0.exe -Algorithm SHA256
+            Get-FileHash -Path ProScreen-Portable-1.0.0.exe -Algorithm SHA256
+            ```
+          files: |
+            release/ProScreen-Setup-1.0.0.exe
+            release/ProScreen-Portable-1.0.0.exe

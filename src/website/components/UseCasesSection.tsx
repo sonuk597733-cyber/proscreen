@@ -10,6 +10,7 @@ import {
   CheckCircle2,
   Sparkles,
   ArrowRight,
+  Download,
 } from 'lucide-react';
 
 interface UseCaseCard {
@@ -18,106 +19,86 @@ interface UseCaseCard {
   title: string;
   description: string;
   icon: React.ReactNode;
-  colorClass: string;
-  bgGlow: string;
   benefits: string[];
 }
 
 const USE_CASES: UseCaseCard[] = [
   {
     id: 'students',
-    role: 'Students & Learners',
-    title: 'Capture Lectures & Create Visual Study Guides',
+    role: 'Students',
+    title: 'Capture lectures & visual study guides',
     description:
-      'Record online lectures and webinars with system audio, highlight critical textbook diagrams, annotate lecture slides, and create revision videos for exam prep without messy clutter.',
-    icon: <GraduationCap className="w-6 h-6" />,
-    colorClass: 'text-blue-400 border-blue-500/20 bg-blue-500/10',
-    bgGlow: 'from-blue-600/10 to-transparent',
+      'Record online lectures with crystal-clear system audio. Draw arrows over diagram slides, annotate formulas, and export video clips for exam revision.',
+    icon: <GraduationCap className="w-5 h-5 text-blue-600" />,
     benefits: [
-      'Record Zoom & Google Meet lectures with synchronized audio',
-      'Fading ink timer highlights notes without permanent screen marks',
-      'Instant area screenshots copied directly to your clipboard',
-      '100% local video saving with zero account sign-up',
+      'Record Zoom and Google Meet sessions with synchronized audio',
+      'Fading ink marks up key points without permanently cluttering notes',
+      'Instant area screenshots for assignments and homework',
     ],
   },
   {
     id: 'teachers',
-    role: 'Teachers & Educators',
-    title: 'Transform Any Lesson Into an Interactive Classroom',
+    role: 'Teachers',
+    title: 'Interactive classroom presentations',
     description:
-      'Draw mathematical derivations, point out geography maps, and switch to Blackboard mode during live video classes. Send personalized video feedback on student assignments in seconds.',
-    icon: <BookOpen className="w-6 h-6" />,
-    colorClass: 'text-amber-400 border-amber-500/20 bg-amber-500/10',
-    bgGlow: 'from-amber-600/10 to-transparent',
+      'Turn your desktop into a dynamic whiteboard during live classes. Explain mathematical equations, annotate PDF textbooks, and share video walkthroughs.',
+    icon: <BookOpen className="w-5 h-5 text-blue-600" />,
     benefits: [
-      'Full-screen Whiteboard and Blackboard modes with one hotkey',
-      'Dual-track audio records both your voice and student questions',
+      'Full-screen Whiteboard and Blackboard toggles with one click',
+      'Dual-track audio records both your voice narration and student questions',
       'Chisel highlighter marks textbook lines without covering text',
-      'Movable floating Eye restore button keeps presentation clean',
     ],
   },
   {
     id: 'developers',
-    role: 'Developers & Software Engineers',
-    title: 'Walk Through Code & Reproduce Bugs with Zero Latency',
+    role: 'Developers',
+    title: 'Code walkthroughs & bug reproduction',
     description:
-      'Explain pull requests, demonstrate UI interactions, and record bug reproduction clips with console output. Draw arrows directly over VS Code and browser DevTools with zero mouse blockage.',
-    icon: <Code2 className="w-6 h-6" />,
-    colorClass: 'text-emerald-400 border-emerald-500/20 bg-emerald-500/10',
-    bgGlow: 'from-emerald-600/10 to-transparent',
+      'Demonstrate pull requests, walk through terminal sessions, and reproduce complex issues. Annotate directly over code editors and DevTools.',
+    icon: <Code2 className="w-5 h-5 text-blue-600" />,
     benefits: [
-      'Direct3D 11 pass-through: type and debug while annotations stay pinned',
-      '60 FPS DXGI GPU capture ensures zero dropped frames in terminal',
-      'Window-specific recording targets only the relevant application',
-      'Directional vector arrows with 45-degree angle snapping',
+      'Direct3D pass-through: type and debug while annotations remain visible',
+      '60 FPS DXGI GPU capture ensures zero dropped frames in the terminal',
+      'Single application window isolation avoids sharing sensitive desktop data',
     ],
   },
   {
     id: 'creators',
-    role: 'Content Creators & Streamers',
-    title: 'Produce High-Quality Software Tutorials with Ease',
+    role: 'Content Creators',
+    title: 'Crisp tutorials with zero watermarks',
     description:
-      'Produce studio-quality video tutorials without expensive editing setups. Record crisp 60 FPS video with synchronized microphone commentary, highlight details on the fly, and review clips instantly.',
-    icon: <Video className="w-6 h-6" />,
-    colorClass: 'text-purple-400 border-purple-500/20 bg-purple-500/10',
-    bgGlow: 'from-purple-600/10 to-transparent',
+      'Produce studio-quality video tutorials without expensive gear. Record smooth 60 FPS video with synchronized microphone commentary and instant playback.',
+    icon: <Video className="w-5 h-5 text-blue-600" />,
     benefits: [
-      'Broadcast-quality 48 kHz audio with brickwall peak limiter',
-      'Custom WebM and MP4 high-bitrate video export',
-      'In-app preview modal with 0.5x–2x speed and frame scrubber',
-      'No watermarks, no time limits, and zero sponsored branding',
+      'Broadcast-quality 48 kHz audio with hardware peak limiter',
+      'Built-in player with scrub timeline and multi-speed playback (0.5x–2x)',
+      'Clean exports with zero watermarks and zero time limits',
     ],
   },
   {
     id: 'trainers',
-    role: 'Online Trainers & Instructors',
-    title: 'Create Scalable Enterprise SOPs & Software Onboarding',
+    role: 'Online Trainers',
+    title: 'Software onboarding & training SOPs',
     description:
-      'Build reusable, high-impact training walkthroughs for enterprise software. Frame precise application areas with Area Recording, highlight critical workflow steps, and export clean, watermark-free videos.',
-    icon: <Presentation className="w-6 h-6" />,
-    colorClass: 'text-sky-400 border-sky-500/20 bg-sky-500/10',
-    bgGlow: 'from-sky-600/10 to-transparent',
+      'Create step-by-step training walkthroughs for enterprise software. Frame precise UI sections with Area Recording and highlight essential workflow steps.',
+    icon: <Presentation className="w-5 h-5 text-blue-600" />,
     benefits: [
-      'Area Recording frames exact software UI boundaries',
-      'Numbered callouts and geometric highlight shapes',
-      'Instant WebM duration metadata for instant seeking in VLC',
-      'Multi-monitor virtual coordinate calculation across all displays',
+      'Sub-pixel area selection frames specific software panels',
+      'Fading ink countdown timer keeps students focused on active steps',
+      'Clean WebM and MP4 container exports for LMS platforms',
     ],
   },
   {
     id: 'professionals',
-    role: 'Business Professionals & Managers',
-    title: 'Replace 30-Minute Meetings with 2-Minute Video Memos',
+    role: 'Business Professionals',
+    title: 'Asynchronous updates & executive reviews',
     description:
-      'Annotate financial spreadsheets, mark up PDF contracts, review slide decks, and share actionable video briefings with clients and team members asynchronously.',
-    icon: <Briefcase className="w-6 h-6" />,
-    colorClass: 'text-rose-400 border-rose-500/20 bg-rose-500/10',
-    bgGlow: 'from-rose-600/10 to-transparent',
+      'Replace lengthy meetings with quick video walkthroughs. Review quarterly decks, highlight spreadsheets, and share actionable video summaries.',
+    icon: <Briefcase className="w-5 h-5 text-blue-600" />,
     benefits: [
-      'Cut hours of meeting fatigue with quick async video memos',
-      'Native Windows "Save As" dialog saves directly to company folders',
-      'Zero telemetry and zero cloud upload ensures corporate privacy',
-      'Global hotkeys (Alt+Shift+R, Alt+Shift+S) for one-second capture',
+      '100% local processing protects corporate confidential data',
+      'Zero telemetry, zero cloud uploads, and zero account dependencies',
+      'Immediate seek metadata for instant scrubbing in VLC or browser',
     ],
   },
 ];
@@ -126,75 +107,74 @@ export const UseCasesSection: React.FC = () => {
   const { navigate } = useRouter();
 
   return (
-    <section id="use-cases" className="py-20 lg:py-28 relative scroll-mt-20">
+    <section id="use-cases" className="py-20 lg:py-28 bg-white scroll-mt-18 border-b border-neutral-100">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Section Header */}
         <div className="text-center max-w-3xl mx-auto space-y-4 mb-16">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-mono font-medium bg-blue-500/10 border border-blue-500/25 text-blue-300">
-            <Sparkles className="w-3.5 h-3.5" />
-            <span>Tailored For Real Work</span>
+          <div>
+            <span className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-blue-50 text-blue-700 border border-blue-200/80">
+              <Sparkles className="w-3.5 h-3.5 text-blue-600" />
+              BUILT FOR EVERY WORKFLOW
+            </span>
           </div>
 
-          <h2 className="text-3xl sm:text-5xl font-extrabold text-white tracking-tight">
-            Built for Every{' '}
-            <span className="bg-gradient-to-r from-blue-400 via-sky-300 to-indigo-400 bg-clip-text text-transparent">
-              Professional Workflow
-            </span>
+          <h2 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-neutral-900 tracking-tight leading-tight">
+            Designed for those who explain for a living
           </h2>
 
-          <p className="text-base sm:text-lg text-slate-300 leading-relaxed">
-            See how ProScreen transforms everyday communication across education, software development, content creation, and business.
+          <p className="text-lg text-neutral-600 leading-relaxed max-w-2xl mx-auto">
+            Whether you teach a classroom, document code, or train a distributed team, ProScreen adapts to your presentation style.
           </p>
         </div>
 
-        {/* 6-Card Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {/* 6 Clean Persona Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-8">
           {USE_CASES.map((uc) => (
             <div
               key={uc.id}
-              className="rounded-2xl bg-gradient-to-br from-slate-900/90 via-[#0B1123]/90 to-slate-950/90 border border-slate-800/80 hover:border-blue-500/40 p-7 shadow-xl hover:shadow-blue-500/10 transition-all duration-300 flex flex-col justify-between group"
+              className="bg-neutral-50/70 hover:bg-neutral-50 rounded-2xl border border-neutral-200/80 p-7 flex flex-col justify-between space-y-6 transition-colors shadow-sm"
             >
               <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <div className={`p-2.5 rounded-xl border ${uc.colorClass} group-hover:scale-110 transition-transform`}>
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-white border border-neutral-200 shadow-sm flex items-center justify-center">
                     {uc.icon}
                   </div>
-                  <span className="text-[11px] font-mono text-slate-400 uppercase tracking-wider">
-                    {uc.role}
-                  </span>
+                  <div>
+                    <span className="text-xs font-bold text-blue-600 uppercase tracking-wider">
+                      {uc.role}
+                    </span>
+                    <h3 className="text-lg font-bold text-neutral-900 tracking-tight">
+                      {uc.title}
+                    </h3>
+                  </div>
                 </div>
 
-                <div>
-                  <h3 className="text-lg sm:text-xl font-bold text-white group-hover:text-blue-200 transition-colors">
-                    {uc.title}
-                  </h3>
-                  <p className="text-slate-300 text-xs sm:text-sm leading-relaxed mt-2.5">
-                    {uc.description}
-                  </p>
-                </div>
+                <p className="text-sm text-neutral-600 leading-relaxed">
+                  {uc.description}
+                </p>
 
-                {/* Benefits */}
-                <div className="space-y-2 pt-3 border-t border-slate-800/80">
+                <ul className="space-y-2.5 pt-2 text-xs text-neutral-700">
                   {uc.benefits.map((b, idx) => (
-                    <div key={idx} className="flex items-start gap-2 text-xs text-slate-300">
-                      <CheckCircle2 className="w-3.5 h-3.5 text-blue-400 shrink-0 mt-0.5" />
+                    <li key={idx} className="flex items-start gap-2">
+                      <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
                       <span>{b}</span>
-                    </div>
+                    </li>
                   ))}
-                </div>
-              </div>
-
-              <div className="pt-6 mt-4 border-t border-slate-800/60">
-                <button
-                  onClick={() => navigate('download', 'download')}
-                  className="w-full flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-slate-950/90 hover:bg-blue-600/20 text-slate-300 hover:text-white border border-slate-800 hover:border-blue-500/40 text-xs font-semibold transition-all group-hover:border-blue-500/30"
-                >
-                  <span>Start Free in {uc.role.split(' ')[0]}</span>
-                  <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
-                </button>
+                </ul>
               </div>
             </div>
           ))}
+        </div>
+
+        {/* Action Callout */}
+        <div className="mt-14 text-center">
+          <button
+            onClick={() => navigate('home', 'download')}
+            className="inline-flex items-center gap-2 px-6 py-3.5 rounded-xl text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 shadow-sm transition-all"
+          >
+            <Download className="w-4 h-4" />
+            <span>Download Free for Windows</span>
+          </button>
         </div>
       </div>
     </section>

@@ -50,14 +50,7 @@ const AppContent: React.FC = () => {
   const isPlayground = currentRoute === 'playground';
 
   return (
-    <div className="min-h-screen bg-[#060913] text-slate-100 flex flex-col selection:bg-blue-600 selection:text-white relative">
-      {/* Background ambient lighting */}
-      <div className="fixed inset-0 pointer-events-none -z-10 overflow-hidden">
-        <div className="absolute -top-40 left-1/2 -translate-x-1/2 w-[1000px] h-[600px] bg-gradient-to-b from-blue-600/10 via-indigo-600/5 to-transparent blur-[140px]" />
-        <div className="absolute top-[40%] -right-40 w-[600px] h-[600px] bg-sky-500/5 blur-[140px]" />
-        <div className="absolute top-[70%] -left-40 w-[600px] h-[600px] bg-indigo-500/5 blur-[140px]" />
-      </div>
-
+    <div className="min-h-screen bg-white text-slate-900 flex flex-col selection:bg-blue-600 selection:text-white relative">
       <Navbar />
 
       <main className="flex-1 flex flex-col">

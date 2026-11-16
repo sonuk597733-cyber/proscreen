@@ -47,23 +47,21 @@ export const DownloadPage: React.FC = () => {
   const { installer, portable, extensionZip } = OFFICIAL_RELEASES;
 
   return (
-    <div className="w-full py-16 sm:py-24">
+    <div className="w-full py-16 sm:py-24 bg-white text-neutral-900">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-20">
         {/* Header */}
         <div className="text-center max-w-3xl mx-auto space-y-4">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-mono font-medium bg-blue-500/10 border border-blue-500/25 text-blue-300">
-            <Download className="w-3.5 h-3.5" />
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-blue-50 text-blue-700 border border-blue-200/80">
+            <Download className="w-3.5 h-3.5 text-blue-600" />
             <span>Official Download Center • First 6 Months Free</span>
           </div>
 
-          <h1 className="text-4xl sm:text-6xl font-extrabold text-white tracking-tight">
+          <h1 className="text-4xl sm:text-6xl font-extrabold text-neutral-900 tracking-tight">
             Download ProScreen{' '}
-            <span className="bg-gradient-to-r from-blue-400 via-sky-300 to-indigo-400 bg-clip-text text-transparent">
-              v1.0.0
-            </span>
+            <span className="text-blue-600">v1.0.0</span>
           </h1>
 
-          <p className="text-base sm:text-lg text-slate-300 leading-relaxed">
+          <p className="text-base sm:text-lg text-neutral-600 leading-relaxed">
             Free, fast, and production-ready. Available for Windows 10/11 Desktop and all modern Chromium browsers. No license keys, ads, or account registration required.
           </p>
 

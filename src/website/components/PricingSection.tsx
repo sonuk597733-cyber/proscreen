@@ -1,179 +1,205 @@
 import React from 'react';
 import { useRouter } from '../router';
-import { PRICING_OFFER } from '../constants';
-import {
-  Check,
-  Sparkles,
-  Download,
-  ShieldCheck,
-  Calendar,
-  CreditCard,
-  Zap,
-  Info,
-  Clock,
-  ArrowRight,
-} from 'lucide-react';
+import { Check, Download, ShieldCheck } from 'lucide-react';
+
+type Feature = {
+  title: string;
+  detail: string;
+};
+
+const FEATURES: Feature[] = [
+  {
+    title: '60 FPS recording',
+    detail: 'Hardware-accelerated capture with DXGI and Direct3D.',
+  },
+  {
+    title: 'Capture anything',
+    detail: 'Full desktop, a single window, a browser tab or a custom area.',
+  },
+  {
+    title: 'Two audio tracks',
+    detail: 'System sound and your microphone, recorded together.',
+  },
+  {
+    title: 'Floating studio toolbar',
+    detail: 'Draw with high-contrast, dual-tone pens while you record.',
+  },
+  {
+    title: 'Built-in player',
+    detail: 'Scrub the timeline and play back at 0.5x to 2x speed.',
+  },
+  {
+    title: 'Fading ink timer',
+    detail: 'A countdown that fades away, so live presentations stay clean.',
+  },
+  {
+    title: 'WebM and MP4 export',
+    detail: 'Instant export with duration metadata, so every video seeks properly.',
+  },
+  {
+    title: '100% local',
+    detail: 'No telemetry, no watermarks and no accounts.',
+  },
+];
+
+const FREE_MONTHS = 6;
+const PREVIEW_PAID_MONTHS = 3;
+const PAID_SEGMENT_STYLES = ['bg-white/25', 'bg-white/15', 'bg-white/10'];
+
+/* A bar of monthly segments: six solid ones for the free period, then fading ones for what follows. */
+const MonthsBar: React.FC = () => (
+  <div
+    role="img"
+    aria-label={`The first ${FREE_MONTHS} months are free. From month ${FREE_MONTHS + 1} onward it costs 1 dollar a month.`}
+    className="flex gap-1.5"
+  >
+    {Array.from({ length: FREE_MONTHS + PREVIEW_PAID_MONTHS }).map((_, i) => {
+      const isFree = i < FREE_MONTHS;
+      return (
+        <span
+          key={i}
+          className={`h-3.5 flex-1 rounded-full ${
+            isFree
+              ? 'bg-sky-400 shadow-[0_0_14px_rgba(56,189,248,0.45)]'
+              : PAID_SEGMENT_STYLES[i - FREE_MONTHS]
+          }`}
+        />
+      );
+    })}
+  </div>
+);
 
 export const PricingSection: React.FC = () => {
   const { navigate } = useRouter();
 
   return (
-    <section id="pricing" className="py-20 lg:py-28 relative scroll-mt-20 overflow-hidden">
-      {/* Background ambient lighting */}
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[500px] bg-gradient-to-tr from-blue-600/15 via-indigo-600/10 to-transparent blur-[140px] pointer-events-none -z-10" />
-
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Section Header */}
-        <div className="text-center max-w-3xl mx-auto space-y-4 mb-16">
-          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-mono font-bold bg-blue-500/10 border border-blue-500/30 text-blue-300 shadow-lg shadow-blue-500/10">
-            <Sparkles className="w-3.5 h-3.5 text-blue-400" />
-            <span>Introductory Offer</span>
-          </div>
-
-          <h2 className="text-3xl sm:text-5xl font-extrabold text-white tracking-tight">
-            Simple, Transparent{' '}
-            <span className="bg-gradient-to-r from-blue-400 via-sky-300 to-indigo-400 bg-clip-text text-transparent">
-              Pro Pricing
-            </span>
+    <section
+      id="pricing"
+      className="py-20 lg:py-28 bg-white scroll-mt-18 border-b border-slate-200"
+    >
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+        {/* Heading */}
+        <div className="max-w-2xl mb-12 lg:mb-14">
+          <h2 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-slate-900 tracking-tight leading-[1.1]">
+            Simple, honest pricing
           </h2>
-
-          <p className="text-base sm:text-lg text-slate-300 leading-relaxed">
-            Get complete access to the full ProScreen desktop recording & annotation engine free for 6 months. No credit card required.
+          <p className="mt-4 text-lg text-slate-600 leading-relaxed">
+            Use the complete ProScreen recording and annotation engine free for your first six
+            months. After that, it is one dollar a month.
           </p>
         </div>
 
-        {/* Pricing Card Stage */}
-        <div className="max-w-4xl mx-auto">
-          {/* Main Card */}
-          <div className="relative rounded-3xl bg-gradient-to-br from-slate-900 via-[#0C1226] to-slate-950 border-2 border-blue-500/50 p-8 sm:p-12 shadow-2xl shadow-blue-900/20 overflow-hidden">
-            {/* Top Badge Banner */}
-            <div className="absolute top-0 right-0 bg-gradient-to-l from-blue-600 to-sky-500 text-white text-xs font-bold font-mono px-6 py-1.5 rounded-bl-2xl shadow-md uppercase tracking-wider">
-              {PRICING_OFFER.introductoryLabel}
+        {/* One card, two halves: price on the left, what you get on the right */}
+        <div className="overflow-hidden rounded-3xl bg-white ring-1 ring-slate-200 shadow-xl shadow-slate-900/5 grid grid-cols-1 lg:grid-cols-5">
+          {/* Price panel */}
+          <div className="lg:col-span-2 relative overflow-hidden bg-slate-950 text-white p-7 sm:p-9 flex flex-col">
+            <div
+              aria-hidden="true"
+              className="pointer-events-none absolute -top-28 -left-20 w-80 h-80 rounded-full bg-sky-500/20 blur-3xl"
+            />
+
+            <div className="relative flex flex-wrap items-center gap-3">
+              <h3 className="text-2xl font-bold">ProScreen Pro</h3>
+              <span className="rounded-full bg-emerald-400/15 px-3 py-1 text-xs font-semibold text-emerald-300 ring-1 ring-emerald-400/30">
+                6 months free
+              </span>
             </div>
 
-            <div className="space-y-8">
-              {/* Plan Header & Cost Highlight */}
-              <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 border-b border-slate-800/80 pb-8">
-                <div className="space-y-2">
-                  <div className="flex items-center gap-3">
-                    <h3 className="text-3xl sm:text-4xl font-extrabold text-white">
-                      {PRICING_OFFER.planName}
-                    </h3>
-                    <span className="px-2.5 py-1 rounded-full text-xs font-mono font-semibold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
-                      Active Promotion
-                    </span>
-                  </div>
-                  <p className="text-sm sm:text-base text-slate-300">
-                    {PRICING_OFFER.tagline}
-                  </p>
-                </div>
+            <p className="relative mt-3 text-sm text-slate-400 leading-relaxed">
+              Recording, annotation and studio audio, for desktop and the web.
+            </p>
 
-                {/* Price Display */}
-                <div className="bg-slate-950/80 p-5 rounded-2xl border border-slate-800/90 text-right md:text-right shrink-0">
-                  <div className="text-xs font-mono text-blue-400 uppercase tracking-wider">
-                    Current Trial Price
-                  </div>
-                  <div className="flex items-baseline justify-end gap-1 mt-1">
-                    <span className="text-4xl sm:text-5xl font-black text-white">$0</span>
-                    <span className="text-sm font-semibold text-slate-400">/ first 6 months</span>
-                  </div>
-                  <div className="text-xs text-slate-400 mt-1 font-mono">
-                    Then <span className="text-white font-bold">$1/month</span> afterward
-                  </div>
-                </div>
+            {/* Price */}
+            <div className="relative mt-8">
+              <div className="flex items-end gap-3">
+                <span className="text-7xl sm:text-8xl font-extrabold leading-none tracking-tight">
+                  $0
+                </span>
+                <span className="pb-2 text-base text-slate-300 leading-snug">
+                  for your first
+                  <br />
+                  6 months
+                </span>
               </div>
+              <p className="mt-4 text-base text-slate-200">
+                Then <span className="font-bold text-sky-300">$1 a month</span>. Cancel anytime.
+              </p>
+            </div>
 
-              {/* Visual Timeline Transition */}
-              <div className="space-y-3">
-                <div className="text-xs font-mono text-slate-400 uppercase tracking-wider flex items-center gap-2">
-                  <Clock className="w-3.5 h-3.5 text-blue-400" />
-                  <span>Subscription Timeline & Transition</span>
-                </div>
+            {/* Timeline */}
+            <div className="relative mt-8 space-y-4">
+              <MonthsBar />
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {/* Step 1: First 6 Months */}
-                  <div className="p-5 rounded-2xl bg-blue-950/30 border border-blue-500/30 space-y-2 relative overflow-hidden">
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm font-bold text-blue-300">
-                        {PRICING_OFFER.timeline[0].period}
-                      </span>
-                      <span className="px-2.5 py-0.5 rounded-full text-xs font-mono font-bold bg-blue-500/20 text-blue-200">
-                        {PRICING_OFFER.timeline[0].badge}
-                      </span>
+              <dl className="space-y-3 text-sm">
+                <div className="flex items-start justify-between gap-4">
+                  <div className="flex items-start gap-3">
+                    <span className="mt-1.5 w-2.5 h-2.5 shrink-0 rounded-full bg-sky-400" />
+                    <div>
+                      <dt className="font-semibold text-white">Months 1 to 6</dt>
+                      <dd className="text-slate-400">Download now, no credit card needed.</dd>
                     </div>
-                    <div className="text-3xl font-extrabold text-white">
-                      {PRICING_OFFER.timeline[0].price}
-                    </div>
-                    <p className="text-xs text-slate-300 leading-relaxed">
-                      {PRICING_OFFER.timeline[0].description}
-                    </p>
                   </div>
+                  <span className="font-semibold text-sky-300">$0</span>
+                </div>
 
-                  {/* Step 2: After Month 6 */}
-                  <div className="p-5 rounded-2xl bg-slate-950/60 border border-slate-800 space-y-2 relative overflow-hidden">
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm font-bold text-slate-200">
-                        {PRICING_OFFER.timeline[1].period}
-                      </span>
-                      <span className="px-2.5 py-0.5 rounded-full text-xs font-mono font-bold bg-slate-800 text-slate-300">
-                        {PRICING_OFFER.timeline[1].badge}
-                      </span>
+                <div className="flex items-start justify-between gap-4">
+                  <div className="flex items-start gap-3">
+                    <span className="mt-1.5 w-2.5 h-2.5 shrink-0 rounded-full bg-white/25" />
+                    <div>
+                      <dt className="font-semibold text-white">Month 7 onward</dt>
+                      <dd className="text-slate-400">Cancel with one click.</dd>
                     </div>
-                    <div className="text-3xl font-extrabold text-white">
-                      {PRICING_OFFER.timeline[1].price}
-                    </div>
-                    <p className="text-xs text-slate-300 leading-relaxed">
-                      {PRICING_OFFER.timeline[1].description}
-                    </p>
                   </div>
+                  <span className="font-semibold text-slate-200 whitespace-nowrap">
+                    $1 / month
+                  </span>
                 </div>
-              </div>
+              </dl>
+            </div>
 
-              {/* Pro Features Included Checklist */}
-              <div className="space-y-4 pt-2">
-                <div className="text-xs font-mono text-slate-400 uppercase tracking-wider">
-                  Everything Included in ProScreen Pro:
-                </div>
+            {/* CTA */}
+            <div className="relative mt-auto pt-10 space-y-4">
+              <button
+                type="button"
+                onClick={() => navigate('home', 'download')}
+                className="w-full inline-flex items-center justify-center gap-2.5 rounded-2xl bg-sky-500 px-6 py-4 text-base font-semibold text-slate-950 shadow-lg shadow-sky-500/20 transition-colors hover:bg-sky-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-300"
+              >
+                <Download className="w-5 h-5" />
+                <span>Download free for 6 months</span>
+              </button>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs sm:text-sm">
-                  {PRICING_OFFER.features.map((feat, idx) => (
-                    <div key={idx} className="flex items-start gap-2.5 text-slate-200">
-                      <div className="p-1 rounded bg-blue-500/10 text-blue-400 shrink-0 mt-0.5">
-                        <Check className="w-3.5 h-3.5" />
-                      </div>
-                      <span>{feat}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
+              <p className="flex items-start gap-2 text-xs text-slate-400 leading-relaxed">
+                <ShieldCheck className="w-4 h-4 shrink-0 text-emerald-400" />
+                <span>
+                  No credit card, no surprise charges. Get the Windows installer or the portable
+                  build directly.
+                </span>
+              </p>
+            </div>
+          </div>
 
-              {/* Action CTA & Legal Clarifications */}
-              <div className="pt-6 border-t border-slate-800/80 space-y-4">
-                <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-                  <button
-                    onClick={() => navigate('download', 'download')}
-                    className="w-full sm:w-auto flex items-center justify-center gap-3 px-8 py-4 rounded-xl text-base font-bold text-white bg-gradient-to-r from-blue-600 via-blue-500 to-sky-500 hover:from-blue-500 hover:to-sky-400 shadow-xl shadow-blue-500/30 hover:shadow-blue-500/50 transition-all duration-200 transform hover:-translate-y-0.5"
-                  >
-                    <Download className="w-5 h-5" />
-                    <span>Download ProScreen Free (6 Months)</span>
-                  </button>
+          {/* Features panel */}
+          <div className="lg:col-span-3 p-7 sm:p-9">
+            <h3 className="text-xl font-bold text-slate-900">What you get</h3>
+            <p className="mt-1 text-sm text-slate-500">
+              Everything in ProScreen Pro, from the first day.
+            </p>
 
-                  <div className="flex items-center gap-2 text-xs text-slate-400">
-                    <ShieldCheck className="w-4 h-4 text-emerald-400 shrink-0" />
-                    <span>No credit card required to download today</span>
-                  </div>
-                </div>
-
-                {/* Explicit Subscription & Billing Disclosure */}
-                <div className="p-4 rounded-xl bg-slate-950/80 border border-slate-800 text-xs text-slate-400 flex items-start gap-3 leading-relaxed">
-                  <Info className="w-4 h-4 text-blue-400 shrink-0 mt-0.5" />
+            <ul className="mt-6 divide-y divide-slate-100">
+              {FEATURES.map((feature) => (
+                <li key={feature.title} className="flex items-start gap-4 py-4 first:pt-0 last:pb-0">
+                  <span className="mt-0.5 flex w-6 h-6 shrink-0 items-center justify-center rounded-full bg-emerald-50 text-emerald-600 ring-1 ring-emerald-200">
+                    <Check className="w-3.5 h-3.5" strokeWidth={3} />
+                  </span>
                   <div>
-                    <span className="font-semibold text-slate-300">Subscription Terms Disclosure: </span>
-                    {PRICING_OFFER.disclaimer} The $1/month price is a monthly fee following your six-month promotional trial (not a one-time charge). You will never be charged without explicit confirmation.
+                    <p className="font-semibold text-slate-900">{feature.title}</p>
+                    <p className="mt-0.5 text-sm text-slate-600 leading-relaxed">
+                      {feature.detail}
+                    </p>
                   </div>
-                </div>
-              </div>
-            </div>
+                </li>
+              ))}
+            </ul>
           </div>
         </div>
       </div>

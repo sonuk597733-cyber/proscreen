@@ -106,14 +106,14 @@ export const CommandPalette: React.FC = () => {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center pt-20 px-4 sm:px-6 bg-black/80 backdrop-blur-md animate-fadeIn">
+    <div className="fixed inset-0 z-50 flex items-start justify-center pt-20 px-4 sm:px-6 bg-neutral-900/40 backdrop-blur-sm animate-fadeIn">
       <div
-        className="w-full max-w-2xl bg-[#090E1D] border border-slate-700/80 rounded-2xl shadow-2xl overflow-hidden text-slate-200"
+        className="w-full max-w-2xl bg-white border border-neutral-200 rounded-2xl shadow-2xl overflow-hidden text-neutral-800"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Search Input Bar */}
-        <div className="flex items-center px-4 py-3.5 border-b border-slate-800 gap-3">
-          <Search className="w-5 h-5 text-blue-400 shrink-0" />
+        <div className="flex items-center px-4 py-3.5 border-b border-neutral-200 gap-3">
+          <Search className="w-5 h-5 text-blue-600 shrink-0" />
           <input
             ref={inputRef}
             type="text"
@@ -135,11 +135,11 @@ export const CommandPalette: React.FC = () => {
                 handleSelect(filtered[selectedIndex]);
               }
             }}
-            className="w-full bg-transparent text-white placeholder-slate-400 text-sm focus:outline-none"
+            className="w-full bg-transparent text-neutral-900 placeholder-neutral-400 text-sm focus:outline-none"
           />
           <button
             onClick={closeSearch}
-            className="p-1 rounded-md text-slate-400 hover:text-white hover:bg-slate-800"
+            className="p-1 rounded-md text-neutral-400 hover:text-neutral-700 hover:bg-neutral-100"
           >
             <X className="w-4 h-4" />
           </button>
@@ -148,7 +148,7 @@ export const CommandPalette: React.FC = () => {
         {/* Results List */}
         <div className="max-h-96 overflow-y-auto p-2 space-y-1">
           {filtered.length === 0 ? (
-            <div className="p-8 text-center text-sm text-slate-400">
+            <div className="p-8 text-center text-sm text-neutral-500">
               No matching pages or features found for &quot;{query}&quot;.
             </div>
           ) : (
@@ -162,31 +162,31 @@ export const CommandPalette: React.FC = () => {
                   onMouseEnter={() => setSelectedIndex(idx)}
                   className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-left text-sm transition-all duration-150 ${
                     isSelected
-                      ? 'bg-blue-600/20 text-white border border-blue-500/40 shadow-sm'
-                      : 'hover:bg-slate-800/60 text-slate-300'
+                      ? 'bg-blue-50 text-blue-900 border border-blue-200 shadow-2xs'
+                      : 'hover:bg-neutral-50 text-neutral-700'
                   }`}
                 >
                   <div className="flex items-center gap-3 min-w-0">
                     <div
                       className={`p-2 rounded-lg ${
-                        isSelected ? 'bg-blue-500 text-white' : 'bg-slate-800 text-slate-400'
+                        isSelected ? 'bg-blue-600 text-white' : 'bg-neutral-100 text-neutral-600'
                       }`}
                     >
                       <Icon className="w-4 h-4" />
                     </div>
                     <div className="truncate">
-                      <div className="font-medium text-white flex items-center gap-2">
+                      <div className="font-medium text-neutral-900 flex items-center gap-2">
                         <span>{item.title}</span>
-                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-400 font-mono">
+                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-neutral-100 text-neutral-600 font-mono">
                           {item.cat}
                         </span>
                       </div>
-                      <div className="text-xs text-slate-400 truncate">{item.subtitle}</div>
+                      <div className="text-xs text-neutral-500 truncate">{item.subtitle}</div>
                     </div>
                   </div>
                   <ArrowRight
                     className={`w-4 h-4 shrink-0 transition-transform ${
-                      isSelected ? 'text-blue-400 translate-x-0.5' : 'text-slate-600'
+                      isSelected ? 'text-blue-600 translate-x-0.5' : 'text-neutral-400'
                     }`}
                   />
                 </button>
@@ -196,17 +196,17 @@ export const CommandPalette: React.FC = () => {
         </div>
 
         {/* Footer shortcuts hint */}
-        <div className="px-4 py-2.5 bg-slate-950/70 border-t border-slate-800/80 flex items-center justify-between text-[11px] text-slate-400 font-mono">
+        <div className="px-4 py-2.5 bg-neutral-50 border-t border-neutral-100 flex items-center justify-between text-[11px] text-neutral-500 font-mono">
           <div className="flex items-center gap-3">
             <span>
-              <kbd className="px-1.5 py-0.5 rounded bg-slate-900 border border-slate-800">↑↓</kbd> to navigate
+              <kbd className="px-1.5 py-0.5 rounded bg-white border border-neutral-200">↑↓</kbd> to navigate
             </span>
             <span>
-              <kbd className="px-1.5 py-0.5 rounded bg-slate-900 border border-slate-800">Enter</kbd> to select
+              <kbd className="px-1.5 py-0.5 rounded bg-white border border-neutral-200">Enter</kbd> to select
             </span>
           </div>
           <span>
-            <kbd className="px-1.5 py-0.5 rounded bg-slate-900 border border-slate-800">Esc</kbd> to close
+            <kbd className="px-1.5 py-0.5 rounded bg-white border border-neutral-200">Esc</kbd> to close
           </span>
         </div>
       </div>

@@ -88,6 +88,38 @@ test('settings validation merges safely and rejects invalid version', () => {
   assert.equal(invalid.ok, false);
 });
 
+test('settings validation safely handles area recording, micGain, and areaRect', () => {
+  const mergedArea = mergeAndValidateSettings({
+    recording: {
+      mode: 'area',
+      micGain: 1.85,
+      areaRect: { x: 100.4, y: 150.2, width: 800.7, height: 600.1 },
+    },
+  });
+  assert.equal(mergedArea.recording.mode, 'area');
+  assert.equal(mergedArea.recording.micGain, 1.85);
+  assert.deepEqual(mergedArea.recording.areaRect, { x: 100, y: 150, width: 801, height: 600 });
+
+  // Test micGain clamping
+  const clampedLow = mergeAndValidateSettings({
+    recording: { micGain: 0.1 },
+  });
+  assert.equal(clampedLow.recording.micGain, 0.5);
+
+  const clampedHigh = mergeAndValidateSettings({
+    recording: { micGain: 3.5 },
+  });
+  assert.equal(clampedHigh.recording.micGain, 2.5);
+
+  // Test invalid areaRect fallback to null
+  const invalidRect = mergeAndValidateSettings({
+    recording: {
+      areaRect: { x: 0, y: 0, width: -50, height: 100 },
+    },
+  });
+  assert.equal(invalidRect.recording.areaRect, null);
+});
+
 test('shortcut manager detects duplicates and reserved browser conflicts', () => {
   assert.equal(detectShortcutConflicts(DEFAULT_SHORTCUTS).length, 0);
 

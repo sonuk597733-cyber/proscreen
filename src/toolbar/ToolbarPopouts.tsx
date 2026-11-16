@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   AlignCenter,
   AlignLeft,
@@ -14,6 +14,7 @@ import {
   Crop,
   Download,
   Eraser,
+  FolderOpen,
   Ghost,
   Globe,
   Grid3X3,
@@ -69,7 +70,15 @@ import {
   RecordingStatus,
   formatByteSize,
   formatRecordingDuration,
+  getResolutionCapabilities,
 } from '../recorder/screenRecorder';
+import {
+  AudioInputDeviceInfo,
+  MicAudioMeterData,
+  MicAudioMonitor,
+  enumerateAudioInputDevices,
+  subscribeAudioDeviceChanges,
+} from '../recorder/audioEngine';
 import { PRESET_COLORS, normalizeHex } from '../utils/color';
 import { SHAPE_TOOLS } from '../tools/toolDefinitions';
 import { ColorBrushPopover } from './ColorBrushPopover';
@@ -157,6 +166,7 @@ interface ToolbarPopoutsProps {
   onCaptureArea: () => void;
   onCopyScreenshot: () => void;
   onSavePng: () => void;
+  onSelectRecordingArea?: () => void;
   onStartRecording: () => void;
   onPauseRecording: () => void;
   onResumeRecording: () => void;
@@ -259,6 +269,7 @@ export const ToolbarPopouts: React.FC<ToolbarPopoutsProps> = ({
   onCaptureArea,
   onCopyScreenshot,
   onSavePng,
+  onSelectRecordingArea,
   onStartRecording,
   onPauseRecording,
   onResumeRecording,
@@ -281,8 +292,41 @@ export const ToolbarPopouts: React.FC<ToolbarPopoutsProps> = ({
   const [customSec, setCustomSec] = useState(() =>
     Math.floor((settings.timer.durationMs % 60_000) / 1000)
   );
+  const [micDevices, setMicDevices] = useState<AudioInputDeviceInfo[]>([]);
+  const [micMeter, setMicMeter] = useState<MicAudioMeterData | null>(null);
   const importJsonRef = useRef<HTMLInputElement | null>(null);
   const importBgRef = useRef<HTMLInputElement | null>(null);
+
+  useEffect(() => {
+    if (activePopout !== 'recorder') {
+      setMicMeter(null);
+      return;
+    }
+
+    void enumerateAudioInputDevices().then(setMicDevices);
+    const unsub = subscribeAudioDeviceChanges(() => {
+      void enumerateAudioInputDevices().then(setMicDevices);
+    });
+
+    return unsub;
+  }, [activePopout]);
+
+  useEffect(() => {
+    if (activePopout !== 'recorder' || !settings.recording.micAudio) {
+      setMicMeter(null);
+      return;
+    }
+
+    const monitor = new MicAudioMonitor();
+    void monitor.startMonitoring(settings.recording.micDeviceId, (data) => {
+      setMicMeter(data);
+    });
+
+    return () => {
+      monitor.stop();
+      setMicMeter(null);
+    };
+  }, [activePopout, settings.recording.micAudio, settings.recording.micDeviceId]);
 
   if (!activePopout) return null;
 
@@ -337,9 +381,19 @@ export const ToolbarPopouts: React.FC<ToolbarPopoutsProps> = ({
       data-testid={`popout-${activePopout}`}
       role="dialog"
       aria-label={`${activePopout} options`}
+      tabIndex={-1}
       onMouseEnter={onMouseEnterPopout}
       onMouseLeave={onMouseLeavePopout}
       onPointerDown={(e) => e.stopPropagation()}
+      onMouseDown={(e) => e.stopPropagation()}
+      onClick={(e) => e.stopPropagation()}
+      onKeyDown={(e) => {
+        if (e.key === 'Escape') {
+          e.preventDefault();
+          e.stopPropagation();
+          onClose();
+        }
+      }}
       style={{
         position: 'fixed',
         top: popoutPosition.top,
@@ -347,6 +401,7 @@ export const ToolbarPopouts: React.FC<ToolbarPopoutsProps> = ({
         right: popoutPosition.right,
         zIndex: 2147483642,
         pointerEvents: 'auto',
+        transition: 'opacity 120ms cubic-bezier(0.16, 1, 0.3, 1), transform 120ms cubic-bezier(0.16, 1, 0.3, 1)',
       }}
       className={`pointer-events-auto ${bridgePaddingClass}`}
     >
@@ -382,7 +437,7 @@ export const ToolbarPopouts: React.FC<ToolbarPopoutsProps> = ({
         </div>
       ) : (
         <div
-          className={`relative rounded-lg border p-2.5 max-h-[calc(100vh-16px)] overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden backdrop-blur-xl space-y-2 text-xs ${surfaceClass} ${widthClassMap[activePopout]}`}
+          className={`relative rounded-lg border p-2.5 max-h-[min(520px,calc(100vh-16px))] overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden backdrop-blur-xl space-y-2 text-xs ${surfaceClass} ${widthClassMap[activePopout]}`}
         >
           {/* Directional Epic-style notch pointing back to the hovered icon */}
           <span
@@ -413,7 +468,10 @@ export const ToolbarPopouts: React.FC<ToolbarPopoutsProps> = ({
                       type="button"
                       title={preset.label}
                       aria-label={`Brush size ${preset.size}px`}
-                      onClick={() => onChangeThickness(preset.size)}
+                      onClick={() => {
+                        onChangeThickness(preset.size);
+                        onClose();
+                      }}
                       style={active ? { backgroundColor: accent } : undefined}
                       className={`h-7 rounded flex items-center justify-center cursor-pointer ${
                         active ? 'text-white shadow-sm' : 'hover:bg-slate-500/15'
@@ -443,6 +501,12 @@ export const ToolbarPopouts: React.FC<ToolbarPopoutsProps> = ({
                   max={activeTool === 'highlighter' ? 64 : activeTool === 'eraser' ? 72 : 36}
                   value={activeBrush.thickness}
                   onChange={(e) => onChangeThickness(Number(e.target.value))}
+                  onPointerUp={onClose}
+                  onKeyUp={(e) => {
+                    if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End', 'PageUp', 'PageDown'].includes(e.key)) {
+                      onClose();
+                    }
+                  }}
                   className="w-full accent-sky-500 cursor-pointer"
                 />
               </div>
@@ -461,6 +525,12 @@ export const ToolbarPopouts: React.FC<ToolbarPopoutsProps> = ({
                     max={100}
                     value={Math.round(activeBrush.opacity * 100)}
                     onChange={(e) => onChangeOpacity(Number(e.target.value) / 100)}
+                    onPointerUp={onClose}
+                    onKeyUp={(e) => {
+                      if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End', 'PageUp', 'PageDown'].includes(e.key)) {
+                        onClose();
+                      }
+                    }}
                     className="w-full accent-sky-500 cursor-pointer"
                   />
                 </div>
@@ -609,6 +679,7 @@ export const ToolbarPopouts: React.FC<ToolbarPopoutsProps> = ({
                           ...p,
                           pen: { ...p.pen, thickness: preset.size },
                         }));
+                        onClose();
                       }}
                       style={active ? { backgroundColor: accent } : undefined}
                       className={`h-7 rounded-md flex items-center justify-center cursor-pointer transition-colors ${
@@ -641,6 +712,7 @@ export const ToolbarPopouts: React.FC<ToolbarPopoutsProps> = ({
                     onClick={() => {
                       onSelectTool('pen');
                       onUpdateSettings((p) => ({ ...p, pen: { ...p.pen, penStyle: style } }));
+                      onClose();
                     }}
                     style={
                       (settings.pen.penStyle ?? 'solid') === style
@@ -677,6 +749,12 @@ export const ToolbarPopouts: React.FC<ToolbarPopoutsProps> = ({
                         pen: { ...p.pen, thickness: Number(e.target.value) },
                       }));
                     }}
+                    onPointerUp={onClose}
+                    onKeyUp={(e) => {
+                      if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End', 'PageUp', 'PageDown'].includes(e.key)) {
+                        onClose();
+                      }
+                    }}
                     className="w-full accent-blue-500 cursor-pointer"
                   />
                 </div>
@@ -701,6 +779,12 @@ export const ToolbarPopouts: React.FC<ToolbarPopoutsProps> = ({
                         pen: { ...p.pen, opacity: Number(e.target.value) / 100 },
                       }));
                     }}
+                    onPointerUp={onClose}
+                    onKeyUp={(e) => {
+                      if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End', 'PageUp', 'PageDown'].includes(e.key)) {
+                        onClose();
+                      }
+                    }}
                     className="w-full accent-blue-500 cursor-pointer"
                   />
                 </div>
@@ -717,6 +801,7 @@ export const ToolbarPopouts: React.FC<ToolbarPopoutsProps> = ({
                       onSelectTool('pen');
                       onChangeColor(e.target.value.toUpperCase());
                     }}
+                    onBlur={onClose}
                     className="w-4 h-4 rounded border-0 bg-transparent cursor-pointer"
                   />
                 </div>
@@ -729,6 +814,7 @@ export const ToolbarPopouts: React.FC<ToolbarPopoutsProps> = ({
                       onClick={() => {
                         onSelectTool('pen');
                         onChangeColor(c.hex);
+                        onClose();
                       }}
                       style={{ backgroundColor: c.hex }}
                       className={`w-full aspect-square rounded-sm border cursor-pointer ${
@@ -761,6 +847,7 @@ export const ToolbarPopouts: React.FC<ToolbarPopoutsProps> = ({
                           ...p,
                           highlighter: { ...p.highlighter, thickness: preset.size },
                         }));
+                        onClose();
                       }}
                       style={active ? { backgroundColor: accent } : undefined}
                       className={`h-7 rounded-md flex items-center justify-center cursor-pointer transition-colors ${
@@ -791,6 +878,7 @@ export const ToolbarPopouts: React.FC<ToolbarPopoutsProps> = ({
                         ...p,
                         highlighter: { ...p.highlighter, highlighterStyle: style },
                       }));
+                      onClose();
                     }}
                     style={
                       (settings.highlighter.highlighterStyle ?? 'soft') === style
@@ -827,6 +915,12 @@ export const ToolbarPopouts: React.FC<ToolbarPopoutsProps> = ({
                         highlighter: { ...p.highlighter, thickness: Number(e.target.value) },
                       }));
                     }}
+                    onPointerUp={onClose}
+                    onKeyUp={(e) => {
+                      if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End', 'PageUp', 'PageDown'].includes(e.key)) {
+                        onClose();
+                      }
+                    }}
                     className="w-full accent-blue-500 cursor-pointer"
                   />
                 </div>
@@ -851,6 +945,12 @@ export const ToolbarPopouts: React.FC<ToolbarPopoutsProps> = ({
                         highlighter: { ...p.highlighter, opacity: Number(e.target.value) / 100 },
                       }));
                     }}
+                    onPointerUp={onClose}
+                    onKeyUp={(e) => {
+                      if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End', 'PageUp', 'PageDown'].includes(e.key)) {
+                        onClose();
+                      }
+                    }}
                     className="w-full accent-blue-500 cursor-pointer"
                   />
                 </div>
@@ -868,6 +968,7 @@ export const ToolbarPopouts: React.FC<ToolbarPopoutsProps> = ({
                         ...p,
                         highlighter: { ...p.highlighter, color: hex },
                       }));
+                      onClose();
                     }}
                     style={{ backgroundColor: hex }}
                     className={`w-full aspect-square rounded-sm border cursor-pointer ${
@@ -899,6 +1000,7 @@ export const ToolbarPopouts: React.FC<ToolbarPopoutsProps> = ({
                       onClick={() => {
                         onSelectTool('eraser');
                         onUpdateSettings((p) => ({ ...p, eraserSize: preset.size }));
+                        onClose();
                       }}
                       style={active ? { backgroundColor: accent } : undefined}
                       className={`py-1.5 rounded-md flex items-center justify-center gap-1.5 text-[11px] font-medium cursor-pointer transition-colors ${
@@ -929,6 +1031,12 @@ export const ToolbarPopouts: React.FC<ToolbarPopoutsProps> = ({
                   onChange={(e) =>
                     onUpdateSettings((p) => ({ ...p, eraserSize: Number(e.target.value) }))
                   }
+                  onPointerUp={onClose}
+                  onKeyUp={(e) => {
+                    if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End', 'PageUp', 'PageDown'].includes(e.key)) {
+                      onClose();
+                    }
+                  }}
                   className="w-full accent-blue-500 cursor-pointer"
                 />
               </div>
@@ -937,7 +1045,10 @@ export const ToolbarPopouts: React.FC<ToolbarPopoutsProps> = ({
                 <button
                   type="button"
                   disabled={!hasSelectedObject}
-                  onClick={onDeleteSelected}
+                  onClick={() => {
+                    onDeleteSelected();
+                    onClose();
+                  }}
                   className={`flex items-center justify-center gap-1 px-2 py-1.5 rounded-md border text-[11px] disabled:opacity-40 cursor-pointer ${mutedBtnClass}`}
                 >
                   <Eraser className="w-3 h-3" />
@@ -1015,6 +1126,12 @@ export const ToolbarPopouts: React.FC<ToolbarPopoutsProps> = ({
                       shape: { ...p.shape, thickness: Number(e.target.value) },
                     }))
                   }
+                  onPointerUp={onClose}
+                  onKeyUp={(e) => {
+                    if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End', 'PageUp', 'PageDown'].includes(e.key)) {
+                      onClose();
+                    }
+                  }}
                   className="w-full accent-blue-500 cursor-pointer"
                 />
               </div>
@@ -1235,6 +1352,7 @@ export const ToolbarPopouts: React.FC<ToolbarPopoutsProps> = ({
                       onSetTimerDurationMs(preset.ms);
                       setCustomMin(Math.floor(preset.ms / 60_000));
                       setCustomSec(Math.floor((preset.ms % 60_000) / 1000));
+                      onClose();
                     }}
                     style={
                       settings.timer.durationMs === preset.ms
@@ -1278,6 +1396,7 @@ export const ToolbarPopouts: React.FC<ToolbarPopoutsProps> = ({
                   onClick={() => {
                     const totalMs = Math.max(1000, (customMin * 60 + customSec) * 1000);
                     onSetTimerDurationMs(totalMs);
+                    onClose();
                   }}
                   className={`ml-auto px-2 py-1 rounded-md border text-[11px] font-medium cursor-pointer ${mutedBtnClass}`}
                 >
@@ -1380,15 +1499,17 @@ export const ToolbarPopouts: React.FC<ToolbarPopoutsProps> = ({
             </div>
           )}
 
-          {/* 10. RECORDER: Compact Epic Flyout */}
+          {/* 10. RECORDER: Studio-Quality Desktop Recorder */}
           {activePopout === 'recorder' && (
             <div className="space-y-2">
-              <div className="grid grid-cols-3 gap-1">
+              {/* 4 Mode Grid: Tab, Window, Screen, Area */}
+              <div className="grid grid-cols-4 gap-1">
                 {(
                   [
                     { mode: 'tab', label: 'Tab', icon: <Video className="w-3 h-3" /> },
                     { mode: 'window', label: 'Window', icon: <Square className="w-3 h-3" /> },
                     { mode: 'screen', label: 'Screen', icon: <Monitor className="w-3 h-3" /> },
+                    { mode: 'area', label: 'Area', icon: <Crop className="w-3 h-3" /> },
                   ] as const
                 ).map((opt) => {
                   const selected = settings.recording.mode === opt.mode;
@@ -1397,15 +1518,19 @@ export const ToolbarPopouts: React.FC<ToolbarPopoutsProps> = ({
                       key={opt.mode}
                       type="button"
                       disabled={recordingStatus !== 'idle'}
-                      onClick={() =>
+                      onClick={() => {
                         onUpdateSettings((p) => ({
                           ...p,
                           recording: { ...p.recording, mode: opt.mode },
-                        }))
-                      }
+                        }));
+                        if (opt.mode === 'area') {
+                          onClose();
+                          onSelectRecordingArea?.();
+                        }
+                      }}
                       style={selected ? { backgroundColor: accent } : undefined}
-                      className={`flex items-center justify-center gap-1 px-1.5 py-1.5 rounded-md border text-[11px] cursor-pointer disabled:opacity-50 ${
-                        selected ? 'text-white border-transparent' : mutedBtnClass
+                      className={`flex items-center justify-center gap-1 px-1.5 py-1.5 rounded-md border text-[11px] cursor-pointer disabled:opacity-50 transition-colors ${
+                        selected ? 'text-white border-transparent font-medium shadow-sm' : mutedBtnClass
                       }`}
                     >
                       {opt.icon}
@@ -1415,221 +1540,312 @@ export const ToolbarPopouts: React.FC<ToolbarPopoutsProps> = ({
                 })}
               </div>
 
-              <div className="grid grid-cols-3 gap-1">
-                <select
-                  aria-label="Recording resolution"
-                  disabled={recordingStatus !== 'idle'}
-                  value={settings.recording.resolution}
-                  onChange={(e) =>
-                    onUpdateSettings((p) => ({
-                      ...p,
-                      recording: {
-                        ...p.recording,
-                        resolution: e.target.value as RecordingResolution,
-                      },
-                    }))
-                  }
-                  className={`px-1.5 py-1 text-[11px] rounded-md border ${inputClass}`}
-                >
-                  <option value="source">Native</option>
-                  <option value="1080p">1080p</option>
-                  <option value="720p">720p</option>
-                </select>
-
-                <select
-                  aria-label="Recording frame rate"
-                  disabled={recordingStatus !== 'idle'}
-                  value={settings.recording.frameRate}
-                  onChange={(e) =>
-                    onUpdateSettings((p) => ({
-                      ...p,
-                      recording: {
-                        ...p.recording,
-                        frameRate: Number(e.target.value) === 60 ? 60 : 30,
-                      },
-                    }))
-                  }
-                  className={`px-1.5 py-1 text-[11px] rounded-md border ${inputClass}`}
-                >
-                  <option value={30}>30 FPS</option>
-                  <option value={60}>60 FPS</option>
-                </select>
-
-                <select
-                  aria-label="Recording quality"
-                  disabled={recordingStatus !== 'idle'}
-                  value={settings.recording.quality}
-                  onChange={(e) =>
-                    onUpdateSettings((p) => ({
-                      ...p,
-                      recording: {
-                        ...p.recording,
-                        quality: e.target.value as RecordingQuality,
-                      },
-                    }))
-                  }
-                  className={`px-1.5 py-1 text-[11px] rounded-md border ${inputClass}`}
-                >
-                  <option value="standard">Std</option>
-                  <option value="high">High</option>
-                  <option value="ultra">Ultra</option>
-                </select>
-              </div>
-
-              {supportedRecordingFormats.length > 0 && (
-                <select
-                  aria-label="Recording video format"
-                  disabled={recordingStatus !== 'idle'}
-                  value={settings.recording.mimeType}
-                  onChange={(e) =>
-                    onUpdateSettings((p) => ({
-                      ...p,
-                      recording: { ...p.recording, mimeType: e.target.value },
-                    }))
-                  }
-                  className={`w-full px-2 py-1 text-[11px] rounded-md border ${inputClass}`}
-                >
-                  <option value="auto">Auto ({supportedRecordingFormats[0]?.label})</option>
-                  {supportedRecordingFormats.map((fmt) => (
-                    <option key={fmt.mimeType} value={fmt.mimeType}>
-                      {fmt.label}
-                    </option>
-                  ))}
-                </select>
-              )}
-
-              <div className="grid grid-cols-2 gap-2 text-[11px]">
-                <label className="flex items-center justify-between cursor-pointer">
-                  <span className="inline-flex items-center gap-1">
-                    <Volume2 className="w-3.5 h-3.5 text-[#8E96A8]" />
-                    <span>Tab Audio</span>
-                  </span>
-                  <input
-                    type="checkbox"
-                    disabled={recordingStatus !== 'idle'}
-                    checked={settings.recording.tabAudio}
-                    onChange={(e) =>
-                      onUpdateSettings((p) => ({
-                        ...p,
-                        recording: { ...p.recording, tabAudio: e.target.checked },
-                      }))
-                    }
-                    className="w-3.5 h-3.5 accent-blue-500 cursor-pointer"
-                  />
-                </label>
-
-                <label className="flex items-center justify-between cursor-pointer">
-                  <span className="inline-flex items-center gap-1">
-                    <Mic className="w-3.5 h-3.5 text-[#8E96A8]" />
-                    <span>Mic Audio</span>
-                  </span>
-                  <input
-                    type="checkbox"
-                    disabled={recordingStatus !== 'idle'}
-                    checked={settings.recording.micAudio}
-                    onChange={(e) =>
-                      onUpdateSettings((p) => ({
-                        ...p,
-                        recording: { ...p.recording, micAudio: e.target.checked },
-                      }))
-                    }
-                    className="w-3.5 h-3.5 accent-blue-500 cursor-pointer"
-                  />
-                </label>
-              </div>
-
               {recordingStatus === 'idle' ? (
-                <button
-                  type="button"
-                  data-testid="recorder-start-btn"
-                  disabled={!recordingSupported}
-                  onClick={() => {
-                    onClose();
-                    onStartRecording();
-                  }}
-                  style={recordingSupported ? { backgroundColor: accent } : undefined}
-                  className="w-full flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg text-white font-semibold hover:opacity-90 disabled:opacity-45 cursor-pointer"
-                >
-                  <Video className="w-3.5 h-3.5" />
-                  <span>{recordingSupported ? 'Start Recording' : 'Recording Unavailable'}</span>
-                </button>
-              ) : (
-                <div className={`space-y-1.5 pt-1 border-t ${dividerBorderClass}`}>
-                  <div className="flex items-center justify-between font-mono text-[11px] tabular-nums">
-                    <span className="text-rose-400 font-semibold">
-                      {recordingStatus === 'paused'
-                        ? 'PAUSED'
-                        : recordingStatus === 'stopping'
-                        ? 'SAVING...'
-                        : 'REC'}
-                    </span>
-                    <span>{formatRecordingDuration(recordingElapsedMs)}</span>
+                <>
+                  {/* Selected Region Status (when Area mode is active) */}
+                  {settings.recording.mode === 'area' && (
+                    <div className="flex items-center justify-between p-2 rounded-md bg-black/10 border border-slate-500/15 text-[11px]">
+                      <div className="flex items-center gap-1.5 min-w-0">
+                        <Crop className="w-3.5 h-3.5 text-blue-400 shrink-0" />
+                        <div className="truncate">
+                          <span className="text-[#8E96A8]">Region: </span>
+                          <span className="font-mono tabular-nums font-medium">
+                            {settings.recording.areaRect
+                              ? `${Math.round(settings.recording.areaRect.width)} × ${Math.round(settings.recording.areaRect.height)}`
+                              : 'None'}
+                          </span>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        data-testid="recorder-select-area-btn"
+                        disabled={recordingStatus !== 'idle'}
+                        onClick={() => {
+                          onClose();
+                          onSelectRecordingArea?.();
+                        }}
+                        className={`px-2 py-0.5 rounded text-[10px] font-semibold border cursor-pointer shrink-0 ${mutedBtnClass}`}
+                      >
+                        {settings.recording.areaRect ? 'Adjust' : 'Select'}
+                      </button>
+                    </div>
+                  )}
+
+                  {/* Audio Controls */}
+                  <div className="space-y-1.5">
+                    <div className="grid grid-cols-2 gap-1.5 text-[11px]">
+                      <label className="flex items-center justify-between cursor-pointer px-2 py-1.5 rounded-md border border-slate-500/15 bg-black/5">
+                        <span className="inline-flex items-center gap-1.5 text-[#8E96A8]">
+                          <Volume2 className="w-3.5 h-3.5" />
+                          <span>System</span>
+                        </span>
+                        <input
+                          type="checkbox"
+                          disabled={recordingStatus !== 'idle'}
+                          checked={settings.recording.tabAudio}
+                          onChange={(e) =>
+                            onUpdateSettings((p) => ({
+                              ...p,
+                              recording: { ...p.recording, tabAudio: e.target.checked },
+                            }))
+                          }
+                          className="w-3.5 h-3.5 accent-blue-500 cursor-pointer"
+                        />
+                      </label>
+
+                      <label className="flex items-center justify-between cursor-pointer px-2 py-1.5 rounded-md border border-slate-500/15 bg-black/5">
+                        <span className="inline-flex items-center gap-1.5 text-[#8E96A8]">
+                          <Mic className="w-3.5 h-3.5" />
+                          <span>Mic</span>
+                        </span>
+                        <input
+                          type="checkbox"
+                          disabled={recordingStatus !== 'idle'}
+                          checked={settings.recording.micAudio}
+                          onChange={(e) =>
+                            onUpdateSettings((p) => ({
+                              ...p,
+                              recording: { ...p.recording, micAudio: e.target.checked },
+                            }))
+                          }
+                          className="w-3.5 h-3.5 accent-blue-500 cursor-pointer"
+                        />
+                      </label>
+                    </div>
+
+                    {settings.recording.micAudio && (
+                      <div className="space-y-1.5 p-2 rounded-md bg-black/10 border border-slate-500/15 text-[11px]">
+                        {micDevices.length > 0 && (
+                          <div>
+                            <label className="block text-[10px] text-[#8E96A8] mb-0.5">Input Device</label>
+                            <select
+                              aria-label="Microphone device"
+                              disabled={recordingStatus !== 'idle'}
+                              value={settings.recording.micDeviceId || ''}
+                              onChange={(e) =>
+                                onUpdateSettings((p) => ({
+                                  ...p,
+                                  recording: {
+                                    ...p.recording,
+                                    micDeviceId: e.target.value || undefined,
+                                  },
+                                }))
+                              }
+                              className={`w-full px-1.5 py-1 text-[11px] rounded-md border truncate ${inputClass}`}
+                            >
+                              <option value="">Default Microphone</option>
+                              {micDevices.map((d) => (
+                                <option key={d.deviceId} value={d.deviceId}>
+                                  {d.label || `Microphone ${d.deviceId.slice(0, 5)}`}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                        )}
+
+                        <div>
+                          <div className="flex justify-between text-[10px] text-[#8E96A8] mb-0.5">
+                            <span>Mic Gain</span>
+                            <span className="font-mono tabular-nums">
+                              {Math.round((settings.recording.micGain ?? 1.0) * 100)}%
+                            </span>
+                          </div>
+                          <input
+                            type="range"
+                            aria-label="Microphone gain"
+                            disabled={recordingStatus !== 'idle'}
+                            min={0.5}
+                            max={2.5}
+                            step={0.05}
+                            value={settings.recording.micGain ?? 1.0}
+                            onChange={(e) =>
+                              onUpdateSettings((p) => ({
+                                ...p,
+                                recording: {
+                                  ...p.recording,
+                                  micGain: Number(e.target.value),
+                                },
+                              }))
+                            }
+                            className="w-full accent-blue-500 cursor-pointer h-1.5"
+                          />
+                        </div>
+
+                        <div>
+                          <div className="flex justify-between text-[10px] text-[#8E96A8] mb-0.5">
+                            <span>Input Level</span>
+                            <span className="font-mono tabular-nums text-[9px]">
+                              {micMeter && !micMeter.isSilent ? `${Math.round(micMeter.db)} dB` : 'Silent'}
+                            </span>
+                          </div>
+                          <div className="h-1.5 w-full rounded-full bg-slate-700/40 overflow-hidden">
+                            <div
+                              className={`h-full transition-all duration-75 ${
+                                micMeter && (micMeter.isClipping || micMeter.db > -3)
+                                  ? 'bg-rose-500'
+                                  : micMeter && micMeter.db > -12
+                                  ? 'bg-amber-400'
+                                  : 'bg-emerald-400'
+                              }`}
+                              style={{
+                                width: `${Math.max(2, Math.min(100, micMeter ? micMeter.level * 100 : 0))}%`,
+                              }}
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    )}
                   </div>
-                  <div className="grid grid-cols-3 gap-1">
+
+                  {/* Start Recording Button */}
+                  <button
+                    type="button"
+                    data-testid="recorder-start-btn"
+                    disabled={!recordingSupported}
+                    onClick={() => {
+                      if (settings.recording.mode === 'area' && !settings.recording.areaRect) {
+                        onClose();
+                        onSelectRecordingArea?.();
+                        return;
+                      }
+                      onClose();
+                      onStartRecording();
+                    }}
+                    style={recordingSupported ? { backgroundColor: accent } : undefined}
+                    className="w-full flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-white font-semibold shadow hover:opacity-95 disabled:opacity-45 cursor-pointer transition-all text-xs"
+                  >
+                    <Play className="w-3.5 h-3.5 fill-current" />
+                    <span>
+                      {!recordingSupported
+                        ? 'Recording Unavailable'
+                        : settings.recording.mode === 'area' && !settings.recording.areaRect
+                        ? 'Select Area to Record'
+                        : 'Start Recording'}
+                    </span>
+                  </button>
+
+                  {/* Latest Recording Shortcut */}
+                  {latestRecording && (
+                    <div className={`pt-1.5 border-t space-y-1.5 ${dividerBorderClass}`}>
+                      <div className="flex items-center justify-between text-[11px]">
+                        <span className="truncate font-medium">{latestRecording.filename}</span>
+                        <span className="font-mono tabular-nums text-[#8E96A8] shrink-0 ml-2">
+                          {formatByteSize(latestRecording.sizeBytes)}
+                        </span>
+                      </div>
+                      <div className="flex gap-1">
+                        <button
+                          type="button"
+                          data-testid="recorder-preview-latest-btn"
+                          onClick={() => {
+                            onClose();
+                            onPreviewLatestRecording();
+                          }}
+                          className={`flex-1 flex items-center justify-center gap-1 px-2 py-1 rounded-md border text-[11px] cursor-pointer ${mutedBtnClass}`}
+                        >
+                          <Play className="w-3 h-3" />
+                          <span>Play</span>
+                        </button>
+                        <button
+                          type="button"
+                          data-testid="recorder-download-latest-btn"
+                          onClick={onDownloadLatestRecording}
+                          className={`flex-1 flex items-center justify-center gap-1 px-2 py-1 rounded-md border text-[11px] cursor-pointer ${mutedBtnClass}`}
+                        >
+                          <Download className="w-3 h-3" />
+                          <span>Save</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={onClearTemporaryRecording}
+                          className="px-2 py-1 rounded-md border border-rose-500/40 text-rose-400 hover:bg-rose-500/10 text-[11px] cursor-pointer"
+                        >
+                          Clear
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                  {/* Open Saved Video File */}
+                  <button
+                    type="button"
+                    data-testid="recorder-open-saved-btn"
+                    onClick={() => {
+                      onClose();
+                      if (typeof window !== 'undefined' && window.proscreenDesktop?.openRecordingFileDialog) {
+                        void window.proscreenDesktop.openRecordingFileDialog();
+                      }
+                    }}
+                    className={`w-full flex items-center justify-center gap-1.5 py-1.5 rounded-lg border text-xs font-medium cursor-pointer transition-colors ${mutedBtnClass}`}
+                  >
+                    <FolderOpen className="w-3.5 h-3.5 text-sky-400" />
+                    <span>Open Saved Video...</span>
+                  </button>
+                </>
+              ) : (
+                /* ACTIVE RECORDING STATE */
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between p-2 rounded-lg bg-rose-500/10 border border-rose-500/30">
+                    <div className="flex items-center gap-2">
+                      <span className="w-2.5 h-2.5 rounded-full bg-rose-500 animate-pulse" />
+                      <span className="text-xs font-bold text-rose-400">
+                        {recordingStatus === 'paused'
+                          ? 'PAUSED'
+                          : recordingStatus === 'stopping'
+                          ? 'SAVING...'
+                          : 'RECORDING'}
+                      </span>
+                    </div>
+                    <span className="font-mono text-xs font-semibold tabular-nums text-slate-100">
+                      {formatRecordingDuration(recordingElapsedMs)}
+                    </span>
+                  </div>
+
+                  {/* STOP RECORDING — 1 Click */}
+                  <button
+                    type="button"
+                    data-testid="recorder-stop-btn"
+                    disabled={recordingStatus === 'stopping'}
+                    onClick={() => {
+                      onClose();
+                      onStopRecording();
+                    }}
+                    className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs cursor-pointer shadow-lg transition-all"
+                  >
+                    <Square className="w-3.5 h-3.5 fill-current" />
+                    <span>{recordingStatus === 'stopping' ? 'Saving Video...' : 'Stop Recording'}</span>
+                  </button>
+
+                  {/* Pause/Resume and Discard */}
+                  <div className="grid grid-cols-2 gap-1.5">
                     <button
                       type="button"
                       disabled={recordingStatus === 'stopping'}
                       onClick={recordingStatus === 'paused' ? onResumeRecording : onPauseRecording}
-                      className={`px-2 py-1 rounded-md border text-[11px] font-medium disabled:opacity-45 cursor-pointer ${mutedBtnClass}`}
+                      className={`flex items-center justify-center gap-1 px-2 py-1.5 rounded-md border text-[11px] font-medium cursor-pointer ${mutedBtnClass}`}
                     >
-                      {recordingStatus === 'paused' ? 'Resume' : 'Pause'}
+                      {recordingStatus === 'paused' ? (
+                        <>
+                          <Play className="w-3 h-3" />
+                          <span>Resume</span>
+                        </>
+                      ) : (
+                        <>
+                          <Pause className="w-3 h-3" />
+                          <span>Pause</span>
+                        </>
+                      )}
                     </button>
                     <button
                       type="button"
                       disabled={recordingStatus === 'stopping'}
-                      onClick={onStopRecording}
-                      className="px-2 py-1 rounded-md bg-rose-600 text-white hover:bg-rose-500 disabled:opacity-45 text-[11px] font-semibold cursor-pointer"
-                    >
-                      {recordingStatus === 'stopping' ? 'Saving' : 'Stop'}
-                    </button>
-                    <button
-                      type="button"
-                      disabled={recordingStatus === 'stopping'}
-                      onClick={onCancelRecording}
-                      className={`px-2 py-1 rounded-md border text-[11px] disabled:opacity-45 cursor-pointer ${mutedBtnClass}`}
-                    >
-                      Cancel
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              {latestRecording && recordingStatus === 'idle' && (
-                <div className={`pt-1.5 border-t space-y-1.5 ${dividerBorderClass}`}>
-                  <div className="flex items-center justify-between text-[11px]">
-                    <span className="truncate font-medium">{latestRecording.filename}</span>
-                    <span className="font-mono tabular-nums text-[#8E96A8] shrink-0 ml-2">
-                      {formatByteSize(latestRecording.sizeBytes)}
-                    </span>
-                  </div>
-                  <div className="flex gap-1">
-                    <button
-                      type="button"
-                      data-testid="recorder-preview-latest-btn"
                       onClick={() => {
                         onClose();
-                        onPreviewLatestRecording();
+                        onCancelRecording();
                       }}
-                      className={`flex items-center justify-center gap-1 px-2 py-1 rounded-md border text-[11px] cursor-pointer ${mutedBtnClass}`}
+                      className="flex items-center justify-center gap-1 px-2 py-1.5 rounded-md border text-[11px] text-rose-400 border-rose-500/30 hover:bg-rose-500/10 cursor-pointer"
                     >
-                      <Play className="w-3 h-3" />
-                      <span>Play</span>
-                    </button>
-                    <button
-                      type="button"
-                      data-testid="recorder-download-latest-btn"
-                      onClick={onDownloadLatestRecording}
-                      className={`flex-1 flex items-center justify-center gap-1 px-2 py-1 rounded-md border text-[11px] cursor-pointer ${mutedBtnClass}`}
-                    >
-                      <Download className="w-3 h-3" />
-                      <span>Download</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={onClearTemporaryRecording}
-                      className="px-2 py-1 rounded-md border border-rose-500/40 text-rose-400 hover:bg-rose-500/10 text-[11px] cursor-pointer"
-                    >
-                      Clear
+                      <X className="w-3 h-3" />
+                      <span>Discard</span>
                     </button>
                   </div>
                 </div>
@@ -1654,7 +1870,10 @@ export const ToolbarPopouts: React.FC<ToolbarPopoutsProps> = ({
                     key={opt.mode}
                     type="button"
                     aria-label={opt.label}
-                    onClick={() => onSwitchBoard(opt.mode)}
+                    onClick={() => {
+                      onSwitchBoard(opt.mode);
+                      onClose();
+                    }}
                     style={boardMode === opt.mode ? { backgroundColor: accent } : undefined}
                     className={`flex flex-col items-center justify-center gap-0.5 py-1.5 rounded-md text-[10px] font-medium cursor-pointer transition-colors ${
                       boardMode === opt.mode

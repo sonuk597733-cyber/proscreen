@@ -82,7 +82,7 @@ export default defineConfig(({ command }) => {
   const isBuild = command === 'build';
   const isWebsiteBuild = process.env.BUILD_TARGET === 'website';
   const isGitHubPages = process.env.GITHUB_PAGES === 'true';
-  const basePath = isGitHubPages ? '/proscreen/' : (process.env.VITE_BASE_PATH || '/');
+  const basePath = isGitHubPages ? '/proscreen/' : (process.env.VITE_BASE_PATH || './');
 
   return {
     base: basePath,
@@ -97,9 +97,11 @@ export default defineConfig(({ command }) => {
       },
     },
     build: {
+      minify: false,
+      sourcemap: true,
       outDir: isWebsiteBuild ? 'dist-website' : 'dist',
       emptyOutDir: true,
-      rollupOptions: isWebsiteBuild
+      rollupOptions: (isWebsiteBuild
         ? {
             input: {
               main: path.resolve(__dirname, 'index.html'),
@@ -116,14 +118,14 @@ export default defineConfig(({ command }) => {
               desktopToolbar: path.resolve(__dirname, 'desktop-toolbar.html'),
             },
             output: {
-              assetFileNames: (assetInfo) => {
+              assetFileNames: (assetInfo: any) => {
                 if (assetInfo.names?.includes('content.css') || assetInfo.name === 'content.css') {
                   return 'content.css';
                 }
                 return 'assets/[name]-[hash][extname]';
               },
             },
-          },
+          }) as any,
     },
     server: {
       // HMR is disabled in AI Studio via DISABLE_HMR env var.

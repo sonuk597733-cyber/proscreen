@@ -145,6 +145,7 @@ export const ProScreenOverlay: React.FC<ProScreenOverlayProps> = ({ engine }) =>
         onCaptureArea={() => engine.setSelectingArea(true)}
         onCopyScreenshot={() => void engine.quickCopyScreenshot()}
         onSavePng={() => void engine.quickExportPng()}
+        onSelectRecordingArea={() => engine.setSelectingRecordingArea(true)}
         onStartRecording={() => void engine.startRecording()}
         onPauseRecording={() => void engine.pauseRecording()}
         onResumeRecording={() => void engine.resumeRecording()}
@@ -307,6 +308,15 @@ export const ProScreenOverlay: React.FC<ProScreenOverlayProps> = ({ engine }) =>
         active={engine.selectingArea}
         onSelect={(rect) => void engine.triggerCapture(rect)}
         onCancel={() => engine.setSelectingArea(false)}
+      />
+
+      <AreaSelector
+        active={engine.selectingRecordingArea}
+        title="Select Screen Area to Record"
+        confirmLabel="Record Area"
+        initialRect={engine.settings.recording.areaRect}
+        onSelect={(rect) => void engine.confirmRecordingArea(rect)}
+        onCancel={engine.cancelRecordingArea}
       />
 
       <ScreenshotModal

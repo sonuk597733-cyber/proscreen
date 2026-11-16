@@ -30,19 +30,21 @@ export const Navbar: React.FC = () => {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  const navLinks: { route: PageRoute; label: string; badge?: string }[] = [
-    { route: 'home', label: 'Home' },
-    { route: 'features', label: 'Features' },
-    { route: 'download', label: 'Windows Download', badge: 'v1.0.0' },
-    { route: 'chrome-extension', label: 'Chrome Extension' },
-    { route: 'gallery', label: 'Gallery' },
-    { route: 'changelog', label: 'Changelog' },
-    { route: 'faq', label: 'FAQ' },
-    { route: 'support', label: 'Support' },
+  const navLinks: { label: string; route?: PageRoute; anchorId?: string; badge?: string }[] = [
+    { label: 'Features', route: 'home', anchorId: 'features' },
+    { label: 'How It Works', route: 'home', anchorId: 'how-it-works' },
+    { label: 'Use Cases', route: 'home', anchorId: 'use-cases' },
+    { label: 'Pricing', route: 'home', anchorId: 'pricing', badge: '6 Mo Free' },
+    { label: 'Download', route: 'download', anchorId: 'download', badge: 'v1.0.0' },
+    { label: 'FAQ', route: 'home', anchorId: 'faq' },
   ];
 
-  const handleNav = (route: PageRoute) => {
-    navigate(route);
+  const handleNav = (route?: PageRoute, anchorId?: string) => {
+    if (route) {
+      navigate(route, anchorId);
+    } else if (anchorId) {
+      navigate('home', anchorId);
+    }
     setMobileMenuOpen(false);
   };
 
@@ -98,11 +100,11 @@ export const Navbar: React.FC = () => {
           {/* Desktop Nav Links */}
           <nav className="hidden lg:flex items-center gap-1 xl:gap-2">
             {navLinks.map((link) => {
-              const active = currentRoute === link.route;
+              const active = currentRoute === link.route && !link.anchorId;
               return (
                 <button
-                  key={link.route}
-                  onClick={() => handleNav(link.route)}
+                  key={link.label}
+                  onClick={() => handleNav(link.route, link.anchorId)}
                   className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all duration-200 relative flex items-center gap-1.5 ${
                     active
                       ? 'text-white bg-blue-500/15 border border-blue-500/30 shadow-[0_0_15px_-3px_rgba(59,130,246,0.3)]'
@@ -150,11 +152,11 @@ export const Navbar: React.FC = () => {
 
             {/* Download Button */}
             <button
-              onClick={() => handleNav('download')}
+              onClick={() => handleNav('download', 'download')}
               className="flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold text-white bg-gradient-to-r from-blue-600 via-blue-500 to-sky-500 hover:from-blue-500 hover:to-sky-400 shadow-lg shadow-blue-500/30 hover:shadow-blue-500/50 transition-all duration-200 transform hover:-translate-y-0.5 active:translate-y-0"
             >
               <Download className="w-3.5 h-3.5" />
-              <span>Download</span>
+              <span>Download Free</span>
             </button>
           </div>
 
@@ -184,11 +186,11 @@ export const Navbar: React.FC = () => {
           <div className="bg-[#0A0F1D] border-b border-slate-800 p-6 space-y-4 max-h-[85vh] overflow-y-auto">
             <div className="grid grid-cols-1 gap-1">
               {navLinks.map((link) => {
-                const active = currentRoute === link.route;
+                const active = currentRoute === link.route && !link.anchorId;
                 return (
                   <button
-                    key={link.route}
-                    onClick={() => handleNav(link.route)}
+                    key={link.label}
+                    onClick={() => handleNav(link.route, link.anchorId)}
                     className={`w-full flex items-center justify-between px-4 py-3 rounded-xl text-left text-sm font-medium transition-colors ${
                       active
                         ? 'bg-blue-600/20 text-white border border-blue-500/40 font-semibold'

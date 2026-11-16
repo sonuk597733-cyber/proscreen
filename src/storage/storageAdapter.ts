@@ -71,11 +71,22 @@ async function storageRemove(key: string): Promise<void> {
 }
 
 export async function loadSettings(): Promise<UserSettings> {
+  if (typeof window !== 'undefined' && window.proscreenDesktop?.loadDesktopSettings) {
+    try {
+      const desktopLoaded = await window.proscreenDesktop.loadDesktopSettings();
+      if (desktopLoaded) return mergeAndValidateSettings(desktopLoaded);
+    } catch {}
+  }
   const raw = await storageGet<unknown>(SETTINGS_KEY);
   return mergeAndValidateSettings(raw);
 }
 
 export async function saveSettings(settings: UserSettings): Promise<void> {
+  if (typeof window !== 'undefined' && window.proscreenDesktop?.saveDesktopSettings) {
+    try {
+      await window.proscreenDesktop.saveDesktopSettings(settings);
+    } catch {}
+  }
   await storageSet(SETTINGS_KEY, settings);
 }
 

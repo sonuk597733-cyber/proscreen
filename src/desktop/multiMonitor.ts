@@ -70,26 +70,54 @@ export function findDisplayForPoint(
     }
   }
 
-  // Fallback to primary display or first
-  return displays.find((d) => d.isPrimary) || displays[0];
+  // If outside all bounds, find the display closest to (x, y)
+  let closestDisplay = displays.find((d) => d.isPrimary) || displays[0];
+  let minDistance = Infinity;
+
+  for (const display of displays) {
+    const b = display.bounds;
+    const closestX = Math.max(b.x, Math.min(b.x + b.width, x));
+    const closestY = Math.max(b.y, Math.min(b.y + b.height, y));
+    const dist = Math.hypot(x - closestX, y - closestY);
+    if (dist < minDistance) {
+      minDistance = dist;
+      closestDisplay = display;
+    }
+  }
+
+  return closestDisplay;
+}
+
+export interface ClampToolbarOptions {
+  allowFullVerticalRange?: boolean;
 }
 
 /**
  * Clamps toolbar window coordinates so it never gets lost off-screen when monitors disconnect.
+ * Correctly accounts for display work areas, negative offsets, and allows full vertical
+ * and horizontal freedom across the entire screen while keeping the toolbar reachable.
  */
 export function clampToolbarToDisplays(
   x: number,
   y: number,
   width: number,
   height: number,
-  displays: DesktopDisplayInfo[]
+  displays: DesktopDisplayInfo[],
+  options?: ClampToolbarOptions
 ): { x: number; y: number } {
   const targetDisplay = findDisplayForPoint(x, y, displays);
   if (!targetDisplay) return { x, y };
 
   const work = targetDisplay.workArea || targetDisplay.bounds;
-  const clampedX = Math.max(work.x, Math.min(work.x + work.width - width, x));
-  const clampedY = Math.max(work.y, Math.min(work.y + work.height - height, y));
+  const maxClampedX = Math.max(work.x, work.x + work.width - width);
+  const clampedX = Math.max(work.x, Math.min(maxClampedX, x));
+
+  // If allowFullVerticalRange is true (used during desktop dragging so toolbar can move all the way down),
+  // ensure at least the top drag handle (44px) remains accessible at the bottom of the work area.
+  // Otherwise, ensure the entire window height stays within work area.
+  const minHandleY = options?.allowFullVerticalRange ? Math.min(44, height) : height;
+  const maxClampedY = Math.max(work.y, work.y + work.height - minHandleY);
+  const clampedY = Math.max(work.y, Math.min(maxClampedY, y));
 
   return { x: clampedX, y: clampedY };
 }

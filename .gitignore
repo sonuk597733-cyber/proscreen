@@ -27,3 +27,23 @@ Thumbs.db
 .env*
 !.env.example
 
+# Test outputs and video recording artifacts
+*.webm
+*.png.raw
+perf-report.json
+benchmark-results.json
+hardware-info.json
+phase9-test-summary.json
+verification-*.json
+extracted-frame-*.png
+full-screen-captured.png
+thumb-*.png
+test-dxgi-*.webm
+
+# Temporary diagnostic scripts
+scripts/*.cjs
+scripts/*.ps1
+scripts/*.vbs
+
+
+

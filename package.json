@@ -4,7 +4,7 @@
   "description": "Professional Windows Desktop & Chrome Screen Annotation Studio",
   "author": "ProScreen Team",
   "private": true,
-  "version": "1.0.0",
+  "version": "1.0.1-candidate",
   "type": "module",
   "main": "dist-electron/main.cjs",
   "scripts": {
@@ -37,14 +37,7 @@
         "nsis",
         "portable"
       ],
-      "icon": "public/icons/icon512.png",
-      "publisherName": "ProScreen",
-      "legalTrademarks": "ProScreen",
-      "requestedExecutionLevel": "asInvoker",
-      "signingHashAlgorithms": [
-        "sha256"
-      ],
-      "rfc3161TimeStampServer": "http://timestamp.digicert.com"
+      "icon": "public/icons/icon512.png"
     },
     "nsis": {
       "oneClick": false,

@@ -210,40 +210,58 @@ export const IMPLEMENTED_FEATURES: FeatureItem[] = [
 
 export const WORKFLOWS = [
   {
-    id: 'educators',
-    title: 'Educators & Online Teachers',
-    role: 'Lectures, Whiteboard Sessions & Tutoring',
+    id: 'students',
+    title: 'Students & Learners',
+    role: 'Lecture Capture, Problem Solving & Study Notes',
     description:
-      'Deliver engaging interactive lessons on Zoom, Google Meet, or Microsoft Teams. Write formulas, highlight textbook diagrams, switch to Blackboard mode for mathematical derivations, and export lecture notes for students.',
-    features: ['Whiteboard & Blackboard', 'Chisel Highlighter', 'Text Callouts', 'Multi-Page Notes Export'],
-    stat: 'Zero lag on video calls',
+      'Record online lectures, capture assignments, and annotate digital textbooks without missing a beat. Draw formulas, highlight key passages, add audio notes, and save review sessions for exam prep.',
+    features: ['Instant Screen & Audio Capture', 'Fading Ink Countdown', 'Chisel Highlighter', 'Clipboard Screenshots'],
+    stat: '100% focused study flow',
   },
   {
-    id: 'engineers',
-    title: 'Software Engineers & Architects',
-    role: 'System Architecture & Code Walkthroughs',
+    id: 'teachers',
+    title: 'Teachers & Educators',
+    role: 'Online Classes, Video Feedback & Whiteboards',
     description:
-      'Draw data flow arrows directly over VS Code, terminal windows, and cloud infrastructure diagrams during sprint reviews. Use Pointer Mode to type and debug while keeping key architectural highlights pinned on screen.',
-    features: ['Pointer Pass-Through', 'Directional Arrows', 'Global Shortcuts', 'Area Screenshot to Clipboard'],
-    stat: '100% mouse pass-through',
+      'Deliver crystal-clear lessons across Zoom, Google Meet, and Teams. Write equations over presentations, switch instantly to Blackboard mode for derivations, and share smooth MP4/WebM video explanations.',
+    features: ['Full-Screen Whiteboard/Blackboard', 'Smooth Freehand Pen', 'Dual Audio (Voice + System)', 'Floating Toolbar'],
+    stat: 'Zero lag during video calls',
   },
   {
-    id: 'product',
-    title: 'Product Managers & Designers',
-    role: 'UI Audits, Wireframe Reviews & Feedback',
+    id: 'developers',
+    title: 'Software Developers & Engineers',
+    role: 'Code Walkthroughs, Bug Demos & Architecture',
     description:
-      'Annotate Figma mockups, staging websites, and user flows in real time. Circle UI bugs, write numbered action items, and take high-resolution annotated screenshots directly to your clipboard for Slack or Jira.',
-    features: ['Rectangular Area Selector', 'Numbered Callouts', 'Geometric Shapes', 'Floating Eye Collapse'],
-    stat: 'Pixel-perfect capture',
+      'Explain complex pull requests, demonstrate frontend interactions, and record bug reproduction clips with console output. Draw arrows directly over VS Code and browser DevTools with zero mouse blockage.',
+    features: ['60 FPS Window & Screen Capture', 'Direct3D Pass-Through', 'Directional Arrows & Callouts', 'Multi-Monitor Support'],
+    stat: 'Zero mouse blocking in IDE',
   },
   {
     id: 'creators',
     title: 'Content Creators & Streamers',
-    role: 'YouTube Tutorials, Course Creation & Twitch',
+    role: 'YouTube Tutorials, Product Demos & Highlights',
     description:
-      'Produce professional software tutorials without cumbersome post-production motion graphics. Record high-bitrate video with built-in annotations, chisel highlights, and clean hotkey toggles.',
-    features: ['Built-in Screen Recorder', 'Clean HUD Status Bar', 'Eye OFF Minimal View', 'High-DPI 60fps rendering'],
-    stat: 'Native 60 FPS performance',
+      'Produce studio-quality tutorials without expensive editing setups. Record crisp 60 FPS video with synchronized microphone commentary, highlight details on the fly, and review clips instantly in the built-in player.',
+    features: ['High-Bitrate 60 FPS Video', 'Brickwall Audio Limiter', 'Instant Timeline Scrubber', 'Customizable Shortcuts'],
+    stat: 'Native 60 FPS output',
+  },
+  {
+    id: 'trainers',
+    title: 'Online Trainers & Instructors',
+    role: 'SOP Walkthroughs, Webinars & Onboarding',
+    description:
+      'Create reusable, high-impact training walkthroughs for enterprise software. Frame precise application areas with Area Recording, highlight critical workflow steps, and export clean, watermark-free videos.',
+    features: ['Precision Area Recording', 'Step-by-Step Annotations', 'Movable Floating Eye', 'Instant Video Replay'],
+    stat: 'Clear step-by-step guidance',
+  },
+  {
+    id: 'professionals',
+    title: 'Business Professionals & Managers',
+    role: 'Async Video Memos, Client Pitches & Audits',
+    description:
+      'Replace lengthy meetings with concise 2-minute video walkthroughs. Annotate financial spreadsheets, mark up PDF contracts and slide decks, and share actionable video briefings with clients and executives.',
+    features: ['One-Click Record & Save', 'Window-Specific Capture', 'Clean Modern UI', 'Instant Save As Dialog'],
+    stat: 'Save 5+ hours of meetings/wk',
   },
 ];
 
@@ -401,9 +419,65 @@ export const CHANGELOG: ChangelogRelease[] = [
 export const FAQS: FaqItem[] = [
   {
     id: 'what-is-proscreen',
-    question: 'What is ProScreen and how does it work?',
+    question: 'What is ProScreen?',
     answer:
-      'ProScreen is a professional screen annotation studio inspired by Epic Pen. It provides both a native Windows desktop application and a Chrome extension. When activated, it places a transparent, hardware-accelerated drawing overlay over your screen, allowing you to draw, highlight, type text, add arrows, and capture screenshots over any desktop application (PowerPoint, Excel, VS Code, Photoshop) or website.',
+      'ProScreen is a professional desktop screen recording and on-screen annotation studio. It lets you record your screen in 60 FPS, draw and highlight directly over any Windows desktop application or website with zero mouse latency, and preview, scrub, and export videos with studio-grade audio.',
+    category: 'general',
+  },
+  {
+    id: 'os-supported',
+    question: 'Which operating systems are supported?',
+    answer:
+      'Windows 11 and Windows 10 (64-bit) are currently fully supported with native installer and portable editions. Native macOS (Universal for Apple Silicon and Intel) and Linux (.deb and AppImage) editions are currently in active development and coming soon. A Manifest V3 Chrome Extension is also available for all Chromium browsers.',
+    category: 'windows',
+  },
+  {
+    id: 'how-to-download',
+    question: 'How do I download ProScreen?',
+    answer:
+      'You can download ProScreen directly from our official Download Center. We provide both a standard Windows Installer (.exe) with automatic shortcuts and uninstaller, and a standalone Portable (.exe) executable that runs immediately without administrative privileges. Direct file downloads are hosted with zero third-party mirrors or bundled software.',
+    category: 'windows',
+  },
+  {
+    id: 'free-six-month-offer',
+    question: 'What does the free six-month offer mean?',
+    answer:
+      'ProScreen Pro is 100% free for your first 6 months. You get full access to all Pro features—including 60 FPS recording, 4K/Studio HD resolution, dual-track audio mixing with limiter, unlimited recordings, zero watermarks, and on-screen drawing tools—at $0 cost. No credit card is required to download and start using ProScreen today.',
+    category: 'general',
+  },
+  {
+    id: 'price-after-six-months',
+    question: 'What is the price after six months?',
+    answer:
+      'After the introductory 6-month free period, ProScreen Pro will be $1 per month. This is an affordable monthly subscription designed to support ongoing development, codec optimizations, and operating system updates. Billing and renewal terms will be presented before checkout when billing is implemented.',
+    category: 'general',
+  },
+  {
+    id: 'how-to-save-recordings',
+    question: 'How do I save recordings?',
+    answer:
+      'When you stop a recording, the Recording Preview Modal opens automatically. You can review your video, scrub through the timeline, and adjust playback speed. Click "Save As" to choose a custom folder via the native Windows save dialog, or click "Done" to automatically save it to your default videos directory. Recordings are saved in high-bitrate WebM or MP4 format with EBML duration metadata for instant seeking in any media player.',
+    category: 'general',
+  },
+  {
+    id: 'can-i-record-selected-area',
+    question: 'Can I record a selected area?',
+    answer:
+      'Yes. ProScreen offers 4 dedicated capture modes: Screen (entire monitor), Window (specific application window), Tab (browser tab), and Area (custom rectangular region). When you choose Area mode, an interactive crop selector lets you frame the exact region you want to capture, displaying live pixel dimensions and coordinates.',
+    category: 'general',
+  },
+  {
+    id: 'does-proscreen-support-audio',
+    question: 'Does ProScreen support audio?',
+    answer:
+      'Yes. ProScreen includes a studio audio engine supporting simultaneous system audio (tab / desktop loopback) and microphone audio. It features 48 kHz high-fidelity sampling, microphone gain staging, high-pass rumble filtering, and a brickwall peak limiter to eliminate distortion and digital clipping.',
+    category: 'general',
+  },
+  {
+    id: 'how-to-get-support',
+    question: 'How do I get support?',
+    answer:
+      'You can reach our team through the in-app Support Center or via GitHub Issues. We provide detailed troubleshooting guides, installation tips, and keyboard shortcut cheat sheets for both Windows desktop and the Chrome Extension.',
     category: 'general',
   },
   {
@@ -496,3 +570,45 @@ export const KEYBOARD_SHORTCUTS = [
   { key: 'Ctrl+Y', action: 'Redo Last Undo Action', scope: 'Studio / Active Overlay' },
   { key: 'Esc', action: 'Exit Active Tool / Close Popovers', scope: 'Studio / Active Overlay' },
 ];
+
+export const PRICING_OFFER = {
+  planName: 'ProScreen Pro',
+  tagline: 'Complete screen recording & annotation studio for professionals',
+  introductoryPeriodMonths: 6,
+  introductoryPriceFormatted: '$0',
+  introductoryLabel: 'FIRST 6 MONTHS — FREE',
+  monthlyPriceAfterIntro: 1,
+  monthlyPriceFormatted: '$1 / month',
+  billingCadence: 'Monthly subscription after 6-month trial',
+  timeline: [
+    {
+      period: 'Months 1 – 6',
+      price: '$0',
+      badge: 'Free Access',
+      description: 'Full Pro features, unlimited recordings, zero watermarks, 100% free.',
+    },
+    {
+      period: 'After Month 6',
+      price: '$1 / mo',
+      badge: 'Affordable Pro',
+      description: 'Continue with all Pro features for just $1 per month. Cancel anytime.',
+    },
+  ],
+  features: [
+    '60 FPS Smooth Desktop Video Capture (DXGI GPU Accelerated)',
+    '4 Recording Modes: Screen, Window, Tab, and Area Selection',
+    'Up to 4K Ultra HD & Studio High-Bitrate Video Export',
+    'Dual-Channel Studio Audio (System Loopback + Microphone)',
+    'Studio Audio DSP: 48 kHz, High-Pass Filter & Peak Limiter',
+    'Movable Floating Studio Toolbar with Collapsible Eye Restore',
+    'Full Annotation Suite: Pen, Highlighter, Arrow, Shapes & Text',
+    'Fading Ink Countdown Timer for Temporary Markups',
+    'In-App Video Preview Modal with Timeline Scrubbing & 0.5x–2x Speed',
+    'Zero Watermarks, Unlimited Recording Length & 100% Local Privacy',
+    'WebM & MP4 Direct Native Saving with Injected Duration Metadata',
+    'Multi-Monitor Support with DPI Scaling & Negative Coordinates',
+  ],
+  disclaimer:
+    'Billing and renewal terms will be presented before checkout when subscription billing is implemented. Download and use free today — no credit card required.',
+};
+

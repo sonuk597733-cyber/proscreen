@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { SettingsDashboard } from '../settings/SettingsDashboard';
+import { FirstLaunchOnboardingModal } from '../components/FirstLaunchOnboardingModal';
 import { UserSettings } from '../types/settings';
 import {
   loadSettings,
@@ -32,7 +33,15 @@ export const OptionsApp: React.FC = () => {
       {notice && (
         <div className="max-w-4xl mx-auto mb-3 px-4 py-2 rounded-lg bg-blue-600/20 border border-blue-500/40 text-xs text-blue-200">
           {notice}
-        </div>
+          <FirstLaunchOnboardingModal
+        isOpen={!settings.hasSeenOnboarding}
+        onClose={(dontShowAgain) => {
+          if (dontShowAgain) {
+            updateSettings((prev) => ({ ...prev, hasSeenOnboarding: true }));
+          }
+        }}
+      />
+    </div>
       )}
       <SettingsDashboard
         open
@@ -78,6 +87,14 @@ export const OptionsApp: React.FC = () => {
               }
               setNotice(`Cleared ${keys.length} saved tab annotation snapshot(s).`);
             });
+          }
+        }}
+      />
+      <FirstLaunchOnboardingModal
+        isOpen={!settings.hasSeenOnboarding}
+        onClose={(dontShowAgain) => {
+          if (dontShowAgain) {
+            updateSettings((prev) => ({ ...prev, hasSeenOnboarding: true }));
           }
         }}
       />

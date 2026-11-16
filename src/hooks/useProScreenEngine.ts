@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   AnnotationItem,
   BoardMode,
@@ -11,7 +11,9 @@ import {
   ToolType,
 } from '../types/annotation';
 import {
+  RecordingAreaRect,
   RecordingMode,
+  RecordingSettings,
   ResolvedThemeMode,
   UserSettings,
 } from '../types/settings';
@@ -141,12 +143,6 @@ export function useProScreenEngine(initialTabKey: string) {
   const [restoreButtonVisible, setRestoreButtonVisibleInternal] = useState(false);
   const [annotationsVisible, setAnnotationsVisibleInternal] = useState(true);
 
-  // Reliable single source of truth for interactionMode
-  const interactionMode: 'pointer' | 'drawing' =
-    !toolbarVisible || !annotationsVisible || activeTool === 'pointer' || activeTool === 'cursor'
-      ? 'pointer'
-      : 'drawing';
-
   const setActiveTool = useCallback((tool: ToolType) => {
     const normalized = tool === 'cursor' ? 'pointer' : tool;
     setActiveToolState(normalized);
@@ -155,7 +151,7 @@ export function useProScreenEngine(initialTabKey: string) {
   const closeEye = useCallback(() => {
     setToolbarVisibleInternal(false);
     setRestoreButtonVisibleInternal(true);
-    setAnnotationsVisibleInternal(true);
+    setAnnotationsVisibleInternal(false);
     setActiveToolState('pointer');
     setSelectedItemId(null);
     setSelectedTextId(null);
@@ -171,11 +167,19 @@ export function useProScreenEngine(initialTabKey: string) {
     setActiveToolState('pointer');
   }, []);
 
+  const restoreAnnotations = useCallback((restoredItems: AnnotationItem[]) => {
+    if (!restoredItems || !Array.isArray(restoredItems)) return;
+    const nextState = createHistoryState(restoredItems);
+    setHistory(nextState);
+    webpageHistoryRef.current = nextState;
+    setAnnotationsVisibleInternal(true);
+  }, []);
+
   const toggleEye = useCallback(() => {
     setToolbarVisibleInternal((prev) => {
       const next = !prev;
       setRestoreButtonVisibleInternal(!next);
-      setAnnotationsVisibleInternal(true);
+      setAnnotationsVisibleInternal(next);
       setActiveToolState('pointer');
       if (!next) {
         setSelectedItemId(null);
@@ -243,9 +247,22 @@ export function useProScreenEngine(initialTabKey: string) {
 
   const [savedSessions, setSavedSessions] = useState<SavedSession[]>([]);
   const [selectingArea, setSelectingArea] = useState(false);
+  const [selectingRecordingArea, setSelectingRecordingArea] = useState(false);
   const [screenshotResult, setScreenshotResult] = useState<CaptureResult | null>(null);
   const [isCapturing, setIsCapturing] = useState(false);
   const [banner, setBanner] = useState<StatusBanner | null>(null);
+
+  // Reliable single source of truth for interactionMode:
+  // Interactive ('drawing') mode is active if any modal is open (Recording Preview, Screenshot,
+  // Area Selection) OR if an active drawing tool is selected while annotations are visible.
+  const interactionMode: 'pointer' | 'drawing' =
+    recordingPreviewOpen ||
+    Boolean(screenshotResult) ||
+    selectingArea ||
+    selectingRecordingArea ||
+    (toolbarVisible && annotationsVisible && activeTool !== 'pointer' && activeTool !== 'cursor')
+      ? 'drawing'
+      : 'pointer';
 
   // Live transient drawing refs (avoid high-frequency React re-renders during pointer move)
   const draftItemRef = useRef<AnnotationItem | null>(null);
@@ -336,7 +353,14 @@ export function useProScreenEngine(initialTabKey: string) {
           setHistory(restored);
           setBoardMode(snapshot.boardMode);
           if (typeof snapshot.toolbarVisible === 'boolean') {
-            setToolbarVisibleInternal(snapshot.toolbarVisible);
+            if (tabKey === 'desktop:global') {
+              // Desktop overlay always boots with toolbar visible in pointer mode
+              setToolbarVisibleInternal(true);
+              setRestoreButtonVisibleInternal(false);
+            } else {
+              setToolbarVisibleInternal(snapshot.toolbarVisible);
+              setRestoreButtonVisibleInternal(!snapshot.toolbarVisible);
+            }
           }
         } else {
           const empty = createHistoryState([]);
@@ -344,11 +368,21 @@ export function useProScreenEngine(initialTabKey: string) {
           webpageHistoryRef.current = empty;
           setHistory(empty);
           setBoardMode('webpage');
+          if (tabKey === 'desktop:global') {
+            setToolbarVisibleInternal(true);
+            setRestoreButtonVisibleInternal(false);
+          }
         }
       } else if (snapshot) {
         setBoardMode(snapshot.boardMode);
         if (typeof snapshot.toolbarVisible === 'boolean') {
-          setToolbarVisibleInternal(snapshot.toolbarVisible);
+          if (tabKey === 'desktop:global') {
+            setToolbarVisibleInternal(true);
+            setRestoreButtonVisibleInternal(false);
+          } else {
+            setToolbarVisibleInternal(snapshot.toolbarVisible);
+            setRestoreButtonVisibleInternal(!snapshot.toolbarVisible);
+          }
         }
       }
       setEditingTextId(null);
@@ -403,7 +437,7 @@ export function useProScreenEngine(initialTabKey: string) {
   useEffect(() => {
     const hasExpiringItems = history.items.some(
       (i) =>
-        (typeof i.expiresAt === 'number' && !settings.timer.paused) ||
+        (typeof i.expiresAt === 'number' && !settings.timer?.paused) ||
         (i.fadeDurationMs && i.fadeDurationMs > 0)
     );
     if (!hasExpiringItems) return;
@@ -413,7 +447,7 @@ export function useProScreenEngine(initialTabKey: string) {
       setHistory((prev) => pruneExpiredItems(prev, now));
     }, 200);
     return () => window.clearInterval(timer);
-  }, [history.items, settings.timer.paused]);
+  }, [history.items, settings.timer?.paused]);
 
   // Fullscreen listener
   useEffect(() => {
@@ -576,12 +610,12 @@ export function useProScreenEngine(initialTabKey: string) {
   const toggleGhostMode = useCallback(() => {
     setGhostMode((prev) => {
       const next = !prev;
-      if (next && settings.creator.ghostModeShortcutHint) {
+      if (next && settings.creator?.ghostModeShortcutHint) {
         showBanner('Ghost Mode active — toolbar hidden. Press Alt+G to restore.', 'info');
       }
       return next;
     });
-  }, [settings.creator.ghostModeShortcutHint, showBanner]);
+  }, [settings.creator?.ghostModeShortcutHint, showBanner]);
 
   const toggleCreatorMode = useCallback(() => {
     updateSettings((prev) => {
@@ -600,13 +634,14 @@ export function useProScreenEngine(initialTabKey: string) {
   // Timer Controls
   const toggleTimerEnabled = useCallback(() => {
     updateSettings((prev) => {
-      const nextEnabled = !prev.timer.enabled;
+      const timer = prev.timer || { enabled: false, durationMs: 15000, paused: false };
+      const nextEnabled = !timer.enabled;
       return {
         ...prev,
         timer: {
-          ...prev.timer,
+          ...timer,
           enabled: nextEnabled,
-          paused: nextEnabled ? prev.timer.paused : false,
+          paused: nextEnabled ? timer.paused : false,
         },
       };
     });
@@ -615,48 +650,64 @@ export function useProScreenEngine(initialTabKey: string) {
   const setTimerDurationMs = useCallback(
     (ms: number) => {
       const clamped = clampTimerDurationMs(ms);
-      updateSettings((prev) => ({
-        ...prev,
-        timer: {
-          ...prev.timer,
-          durationMs: clamped,
-        },
-      }));
+      updateSettings((prev) => {
+        const timer = prev.timer || { enabled: false, durationMs: 15000, paused: false };
+        return {
+          ...prev,
+          timer: {
+            ...timer,
+            durationMs: clamped,
+          },
+        };
+      });
     },
     [updateSettings]
   );
 
   const toggleTimerPaused = useCallback(() => {
     const now = Date.now();
-    const nextPaused = !settings.timer.paused;
-    updateSettings((prev) => ({
-      ...prev,
-      timer: { ...prev.timer, paused: nextPaused },
-    }));
+    const currentPaused = Boolean(settings.timer?.paused);
+    const nextPaused = !currentPaused;
+    updateSettings((prev) => {
+      const timer = prev.timer || { enabled: false, durationMs: 15000, paused: false };
+      return {
+        ...prev,
+        timer: { ...timer, paused: nextPaused },
+      };
+    });
     setHistory((prev) =>
       mapItemsWithoutHistory(prev, (items) =>
         nextPaused ? pauseAnnotationTimers(items, now) : resumeAnnotationTimers(items, now)
       )
     );
     setTimerNowMs(now);
-  }, [settings.timer.paused, updateSettings]);
+  }, [settings.timer?.paused, updateSettings]);
 
   const resetTimer = useCallback(() => {
     const now = Date.now();
+    const durationMs = settings.timer?.durationMs ?? 15000;
+    const isPaused = Boolean(settings.timer?.paused);
     setHistory((prev) =>
       mapItemsWithoutHistory(prev, (items) =>
-        resetAnnotationTimers(items, settings.timer.durationMs, settings.timer.paused, now)
+        resetAnnotationTimers(items, durationMs, isPaused, now)
       )
     );
     setTimerNowMs(now);
     showBanner('Active annotation timers reset', 'info');
-  }, [settings.timer.durationMs, settings.timer.paused, showBanner]);
+  }, [settings.timer?.durationMs, settings.timer?.paused, showBanner]);
 
   const cancelTimer = useCallback(() => {
-    updateSettings((prev) => ({
-      ...prev,
-      timer: { ...prev.timer, enabled: false, paused: false },
-    }));
+    updateSettings((prev) => {
+      const timer = prev.timer || { enabled: false, durationMs: 15000, paused: false };
+      return {
+        ...prev,
+        timer: {
+          ...timer,
+          enabled: false,
+          paused: false,
+        },
+      };
+    });
     setHistory((prev) => mapItemsWithoutHistory(prev, cancelAnnotationTimers));
     showBanner('Annotation timer turned off — existing ink will stay on screen.', 'info');
   }, [showBanner, updateSettings]);
@@ -684,26 +735,32 @@ export function useProScreenEngine(initialTabKey: string) {
           }
           return artifact;
         });
-        void downloadRecordingArtifact(
-          artifact,
-          settingsRef.current.exportPrefs.askWhereToSave
-        ).then((dlRes) => {
-          if (dlRes.ok) {
-            showBanner(
-              `Saved recording (${formatByteSize(artifact.sizeBytes)} ${
-                artifact.mimeType.includes('mp4') ? 'MP4' : 'WebM'
-              }).`,
-              'success'
-            );
-          } else {
-            showBanner(
-              `Recording ready (${formatByteSize(artifact.sizeBytes)}), download blocked: ${
-                dlRes.error || 'use Preview to download.'
-              }`,
-              'error'
-            );
-          }
-        });
+
+        // Automatically open preview modal upon recording completion
+        setRecordingPreviewOpen(true);
+        if (typeof window !== 'undefined' && window.proscreenDesktop?.dispatchAction) {
+          window.proscreenDesktop.dispatchAction('preview-recording', artifact);
+        }
+
+        // Only save automatically in background if prompt is disabled
+        if (!settingsRef.current.exportPrefs.askWhereToSave) {
+          void downloadRecordingArtifact(artifact, false).then((dlRes) => {
+            if (dlRes.ok && dlRes.path) {
+              setLatestRecording((prev) => (prev ? { ...prev, savedPath: dlRes.path } : artifact));
+              showBanner(
+                `Saved recording (${formatByteSize(artifact.sizeBytes)} ${
+                  artifact.mimeType.includes('mp4') ? 'MP4' : 'WebM'
+                }).`,
+                'success'
+              );
+            }
+          });
+        } else {
+          showBanner(
+            `Recording ready (${formatByteSize(artifact.sizeBytes)}). Click Save As in Preview to save.`,
+            'info'
+          );
+        }
       },
       onCancelled: () => {
         showBanner('Screen recording cancelled — no file saved.', 'info');
@@ -729,7 +786,7 @@ export function useProScreenEngine(initialTabKey: string) {
       if (recorderRef.current) {
         setRecordingElapsedMs(recorderRef.current.getElapsedMs());
       }
-    }, 250);
+    }, 1000);
     return () => window.clearInterval(interval);
   }, [recordingStatus]);
 
@@ -822,22 +879,104 @@ export function useProScreenEngine(initialTabKey: string) {
     [showBanner]
   );
 
-  const startRecording = useCallback(async () => {
-    const rec = recorderRef.current;
-    if (!rec) return false;
-    setRecordingElapsedMs(0);
-    const ok = await rec.start(settings.recording, settings.exportPrefs.askWhereToSave);
-    if (ok) {
-      const modeLabel =
-        settings.recording.mode === 'tab'
-          ? 'Tab'
-          : settings.recording.mode === 'window'
-          ? 'Window'
-          : 'Screen';
-      showBanner(`${modeLabel} recording started.`, 'info');
-    }
-    return ok;
-  }, [settings.exportPrefs.askWhereToSave, settings.recording, showBanner]);
+  const startRecording = useCallback(
+    async (overrideSettings?: RecordingSettings) => {
+      const activeSettings = overrideSettings ?? settings.recording;
+      if (activeSettings.mode === 'area' && !activeSettings.areaRect) {
+        setSelectingRecordingArea(true);
+        return false;
+      }
+      const rec = recorderRef.current;
+      if (!rec) return false;
+      if (typeof window !== 'undefined' && window.proscreenDesktop?.setRecordingTargetMode) {
+        window.proscreenDesktop.setRecordingTargetMode(activeSettings.mode);
+      }
+      setRecordingElapsedMs(0);
+      const ok = await rec.start(activeSettings, settings.exportPrefs.askWhereToSave);
+      if (ok) {
+        const modeLabel =
+          activeSettings.mode === 'tab'
+            ? 'Tab'
+            : activeSettings.mode === 'window'
+            ? 'Window'
+            : activeSettings.mode === 'area'
+            ? 'Area'
+            : 'Screen';
+        showBanner(`${modeLabel} recording started.`, 'info');
+      }
+      return ok;
+    },
+    [settings.exportPrefs.askWhereToSave, settings.recording, showBanner]
+  );
+
+  const confirmRecordingArea = useCallback(
+    async (rect: { x: number; y: number; width: number; height: number }) => {
+      setSelectingRecordingArea(false);
+
+      let displayId: string | undefined;
+      let displayBounds: { x: number; y: number; width: number; height: number } | undefined;
+      let localX = Math.round(rect.x);
+      let localY = Math.round(rect.y);
+
+      if (typeof window !== 'undefined' && window.proscreenDesktop) {
+        try {
+          const [vb, displays] = await Promise.all([
+            window.proscreenDesktop.getVirtualBounds?.(),
+            window.proscreenDesktop.getDisplaysInfo?.(),
+          ]);
+          if (vb && Array.isArray(displays) && displays.length > 0) {
+            const screenX = rect.x + vb.x;
+            const screenY = rect.y + vb.y;
+            const centerX = screenX + rect.width / 2;
+            const centerY = screenY + rect.height / 2;
+            let matched = displays.find(
+              (d) =>
+                centerX >= d.bounds.x &&
+                centerX < d.bounds.x + d.bounds.width &&
+                centerY >= d.bounds.y &&
+                centerY < d.bounds.y + d.bounds.height
+            );
+            if (!matched) {
+              matched = displays.find((d) => d.isPrimary) || displays[0];
+            }
+            if (matched) {
+              displayId = String(matched.id);
+              displayBounds = {
+                x: Math.round(matched.bounds.x),
+                y: Math.round(matched.bounds.y),
+                width: Math.round(matched.bounds.width),
+                height: Math.round(matched.bounds.height),
+              };
+              localX = Math.round(screenX - matched.bounds.x);
+              localY = Math.round(screenY - matched.bounds.y);
+              window.proscreenDesktop.setRecordingTargetDisplay?.(displayId);
+            }
+          }
+        } catch {}
+      }
+
+      const areaRect: RecordingAreaRect = {
+        x: localX,
+        y: localY,
+        width: Math.round(rect.width),
+        height: Math.round(rect.height),
+        displayId,
+        displayBounds,
+      };
+      const updatedRecording: RecordingSettings = {
+        ...settings.recording,
+        mode: 'area',
+        areaRect,
+      };
+      updateSettings((prev) => ({ ...prev, recording: updatedRecording }));
+      await startRecording(updatedRecording);
+    },
+    [settings.recording, startRecording, updateSettings]
+  );
+
+  const cancelRecordingArea = useCallback(() => {
+    setSelectingRecordingArea(false);
+  }, []);
 
   const pauseRecording = useCallback(() => {
     recorderRef.current?.pause();
@@ -863,18 +1002,27 @@ export function useProScreenEngine(initialTabKey: string) {
     }
   }, [recordingStatus, startRecording, stopRecording]);
 
-  const downloadLatestRecording = useCallback(async () => {
-    if (!latestRecording) return;
-    const res = await downloadRecordingArtifact(
-      latestRecording,
-      settings.exportPrefs.askWhereToSave
-    );
-    if (res.ok) {
-      showBanner(`Downloaded ${latestRecording.filename}`, 'success');
-    } else {
-      showBanner(res.error || 'Could not download recording.', 'error');
-    }
-  }, [latestRecording, settings.exportPrefs.askWhereToSave, showBanner]);
+  const downloadLatestRecording = useCallback(
+    async (askWhereToSave?: boolean) => {
+      if (!latestRecording) return { ok: false, error: 'No recording available' };
+      const promptSave =
+        askWhereToSave !== undefined ? askWhereToSave : settings.exportPrefs.askWhereToSave;
+      const res = await downloadRecordingArtifact(latestRecording, promptSave);
+      if (res.ok) {
+        if (res.path) {
+          setLatestRecording((prev) => (prev ? { ...prev, savedPath: res.path } : prev));
+        }
+        showBanner(`Saved ${latestRecording.filename}`, 'success');
+        return res;
+      } else {
+        if (res.error && res.error !== 'Save cancelled.') {
+          showBanner(res.error || 'Could not download recording.', 'error');
+        }
+        return res;
+      }
+    },
+    [latestRecording, settings.exportPrefs.askWhereToSave, showBanner]
+  );
 
   const clearTemporaryRecording = useCallback(() => {
     setRecordingPreviewOpen(false);
@@ -1044,8 +1192,8 @@ export function useProScreenEngine(initialTabKey: string) {
 
   const beginStrokeOrShape = useCallback(
     (pt: Point, pressure?: number) => {
-      const fadeDurationMs = settings.creator.fadingInkEnabled
-        ? settings.creator.fadingInkDurationMs
+      const fadeDurationMs = settings.creator?.fadingInkEnabled
+        ? settings.creator?.fadingInkDurationMs
         : null;
       const now = Date.now();
       const coordSpace = boardMode === 'webpage' ? 'document' : 'viewport';
@@ -1356,8 +1504,8 @@ export function useProScreenEngine(initialTabKey: string) {
               ? '#1E293B'
               : settings.text.backgroundColor,
           createdAt: now,
-          fadeDurationMs: settings.creator.fadingInkEnabled
-            ? settings.creator.fadingInkDurationMs
+          fadeDurationMs: settings.creator?.fadingInkEnabled
+            ? settings.creator?.fadingInkDurationMs
             : null,
         },
         settings.timer,
@@ -1397,7 +1545,7 @@ export function useProScreenEngine(initialTabKey: string) {
       setSelectingArea(false);
       await new Promise((r) => window.requestAnimationFrame(() => window.requestAnimationFrame(() => r(null))));
       const result = await captureAnnotatedScreenshot({
-        items: settings.creator.annotationsVisible ? history.items : [],
+        items: settings.creator?.annotationsVisible ? history.items : [],
         boardMode,
         whiteboardGrid: settings.whiteboardGrid,
         backgroundImageDataUrl: currentBackgroundImage,
@@ -1415,7 +1563,7 @@ export function useProScreenEngine(initialTabKey: string) {
       boardMode,
       currentBackgroundImage,
       history.items,
-      settings.creator.annotationsVisible,
+      settings.creator?.annotationsVisible,
       settings.whiteboardGrid,
       showBanner,
     ]
@@ -1425,7 +1573,7 @@ export function useProScreenEngine(initialTabKey: string) {
     setIsCapturing(true);
     await new Promise((r) => window.requestAnimationFrame(() => window.requestAnimationFrame(() => r(null))));
     const result = await captureAnnotatedScreenshot({
-      items: settings.creator.annotationsVisible ? history.items : [],
+      items: settings.creator?.annotationsVisible ? history.items : [],
       boardMode,
       whiteboardGrid: settings.whiteboardGrid,
       backgroundImageDataUrl: currentBackgroundImage,
@@ -1452,7 +1600,7 @@ export function useProScreenEngine(initialTabKey: string) {
     boardMode,
     currentBackgroundImage,
     history.items,
-    settings.creator.annotationsVisible,
+    settings.creator?.annotationsVisible,
     settings.exportPrefs.askWhereToSave,
     settings.whiteboardGrid,
     showBanner,
@@ -1462,7 +1610,7 @@ export function useProScreenEngine(initialTabKey: string) {
     setIsCapturing(true);
     await new Promise((r) => window.requestAnimationFrame(() => window.requestAnimationFrame(() => r(null))));
     const result = await captureAnnotatedScreenshot({
-      items: settings.creator.annotationsVisible ? history.items : [],
+      items: settings.creator?.annotationsVisible ? history.items : [],
       boardMode,
       whiteboardGrid: settings.whiteboardGrid,
       backgroundImageDataUrl: currentBackgroundImage,
@@ -1485,7 +1633,7 @@ export function useProScreenEngine(initialTabKey: string) {
     boardMode,
     currentBackgroundImage,
     history.items,
-    settings.creator.annotationsVisible,
+    settings.creator?.annotationsVisible,
     settings.whiteboardGrid,
     showBanner,
   ]);
@@ -1697,6 +1845,10 @@ export function useProScreenEngine(initialTabKey: string) {
           setClearConfirmOpen(false);
           return;
         }
+        if (selectingRecordingArea) {
+          setSelectingRecordingArea(false);
+          return;
+        }
         if (selectingArea) {
           setSelectingArea(false);
           return;
@@ -1765,7 +1917,7 @@ export function useProScreenEngine(initialTabKey: string) {
     return () => chrome.runtime.onMessage.removeListener(listener);
   }, [runShortcutAction]);
 
-  const activeBrush = getActiveBrushConfig();
+  const activeBrush = useMemo(() => getActiveBrushConfig(), [getActiveBrushConfig]);
   const textItems = history.items.filter((i): i is TextAnnotation => i.category === 'text');
   const activeTimerCountdownMs = getActiveTimerCountdownMs(
     history.items,
@@ -1777,6 +1929,7 @@ export function useProScreenEngine(initialTabKey: string) {
     tabKey,
     setTabKey,
     settings,
+    setSettings,
     resolvedTheme,
     updateSettings,
     history,
@@ -1806,6 +1959,7 @@ export function useProScreenEngine(initialTabKey: string) {
     openEye,
     closeEye,
     toggleEye,
+    restoreAnnotations,
     ghostMode,
     toggleGhostMode,
     presentationMode,
@@ -1827,6 +1981,7 @@ export function useProScreenEngine(initialTabKey: string) {
     recordingStatus,
     recordingElapsedMs,
     latestRecording,
+    setLatestRecording,
     recordingPreviewOpen,
     setRecordingPreviewOpen,
     recordingSupported,
@@ -1851,6 +2006,10 @@ export function useProScreenEngine(initialTabKey: string) {
     savedSessions,
     selectingArea,
     setSelectingArea,
+    selectingRecordingArea,
+    setSelectingRecordingArea,
+    confirmRecordingArea,
+    cancelRecordingArea,
     screenshotResult,
     setScreenshotResult,
     isCapturing,

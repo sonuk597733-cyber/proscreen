@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { BoardBackdrop } from '../whiteboard/BoardBackdrop';
 import { AnnotationCanvas } from '../canvas/AnnotationCanvas';
 import { TextInputOverlay } from '../toolbar/TextInputOverlay';
@@ -7,31 +7,104 @@ import { isDrawingTool, ToolType } from '../types/annotation';
 import { ScreenshotModal } from '../screenshot/ScreenshotModal';
 import { RecordingPreviewModal } from '../recorder/RecordingPreviewModal';
 import { AreaSelector } from '../components/AreaSelector';
+import { UserSettings } from '../types/settings';
+import { mergeAndValidateSettings } from '../storage/validation';
 
 export const DesktopOverlayApp: React.FC = () => {
   const engine = useProScreenEngine('desktop:global');
   const desktop = typeof window !== 'undefined' ? window.proscreenDesktop : undefined;
   const lastInteractionModeRef = useRef<'pointer' | 'drawing'>('pointer');
+  const [liveToolbarPos, setLiveToolbarPos] = useState<{ x: number; y: number }>({ x: 16, y: 76 });
+  const [liveToolbarVisible, setLiveToolbarVisible] = useState<boolean>(true);
 
-  // Multi-monitor virtual bounds sync
+  // Multi-monitor virtual bounds sync & live toolbar position tracking
   useEffect(() => {
     if (!desktop) return;
     const unsub = desktop.onDisplaysChanged((bounds) => {
       console.log('Displays changed:', bounds);
     });
-    return unsub;
+    const unsubState = desktop.onStateChange((next) => {
+      if (next.toolbarPosition) {
+        setLiveToolbarPos(next.toolbarPosition);
+      }
+      if (typeof next.toolbarVisible === 'boolean') {
+        setLiveToolbarVisible(next.toolbarVisible);
+      }
+    });
+    void desktop.getState().then((s) => {
+      if (s.toolbarPosition) setLiveToolbarPos(s.toolbarPosition);
+      if (typeof s.toolbarVisible === 'boolean') setLiveToolbarVisible(s.toolbarVisible);
+    });
+    return () => {
+      unsub();
+      unsubState();
+    };
   }, [desktop]);
+
+  // Authoritative cross-window annotation hydration and restoration on Eye ON
+  const isHydratedRef = useRef(false);
+  useEffect(() => {
+    if (!desktop?.getDesktopAnnotations) {
+      isHydratedRef.current = true;
+      return;
+    }
+    void desktop.getDesktopAnnotations().then((items) => {
+      if (Array.isArray(items) && items.length > 0 && engine.history.items.length === 0) {
+        engine.restoreAnnotations(items);
+      }
+      isHydratedRef.current = true;
+    });
+  }, [desktop, engine]);
+
+  // Synchronize settings from main process across windows
+  useEffect(() => {
+    if (!desktop) return;
+    void desktop.loadDesktopSettings().then((s) => {
+      if (s) {
+        engine.setSettings(mergeAndValidateSettings(s));
+      }
+    });
+    if (desktop.onSettingsChanged) {
+      const unsub = desktop.onSettingsChanged((s) => {
+        if (s) {
+          engine.setSettings(mergeAndValidateSettings(s));
+        }
+      });
+      return unsub;
+    }
+  }, [desktop, engine]);
+
+  useEffect(() => {
+    if (!desktop?.onRestoreAnnotations) return;
+    const unsub = desktop.onRestoreAnnotations((items) => {
+      if (Array.isArray(items) && items.length > 0) {
+        engine.restoreAnnotations(items);
+      }
+    });
+    return unsub;
+  }, [desktop, engine]);
+
+  useEffect(() => {
+    if (!desktop?.saveDesktopAnnotations || !isHydratedRef.current) return;
+    desktop.saveDesktopAnnotations(engine.history.items);
+  }, [desktop, engine.history.items]);
 
   // Synchronize interaction mode with Electron click-through pass-through
   useEffect(() => {
     if (!desktop) return;
 
+    const hasActiveModal =
+      engine.recordingPreviewOpen ||
+      Boolean(engine.screenshotResult) ||
+      engine.selectingArea ||
+      engine.selectingRecordingArea;
+
     const isDrawingOrCapturing =
-      engine.toolbarVisible &&
-      ((engine.activeTool !== 'pointer' && engine.activeTool !== 'cursor') ||
-        engine.selectingArea ||
-        Boolean(engine.screenshotResult) ||
-        engine.recordingPreviewOpen);
+      hasActiveModal ||
+      (engine.toolbarVisible &&
+        engine.annotationsVisible &&
+        engine.activeTool !== 'pointer' &&
+        engine.activeTool !== 'cursor');
 
     const currentMode = isDrawingOrCapturing ? 'drawing' : 'pointer';
 
@@ -44,22 +117,24 @@ export const DesktopOverlayApp: React.FC = () => {
     desktop,
     engine.activeTool,
     engine.toolbarVisible,
+    engine.annotationsVisible,
     engine.selectingArea,
+    engine.selectingRecordingArea,
     engine.screenshotResult,
     engine.recordingPreviewOpen,
   ]);
 
-  // Broadcast state changes to the Floating Toolbar window & System Tray
+  const lastSyncedStateRef = useRef<string>('');
+
+  // Broadcast state changes to the Floating Toolbar window & System Tray only when values actually change
   useEffect(() => {
     if (!desktop) return;
-    desktop.syncState({
+    const payload = {
       activeTool: engine.activeTool,
       interactionMode: engine.interactionMode,
       toolbarVisible: engine.toolbarVisible,
       restoreButtonVisible: engine.restoreButtonVisible,
       annotationsVisible: engine.annotationsVisible,
-      toolbarPosition: engine.settings.toolbarPosition,
-      restoreButtonPosition: engine.settings.restoreButtonPosition,
       boardMode: engine.boardMode,
       resolvedTheme: engine.resolvedTheme,
       ghostMode: engine.ghostMode,
@@ -74,7 +149,16 @@ export const DesktopOverlayApp: React.FC = () => {
       activePageIndex: engine.activePageIndex,
       boardPageCount: engine.boardPages.length,
       isRecording: engine.recordingStatus !== 'idle',
-    });
+      recordingStatus: engine.recordingStatus,
+      recordingElapsedMs: engine.recordingElapsedMs,
+      latestRecording: engine.latestRecording,
+    };
+    const serialized = JSON.stringify(payload);
+    if (serialized === lastSyncedStateRef.current) {
+      return; // Skip redundant IPC message and render cycle
+    }
+    lastSyncedStateRef.current = serialized;
+    desktop.syncState(payload);
   }, [
     desktop,
     engine.activeTool,
@@ -82,8 +166,6 @@ export const DesktopOverlayApp: React.FC = () => {
     engine.toolbarVisible,
     engine.restoreButtonVisible,
     engine.annotationsVisible,
-    engine.settings.toolbarPosition,
-    engine.settings.restoreButtonPosition,
     engine.boardMode,
     engine.resolvedTheme,
     engine.ghostMode,
@@ -91,11 +173,15 @@ export const DesktopOverlayApp: React.FC = () => {
     engine.history.items.length,
     engine.canUndoAll,
     engine.canRedoAll,
-    engine.activeBrush,
+    engine.activeBrush.color,
+    engine.activeBrush.thickness,
+    engine.activeBrush.opacity,
     engine.selectedItemId,
     engine.activePageIndex,
     engine.boardPages.length,
     engine.recordingStatus,
+    engine.recordingElapsedMs,
+    engine.latestRecording,
   ]);
 
   // Listen to incoming commands dispatched from the Floating Toolbar or Global Shortcuts
@@ -167,14 +253,56 @@ export const DesktopOverlayApp: React.FC = () => {
         case 'capture-area':
           engine.setSelectingArea(true);
           break;
+        case 'select-recording-area':
+          engine.setSelectingRecordingArea(true);
+          desktop.setInteractionMode('drawing');
+          desktop.setOverlayIgnoreMouse(false);
+          break;
         case 'copy-screenshot':
           void engine.quickCopyScreenshot();
           break;
         case 'save-png':
           void engine.quickExportPng();
           break;
+        case 'update-settings':
+          if (payload) {
+            engine.updateSettings((prev) => mergeAndValidateSettings({ ...prev, ...(payload as object) }));
+          }
+          break;
         case 'toggle-recording':
           void engine.toggleScreenRecording();
+          break;
+        case 'start-recording':
+          void engine.startRecording(payload as any);
+          break;
+        case 'pause-recording':
+          engine.pauseRecording();
+          break;
+        case 'resume-recording':
+          engine.resumeRecording();
+          break;
+        case 'stop-recording':
+          engine.stopRecording();
+          break;
+        case 'cancel-recording':
+          engine.cancelRecording();
+          break;
+        case 'cancel-recording-area':
+          engine.cancelRecordingArea();
+          break;
+        case 'preview-recording':
+          if (payload) {
+            engine.setLatestRecording(payload as any);
+          }
+          engine.setRecordingPreviewOpen(true);
+          desktop.setInteractionMode('drawing');
+          desktop.setOverlayIgnoreMouse(false);
+          break;
+        case 'download-recording':
+          void engine.downloadLatestRecording();
+          break;
+        case 'clear-recording':
+          engine.clearTemporaryRecording();
           break;
         case 'save-session':
           void engine.saveCurrentSession(payload as string | undefined);
@@ -198,11 +326,14 @@ export const DesktopOverlayApp: React.FC = () => {
   // so existing annotations and drawings remain on screen in pass-through mode without intercepting clicks.
   const isDark = engine.resolvedTheme === 'dark';
   const isInteractive =
-    engine.toolbarVisible &&
-    ((engine.activeTool !== 'pointer' && engine.activeTool !== 'cursor') ||
-      engine.selectingArea ||
-      Boolean(engine.screenshotResult) ||
-      engine.recordingPreviewOpen);
+    engine.recordingPreviewOpen ||
+    Boolean(engine.screenshotResult) ||
+    engine.selectingArea ||
+    engine.selectingRecordingArea ||
+    (engine.toolbarVisible &&
+      engine.annotationsVisible &&
+      engine.activeTool !== 'pointer' &&
+      engine.activeTool !== 'cursor');
 
   return (
     <div
@@ -243,10 +374,15 @@ export const DesktopOverlayApp: React.FC = () => {
         draftItemRef={engine.draftItemRef}
         laserTrailRef={engine.laserTrailRef}
         pointerPosRef={engine.pointerPosRef}
-        onCanvasInteract={() => {}}
+        onCanvasInteract={() => {
+          desktop?.moveToolbarTop();
+        }}
         onBegin={engine.beginStrokeOrShape}
         onMove={engine.moveStrokeOrShape}
-        onEnd={engine.endStrokeOrShape}
+        onEnd={() => {
+          engine.endStrokeOrShape();
+          desktop?.moveToolbarTop();
+        }}
         onTextClick={engine.createTextAt}
       />
 
@@ -275,6 +411,20 @@ export const DesktopOverlayApp: React.FC = () => {
         onCancel={() => engine.setSelectingArea(false)}
       />
 
+      <AreaSelector
+        active={engine.selectingRecordingArea}
+        title="Select Screen Area to Record"
+        confirmLabel="Record Area"
+        initialRect={engine.settings.recording.areaRect}
+        onSelect={(crop) => {
+          void engine.confirmRecordingArea(crop);
+        }}
+        onCancel={() => {
+          engine.cancelRecordingArea();
+          desktop?.dispatchAction('cancel-recording-area');
+        }}
+      />
+
       {engine.screenshotResult && (
         <ScreenshotModal
           result={engine.screenshotResult}
@@ -288,16 +438,20 @@ export const DesktopOverlayApp: React.FC = () => {
           artifact={engine.latestRecording}
           open={engine.recordingPreviewOpen}
           theme={engine.resolvedTheme}
-          onClose={() => engine.setRecordingPreviewOpen(false)}
-          onDiscard={() => engine.setRecordingPreviewOpen(false)}
-          onDownload={() => {
-            if (desktop && engine.latestRecording?.blobUrl) {
-              void desktop.saveCaptureFile(
-                engine.latestRecording.blobUrl,
-                engine.latestRecording.filename
-              );
-            }
+          onClose={() => {
+            engine.setRecordingPreviewOpen(false);
+            desktop?.dispatchAction('close-preview');
+            desktop?.setInteractionMode('pointer');
+            desktop?.setOverlayIgnoreMouse(true);
           }}
+          onDiscard={() => {
+            engine.clearTemporaryRecording();
+            desktop?.dispatchAction('clear-recording');
+            desktop?.dispatchAction('close-preview');
+            desktop?.setInteractionMode('pointer');
+            desktop?.setOverlayIgnoreMouse(true);
+          }}
+          onDownload={(saveAs) => void engine.downloadLatestRecording(saveAs ?? true)}
         />
       )}
     </div>

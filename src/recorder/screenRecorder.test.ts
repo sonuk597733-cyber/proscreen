@@ -1,8 +1,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
+  AreaCropProcessor,
   ProScreenRecorder,
+  RecordingArtifact,
   buildDisplayMediaOptions,
+  calculateRecommendedBitrate,
   classifyCaptureError,
   downloadRecordingArtifact,
   formatByteSize,
@@ -10,8 +13,15 @@ import {
   getBitrateForQuality,
   getExtensionForMimeType,
   getResolutionBounds,
+  getResolutionCapabilities,
+  selectAutomaticRecordingProfile,
   validatePreRecordingStream,
 } from './screenRecorder';
+import {
+  StudioAudioMixer,
+  MicAudioMonitor,
+  enumerateAudioInputDevices,
+} from './audioEngine';
 import { RecordingSettings } from '../types/settings';
 
 const BASE_SETTINGS: RecordingSettings = {
@@ -537,4 +547,389 @@ test('downloadRecordingArtifact validates URL presence cleanly', async () => {
     createdAt: Date.now(),
   });
   assert.equal(res.ok, false);
+});
+
+test('calculateRecommendedBitrate computes adaptive video and studio audio bitrates', () => {
+  // 4K @ 60 FPS Ultra
+  const ultra4k60 = calculateRecommendedBitrate('4k', 60, 'ultra');
+  assert.ok(ultra4k60.videoBitsPerSecond >= 35_000_000, '4K 60fps ultra bitrate is high fidelity');
+  assert.equal(ultra4k60.audioBitsPerSecond, 256_000, 'Ultra audio bitrate is 256kbps studio opus');
+
+  // 1080p @ 60 FPS High
+  const high1080p60 = calculateRecommendedBitrate('1080p', 60, 'high');
+  assert.equal(high1080p60.videoBitsPerSecond, 8_400_000);
+  assert.equal(high1080p60.audioBitsPerSecond, 192_000);
+
+  // 1080p @ 30 FPS High
+  const high1080p30 = calculateRecommendedBitrate('1080p', 30, 'high');
+  assert.equal(high1080p30.videoBitsPerSecond, 6_000_000);
+  assert.equal(high1080p30.audioBitsPerSecond, 192_000);
+
+  // 720p @ 30 FPS Standard
+  const std720p30 = calculateRecommendedBitrate('720p', 30, 'standard');
+  assert.equal(std720p30.videoBitsPerSecond, 1_950_000);
+  assert.equal(std720p30.audioBitsPerSecond, 128_000);
+});
+
+test('getResolutionBounds supports 4K, 8K, 16K and 1440p resolutions', () => {
+  assert.deepEqual(getResolutionBounds('16k'), { width: { ideal: 15360 }, height: { ideal: 8640 } });
+  assert.deepEqual(getResolutionBounds('8k'), { width: { ideal: 7680 }, height: { ideal: 4320 } });
+  assert.deepEqual(getResolutionBounds('4k'), { width: { ideal: 3840 }, height: { ideal: 2160 } });
+  assert.deepEqual(getResolutionBounds('1440p'), { width: { ideal: 2560 }, height: { ideal: 1440 } });
+  assert.deepEqual(getResolutionBounds('1080p'), { width: { ideal: 1920 }, height: { ideal: 1080 } });
+  assert.deepEqual(getResolutionBounds('720p'), { width: { ideal: 1280 }, height: { ideal: 720 } });
+  assert.deepEqual(getResolutionBounds('source'), {});
+});
+
+test('getResolutionCapabilities detects native display size and honest capability flags', () => {
+  // Test with standard 1080p display
+  const caps1080p = getResolutionCapabilities(1920, 1080);
+  assert.equal(caps1080p['4k'].isNative, false);
+  assert.equal(caps1080p['8k'].isNative, false);
+  assert.equal(caps1080p['16k'].isNative, false);
+  assert.ok(caps1080p['4k'].reason?.includes('1920×1080'));
+
+  // Test with 4K UHD display
+  const caps4K = getResolutionCapabilities(3840, 2160);
+  assert.equal(caps4K['4k'].isNative, true);
+  assert.equal(caps4K['8k'].isNative, false);
+  assert.equal(caps4K['4k'].reason, undefined);
+
+  // Test with 8K display
+  const caps8K = getResolutionCapabilities(7680, 4320);
+  assert.equal(caps8K['8k'].isNative, true);
+  assert.equal(caps8K['8k'].reason, undefined);
+});
+
+test('calculateRecommendedBitrate scales for ultra-pro and 120 FPS', () => {
+  const ultraPro4k120 = calculateRecommendedBitrate('4k', 120, 'ultra-pro');
+  assert.ok(ultraPro4k120.videoBitsPerSecond >= 55_000_000, 'Ultra-pro 120 FPS video reaches 55+ Mbps');
+  assert.equal(ultraPro4k120.audioBitsPerSecond, 320_000, 'Ultra-pro audio is 320 kbps studio master');
+
+  const ultraPro8k60 = calculateRecommendedBitrate('8k', 60, 'ultra-pro');
+  assert.ok(ultraPro8k60.videoBitsPerSecond >= 80_000_000, '8K ultra-pro reaches studio master bitrate');
+
+  assert.equal(getBitrateForQuality('ultra-pro'), 12_000_000);
+  assert.equal(getBitrateForQuality('ultra'), 8_000_000);
+  assert.equal(getBitrateForQuality('high'), 5_000_000);
+});
+
+test('selectAutomaticRecordingProfile chooses best genuinely supported configuration automatically', () => {
+  // 1080p display
+  const p1080 = selectAutomaticRecordingProfile(1920, 1080);
+  assert.equal(p1080.resolution, '1080p');
+  assert.equal(p1080.frameRate, 60);
+  assert.equal(p1080.audioBitsPerSecond, 192_000);
+  assert.ok(p1080.videoBitsPerSecond >= 8_000_000);
+
+  // 1440p display
+  const p1440 = selectAutomaticRecordingProfile(2560, 1440);
+  assert.equal(p1440.resolution, '1440p');
+  assert.equal(p1440.frameRate, 60);
+  assert.ok(p1440.videoBitsPerSecond >= 16_000_000);
+
+  // 4K UHD display
+  const p4k = selectAutomaticRecordingProfile(3840, 2160);
+  assert.equal(p4k.resolution, '4k');
+  assert.equal(p4k.frameRate, 60);
+  assert.ok(p4k.videoBitsPerSecond >= 25_000_000);
+});
+
+test('StudioAudioMixer manages dual-audio mixing and single-source passthrough', async () => {
+  const mixer = new StudioAudioMixer();
+
+  const tabTrack = new MockTrack('audio');
+  const micTrack = new MockTrack('audio');
+  const tabStream = new MockMediaStream([tabTrack]) as unknown as MediaStream;
+  const micStream = new MockMediaStream([micTrack]) as unknown as MediaStream;
+
+  // 1. Only tab audio -> passthrough
+  const tabOnly = await mixer.init({ tabStream, micStream: null });
+  assert.equal(tabOnly.length, 1);
+  assert.equal(tabOnly[0], tabTrack as unknown as MediaStreamTrack);
+
+  // 2. Only mic audio -> passthrough
+  const micOnly = await mixer.init({ tabStream: null, micStream });
+  assert.equal(micOnly.length, 1);
+  assert.equal(micOnly[0], micTrack as unknown as MediaStreamTrack);
+
+  // 3. Both audio sources -> Web Audio mixer initialization
+  const g = globalThis as Record<string, unknown>;
+  const origAudioContext = g.AudioContext;
+
+  class MockAudioContext {
+    state = 'running';
+    sampleRate = 48000;
+    currentTime = 0;
+    createMediaStreamDestination() {
+      const mixedTrack = new MockTrack('audio');
+      return {
+        stream: new MockMediaStream([mixedTrack]),
+      };
+    }
+    createDynamicsCompressor() {
+      return {
+        threshold: { setValueAtTime: () => {} },
+        knee: { setValueAtTime: () => {} },
+        ratio: { setValueAtTime: () => {} },
+        attack: { setValueAtTime: () => {} },
+        release: { setValueAtTime: () => {} },
+        connect: () => {},
+      };
+    }
+    createGain() {
+      return {
+        gain: { setValueAtTime: () => {} },
+        connect: () => {},
+      };
+    }
+    createMediaStreamSource() {
+      return {
+        connect: () => {},
+      };
+    }
+    close() {
+      this.state = 'closed';
+      return Promise.resolve();
+    }
+  }
+
+  g.AudioContext = MockAudioContext;
+
+  try {
+    const mixedTracks = await mixer.init({ tabStream, micStream });
+    assert.equal(mixedTracks.length, 1, 'Returns 1 mixed output track from destination node');
+    mixer.cleanup();
+  } finally {
+    g.AudioContext = origAudioContext;
+  }
+});
+
+test('downloadRecordingArtifact uses Electron saveRecordingBuffer when in desktop context', async () => {
+  const g = globalThis as Record<string, unknown>;
+  const origFetch = g.fetch;
+  const origWindow = g.window;
+
+  let savedBuffer: Uint8Array | null = null;
+  let savedFilename = '';
+
+  const mockDesktop = {
+    saveRecordingBuffer: async (buf: Uint8Array, filename: string) => {
+      savedBuffer = buf;
+      savedFilename = filename;
+      return { ok: true, path: `C:\\Users\\dell\\Videos\\${filename}` };
+    },
+  };
+
+  g.window = {
+    proscreenDesktop: mockDesktop,
+  };
+  g.fetch = async () => ({
+    arrayBuffer: async () => new Uint8Array([1, 2, 3, 4]).buffer,
+  }) as unknown as typeof fetch;
+
+  try {
+    const artifact: RecordingArtifact = {
+      id: 'rec_desktop',
+      blobUrl: 'blob:proscreen/test',
+      filename: 'proscreen-screen-2026.webm',
+      mimeType: 'video/webm',
+      durationMs: 5000,
+      sizeBytes: 4,
+      createdAt: Date.now(),
+    };
+
+    const result = await downloadRecordingArtifact(artifact);
+    assert.equal(result.ok, true);
+    assert.equal(result.path, 'C:\\Users\\dell\\Videos\\proscreen-screen-2026.webm');
+    assert.equal(artifact.savedPath, 'C:\\Users\\dell\\Videos\\proscreen-screen-2026.webm');
+    assert.equal(savedFilename, 'proscreen-screen-2026.webm');
+    assert.ok(savedBuffer);
+    assert.equal((savedBuffer as Uint8Array).length, 4);
+  } finally {
+    g.fetch = origFetch;
+    g.window = origWindow;
+  }
+});
+
+test('buildDisplayMediaOptions maps all 3 recording modes accurately', () => {
+  const tabOpts = buildDisplayMediaOptions({ ...BASE_SETTINGS, mode: 'tab' });
+  assert.equal((tabOpts.video as { displaySurface?: string }).displaySurface, 'browser');
+  assert.equal(tabOpts.preferCurrentTab, true);
+
+  const winOpts = buildDisplayMediaOptions({ ...BASE_SETTINGS, mode: 'window' });
+  assert.equal((winOpts.video as { displaySurface?: string }).displaySurface, 'window');
+
+  const screenOpts = buildDisplayMediaOptions({ ...BASE_SETTINGS, mode: 'screen' });
+  assert.equal((screenOpts.video as { displaySurface?: string }).displaySurface, 'monitor');
+});
+
+test('ProScreenRecorder accurately handles pause, resume, and elapsed time calculation', async () => {
+  const videoTrack = new MockTrack('video');
+
+  await withMockBrowserEnv(
+    {
+      getDisplayMedia: async () => new MockMediaStream([videoTrack]),
+    },
+    async () => {
+      const rec = new ProScreenRecorder({
+        onStatusChange: () => {},
+        onComplete: () => {},
+        onCancelled: () => {},
+        onError: (e) => assert.fail(e),
+        onWarning: () => {},
+      });
+
+      await rec.start({ ...BASE_SETTINGS, tabAudio: false, micAudio: false }, false);
+      assert.equal(rec.getStatus(), 'recording');
+
+      // Emulate 1000ms elapsed
+      const t0 = (rec as unknown as { startedAt: number }).startedAt;
+      const elapsed1 = rec.getElapsedMs(t0 + 1000);
+      assert.equal(elapsed1, 1000);
+
+      // Pause at t0 + 1000ms
+      rec.pause(t0 + 1000);
+      assert.equal(rec.getStatus(), 'paused');
+
+      // During pause, elapsed time is frozen at 1000ms even after 2000ms wall-clock pass
+      const elapsedPaused = rec.getElapsedMs(t0 + 3000);
+      assert.equal(elapsedPaused, 1000, 'Elapsed duration remains frozen while paused');
+
+      // Resume at t0 + 3000
+      rec.resume(t0 + 3000);
+      assert.equal(rec.getStatus(), 'recording');
+
+      // Stop at t0 + 4000 (1000ms before pause + 1000ms after resume = 2000ms total)
+      rec.stop(t0 + 4000);
+      assert.equal(rec.getStatus(), 'idle');
+    }
+  );
+});
+
+test('ProScreenRecorder supports all 4 audio combinations', async () => {
+  await withMockBrowserEnv(
+    {
+      getDisplayMedia: async () =>
+        new MockMediaStream([new MockTrack('video'), new MockTrack('audio')]),
+      getUserMedia: async () => new MockMediaStream([new MockTrack('audio')]),
+    },
+    async () => {
+      const rec = new ProScreenRecorder({
+        onStatusChange: () => {},
+        onComplete: () => {},
+        onCancelled: () => {},
+        onError: (e) => assert.fail(e),
+        onWarning: () => {},
+      });
+
+      // 1. Tab ON, Mic OFF
+      const ok1 = await rec.start({ ...BASE_SETTINGS, tabAudio: true, micAudio: false }, false);
+      assert.equal(ok1, true);
+      rec.stop();
+
+      // 2. Tab OFF, Mic ON
+      const ok2 = await rec.start({ ...BASE_SETTINGS, tabAudio: false, micAudio: true }, false);
+      assert.equal(ok2, true);
+      rec.stop();
+
+      // 3. Both ON
+      const ok3 = await rec.start({ ...BASE_SETTINGS, tabAudio: true, micAudio: true }, false);
+      assert.equal(ok3, true);
+      rec.stop();
+
+      // 4. Both OFF (video only)
+      const ok4 = await rec.start({ ...BASE_SETTINGS, tabAudio: false, micAudio: false }, false);
+      assert.equal(ok4, true);
+      rec.stop();
+    }
+  );
+});
+
+test('buildDisplayMediaOptions maps area recording mode to monitor displaySurface', () => {
+  const areaOpts = buildDisplayMediaOptions({ ...BASE_SETTINGS, mode: 'area' });
+  assert.equal((areaOpts.video as { displaySurface?: string }).displaySurface, 'monitor');
+  assert.equal(areaOpts.preferCurrentTab, undefined);
+});
+
+test('AreaCropProcessor safely initializes and cleans up in all environments', async () => {
+  const processor = new AreaCropProcessor();
+  const track = await processor.init(
+    new MockMediaStream([new MockTrack('video')]) as unknown as MediaStream,
+    { x: 100, y: 100, width: 800, height: 600 },
+    30
+  );
+  // In Node.js environment without DOM, returns null gracefully
+  assert.equal(track, null);
+  processor.cleanup();
+});
+
+test('StudioAudioMixer incorporates voice gain staging and speech compressor', async () => {
+  const mixer = new StudioAudioMixer();
+  const micTrack = new MockTrack('audio');
+  const micStream = new MockMediaStream([micTrack]) as unknown as MediaStream;
+
+  const g = globalThis as Record<string, unknown>;
+  const origAudioContext = g.AudioContext;
+
+  let filterCreated = false;
+  let gainApplied = 1.0;
+
+  class EnhancedMockAudioContext {
+    state = 'running';
+    sampleRate = 48000;
+    currentTime = 0;
+    createMediaStreamDestination() {
+      return { stream: new MockMediaStream([new MockTrack('audio')]) };
+    }
+    createDynamicsCompressor() {
+      return {
+        threshold: { setValueAtTime: () => {} },
+        knee: { setValueAtTime: () => {} },
+        ratio: { setValueAtTime: () => {} },
+        attack: { setValueAtTime: () => {} },
+        release: { setValueAtTime: () => {} },
+        connect: () => {},
+      };
+    }
+    createGain() {
+      return {
+        gain: {
+          setValueAtTime: (val: number) => {
+            gainApplied = val;
+          },
+        },
+        connect: () => {},
+      };
+    }
+    createBiquadFilter() {
+      filterCreated = true;
+      return {
+        type: 'highpass',
+        frequency: { setValueAtTime: () => {} },
+        Q: { setValueAtTime: () => {} },
+        connect: () => {},
+      };
+    }
+    createMediaStreamSource() {
+      return { connect: () => {} };
+    }
+    close() {
+      return Promise.resolve();
+    }
+  }
+
+  g.AudioContext = EnhancedMockAudioContext;
+  try {
+    const tracks = await mixer.init({
+      micStream,
+      micGain: 1.8,
+    });
+    assert.equal(tracks.length, 1);
+    assert.equal(filterCreated, true, '80Hz high-pass filter inserted into voice pipeline');
+    assert.equal(gainApplied, 1.8, 'Custom micGain successfully applied');
+    mixer.cleanup();
+  } finally {
+    g.AudioContext = origAudioContext;
+  }
 });

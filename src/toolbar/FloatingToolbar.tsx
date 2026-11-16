@@ -68,7 +68,7 @@ interface FloatingToolbarProps {
   activeBrush: { color: string; thickness: number; opacity: number };
   savedSessions: SavedSession[];
   activePopout: PopoutId | null;
-  onSetActivePopout: (popout: PopoutId | null) => void;
+  onSetActivePopout: (popout: PopoutId | null, anchorOffsetY?: number) => void;
   onSelectTool: (tool: ToolType) => void;
   onSwitchBoard: (mode: BoardMode) => void;
   onPrevBoardPage: () => void;
@@ -99,6 +99,7 @@ interface FloatingToolbarProps {
   onCaptureArea: () => void;
   onCopyScreenshot: () => void;
   onSavePng: () => void;
+  onSelectRecordingArea?: () => void;
   onStartRecording: () => void;
   onPauseRecording: () => void;
   onResumeRecording: () => void;
@@ -118,6 +119,10 @@ interface FloatingToolbarProps {
   onCloseEye?: () => void;
   onOpenEye?: () => void;
   onToggleEye?: () => void;
+  isDesktopToolbarWindow?: boolean;
+  desktopOpenSide?: 'left' | 'right';
+  onDesktopMove?: (x: number, y: number) => void;
+  onSaveDesktopPosition?: (x: number, y: number) => void;
 }
 
 interface TooltipInfo {
@@ -246,6 +251,7 @@ export const FloatingToolbar: React.FC<FloatingToolbarProps> = ({
   onCaptureArea,
   onCopyScreenshot,
   onSavePng,
+  onSelectRecordingArea,
   onStartRecording,
   onPauseRecording,
   onResumeRecording,
@@ -265,20 +271,29 @@ export const FloatingToolbar: React.FC<FloatingToolbarProps> = ({
   onCloseEye,
   onOpenEye,
   onToggleEye,
+  isDesktopToolbarWindow = false,
+  desktopOpenSide,
+  onDesktopMove,
+  onSaveDesktopPosition,
 }) => {
   const toolbarRef = useRef<HTMLDivElement | null>(null);
   const panelRef = useRef<HTMLDivElement | null>(null);
   const dragSessionRef = useRef<{
     startClientX: number;
     startClientY: number;
+    startScreenX: number;
+    startScreenY: number;
     startPosX: number;
     startPosY: number;
+    initialOffsetX: number;
+    initialOffsetY: number;
     latestX: number;
     latestY: number;
     moved: boolean;
   } | null>(null);
   const hoverOpenTimerRef = useRef<number | null>(null);
   const hoverCloseTimerRef = useRef<number | null>(null);
+  const isClickPinnedRef = useRef<boolean>(false);
   const [tooltip, setTooltip] = useState<TooltipInfo | null>(null);
   const [popoutPosition, setPopoutPosition] = useState<PopoutPosition>({
     top: 76,
@@ -287,20 +302,25 @@ export const FloatingToolbar: React.FC<FloatingToolbarProps> = ({
     anchorOffsetY: 16,
   });
 
-  // Clamp toolbar position cleanly when viewport resizes
+  const activeDragRef = useRef<{ cleanup: () => void } | null>(null);
+
+  // Clamp toolbar position cleanly when viewport resizes (Web Extension only)
   useEffect(() => {
+    if (isDesktopToolbarWindow) return;
     const clampIntoViewport = () => {
       const vw = window.innerWidth;
       const vh = window.innerHeight;
       const width = panelRef.current?.offsetWidth ?? 34;
       const height = panelRef.current?.offsetHeight ?? (settings.toolbarCollapsed ? 56 : 420);
       onUpdateSettings((prev) => {
-        const clampedX = Math.max(8, Math.min(vw - width - 8, prev.toolbarPosition.x));
+        const curX = prev.toolbarPosition?.x ?? 16;
+        const curY = prev.toolbarPosition?.y ?? 76;
+        const clampedX = Math.max(8, Math.min(vw - width - 8, curX));
         const clampedY = Math.max(
           8,
-          Math.min(vh - Math.min(height, vh - 16) - 8, prev.toolbarPosition.y)
+          Math.min(vh - Math.min(height, vh - 16) - 8, curY)
         );
-        if (clampedX === prev.toolbarPosition.x && clampedY === prev.toolbarPosition.y) {
+        if (clampedX === curX && clampedY === curY) {
           return prev;
         }
         return {
@@ -311,22 +331,24 @@ export const FloatingToolbar: React.FC<FloatingToolbarProps> = ({
     };
     window.addEventListener('resize', clampIntoViewport);
     return () => window.removeEventListener('resize', clampIntoViewport);
-  }, [onUpdateSettings, settings.toolbarCollapsed]);
+  }, [onUpdateSettings, settings.toolbarCollapsed, isDesktopToolbarWindow]);
 
-  // Close popout when clicking outside toolbar & popout
+  // Close popout when clicking outside toolbar & popout (Web Extension mode only; Desktop mode handled by DesktopToolbarApp)
   useEffect(() => {
-    if (!activePopout) return;
+    if (!activePopout || isDesktopToolbarWindow) return;
     const onGlobalPointerDown = (e: PointerEvent) => {
       const target = e.target as Node | null;
       if (target && toolbarRef.current?.contains(target)) return;
+      isClickPinnedRef.current = false;
       onSetActivePopout(null);
     };
     window.addEventListener('pointerdown', onGlobalPointerDown);
     return () => window.removeEventListener('pointerdown', onGlobalPointerDown);
-  }, [activePopout, onSetActivePopout]);
+  }, [activePopout, onSetActivePopout, isDesktopToolbarWindow]);
 
   useEffect(() => {
     return () => {
+      if (activeDragRef.current) activeDragRef.current.cleanup();
       if (hoverOpenTimerRef.current) window.clearTimeout(hoverOpenTimerRef.current);
       if (hoverCloseTimerRef.current) window.clearTimeout(hoverCloseTimerRef.current);
     };
@@ -388,18 +410,31 @@ export const FloatingToolbar: React.FC<FloatingToolbarProps> = ({
     isDark ? 'bg-[#2D313D]' : 'bg-[#DDE2EC]'
   }`;
 
-  const computePopoutCoords = (id: PopoutId, triggerEl: HTMLElement | null): PopoutPosition => {
+  const computePopoutCoords = (
+    id: PopoutId,
+    triggerEl: HTMLElement | null,
+    forceOpenSide?: 'left' | 'right'
+  ): PopoutPosition => {
     const toolbarRect = panelRef.current?.getBoundingClientRect();
     const triggerRect = triggerEl?.getBoundingClientRect();
-    const vw = window.innerWidth;
-    const vh = window.innerHeight;
-    const tbLeft = toolbarRect?.left ?? settings.toolbarPosition.x;
+    let vw = window.innerWidth;
+    let vh = window.innerHeight;
+    const tbLeft = toolbarRect?.left ?? (isDesktopToolbarWindow ? 4 : (settings?.toolbarPosition?.x ?? 16));
     const tbRight = toolbarRect?.right ?? tbLeft + 34;
-    const openLeft = tbLeft > vw * 0.56;
+
     const estHeight = ESTIMATED_POPOUT_HEIGHT[id] ?? 220;
     const estWidth = ESTIMATED_POPOUT_WIDTH[id] ?? 250;
 
-    const triggerTop = triggerRect?.top ?? toolbarRect?.top ?? settings.toolbarPosition.y;
+    let openLeft = false;
+    if (isDesktopToolbarWindow) {
+      vh = Math.max(vh, 520);
+      vw = Math.max(vw, 384);
+      openLeft = (forceOpenSide ?? desktopOpenSide) === 'left';
+    } else {
+      openLeft = tbLeft > vw * 0.56;
+    }
+
+    const triggerTop = triggerRect?.top ?? toolbarRect?.top ?? (isDesktopToolbarWindow ? 4 : (settings?.toolbarPosition?.y ?? 76));
     const triggerMidY = triggerRect
       ? triggerRect.top + triggerRect.height / 2
       : triggerTop + 12;
@@ -407,7 +442,15 @@ export const FloatingToolbar: React.FC<FloatingToolbarProps> = ({
     const clampedTop = Math.max(8, Math.min(vh - Math.min(estHeight, vh - 16) - 8, desiredTop));
     const anchorOffsetY = Math.max(12, Math.min(estHeight - 12, Math.round(triggerMidY - clampedTop)));
 
-    if (openLeft) {
+    if (openLeft && isDesktopToolbarWindow) {
+      return {
+        top: clampedTop,
+        right: 44,
+        openSide: 'left',
+        anchorOffsetY,
+      };
+    }
+    if (openLeft && !isDesktopToolbarWindow) {
       return {
         top: clampedTop,
         right: Math.max(8, vw - tbLeft - 6),
@@ -417,7 +460,7 @@ export const FloatingToolbar: React.FC<FloatingToolbarProps> = ({
     }
     return {
       top: clampedTop,
-      left: Math.max(8, Math.min(vw - estWidth - 8, tbRight - 6)),
+      left: isDesktopToolbarWindow ? 44 : Math.max(8, Math.min(vw - estWidth - 8, tbRight - 6)),
       openSide: 'right',
       anchorOffsetY,
     };
@@ -428,16 +471,16 @@ export const FloatingToolbar: React.FC<FloatingToolbarProps> = ({
     const toolbarRect = panelRef.current?.getBoundingClientRect();
     const rect = el.getBoundingClientRect();
     const vw = window.innerWidth;
-    const tbLeft = toolbarRect?.left ?? settings.toolbarPosition.x;
+    const tbLeft = toolbarRect?.left ?? (isDesktopToolbarWindow ? 4 : (settings?.toolbarPosition?.x ?? 16));
     const tbRight = toolbarRect?.right ?? tbLeft + 34;
-    const openLeft = tbLeft > vw * 0.56;
+    const openLeft = !isDesktopToolbarWindow && tbLeft > vw * 0.56;
     setTooltip({
       label,
       shortcut,
       top: Math.round(rect.top + rect.height / 2 - 11),
       ...(openLeft
         ? { right: Math.max(8, vw - tbLeft + 6) }
-        : { left: Math.max(8, tbRight + 6) }),
+        : { left: isDesktopToolbarWindow ? 42 : Math.max(8, tbRight + 6) }),
     });
   };
 
@@ -445,14 +488,22 @@ export const FloatingToolbar: React.FC<FloatingToolbarProps> = ({
     setTooltip(null);
   };
 
-  const openPopoutFor = (id: PopoutId, el: HTMLElement | null) => {
+  const openPopoutFor = (id: PopoutId, el: HTMLElement | null, isClick = true) => {
+    if (hoverOpenTimerRef.current) {
+      window.clearTimeout(hoverOpenTimerRef.current);
+      hoverOpenTimerRef.current = null;
+    }
     if (hoverCloseTimerRef.current) {
       window.clearTimeout(hoverCloseTimerRef.current);
       hoverCloseTimerRef.current = null;
     }
+    if (isClick) {
+      isClickPinnedRef.current = true;
+    }
     setTooltip(null);
-    setPopoutPosition(computePopoutCoords(id, el));
-    onSetActivePopout(id);
+    const coords = computePopoutCoords(id, el, desktopOpenSide);
+    setPopoutPosition(coords);
+    onSetActivePopout(id, coords.anchorOffsetY);
   };
 
   const scheduleHoverOpen = (
@@ -473,12 +524,18 @@ export const FloatingToolbar: React.FC<FloatingToolbarProps> = ({
     if (!activePopout || activePopout !== id) {
       showTooltipFor(el, label, shortcut);
     }
+    // If a popout is ALREADY open in desktop mode, hovering another tool should NOT abruptly switch popout
+    // unless the user clicks it. This prevents accidental dropdown popping while moving mouse over the toolbar.
+    if (isDesktopToolbarWindow && activePopout) {
+      return;
+    }
     if (hoverOpenTimerRef.current) {
       window.clearTimeout(hoverOpenTimerRef.current);
     }
     hoverOpenTimerRef.current = window.setTimeout(() => {
-      openPopoutFor(id, el);
-    }, 110);
+      if (dragSessionRef.current) return;
+      openPopoutFor(id, el, false);
+    }, 350);
   };
 
   const scheduleHoverClose = () => {
@@ -487,10 +544,21 @@ export const FloatingToolbar: React.FC<FloatingToolbarProps> = ({
       window.clearTimeout(hoverOpenTimerRef.current);
       hoverOpenTimerRef.current = null;
     }
+    // In desktop window mode, popouts stay open until dismissed by click outside,
+    // Escape, or explicit toggle. Auto-closing on hover leave causes an infinite 320ms
+    // open/close flicker loop because moving the window on Windows triggers spurious mouseleave events.
+    if (isDesktopToolbarWindow) {
+      return;
+    }
+    // If popout was opened by a deliberate tool click, keep it open until click outside or Escape
+    if (isClickPinnedRef.current) {
+      return;
+    }
     if (hoverCloseTimerRef.current) {
       window.clearTimeout(hoverCloseTimerRef.current);
     }
     hoverCloseTimerRef.current = window.setTimeout(() => {
+      isClickPinnedRef.current = false;
       onSetActivePopout(null);
     }, 320);
   };
@@ -502,101 +570,109 @@ export const FloatingToolbar: React.FC<FloatingToolbarProps> = ({
     }
   };
 
-  // Drag Handle Pointer Events (works in both Compact & Expanded states)
-  const finishDragSession = (clientX?: number, clientY?: number) => {
-    const sess = dragSessionRef.current;
-    if (!sess) return;
-    dragSessionRef.current = null;
-    if (typeof clientX === 'number' && typeof clientY === 'number') {
-      const dx = clientX - sess.startClientX;
-      const dy = clientY - sess.startClientY;
-      if (Math.hypot(dx, dy) >= 3) {
-        sess.moved = true;
-        const vw = window.innerWidth;
-        const vh = window.innerHeight;
-        const width = panelRef.current?.offsetWidth ?? 34;
-        const height = panelRef.current?.offsetHeight ?? 56;
-        sess.latestX = Math.round(Math.max(8, Math.min(vw - width - 8, sess.startPosX + dx)));
-        sess.latestY = Math.round(
-          Math.max(8, Math.min(vh - Math.min(height, vh - 16) - 8, sess.startPosY + dy))
-        );
-      }
-    }
-
-    if (sess.moved) {
-      let finalX = sess.latestX;
-      if (settings.edgeSnapping) {
-        const vw = window.innerWidth;
-        const width = panelRef.current?.offsetWidth ?? 34;
-        if (finalX <= 28) {
-          finalX = 12;
-        } else if (finalX + width >= vw - 28) {
-          finalX = Math.max(12, vw - width - 12);
-        }
-      }
-      onUpdateSettings((p) => ({
-        ...p,
-        toolbarPosition: { x: finalX, y: sess.latestY },
-      }));
-    }
-  };
-
   const handleDragPointerDown = (e: React.PointerEvent<HTMLButtonElement>) => {
+    // In Desktop Electron window, native -webkit-app-region: drag handles window movement directly in Windows DWM!
+    if (isDesktopToolbarWindow) {
+      return;
+    }
     if (e.button !== 0) return;
     e.preventDefault();
     e.stopPropagation();
+
+    // Cancel existing active drag if any
+    if (activeDragRef.current) {
+      activeDragRef.current.cleanup();
+    }
+
+    if (hoverOpenTimerRef.current) {
+      window.clearTimeout(hoverOpenTimerRef.current);
+      hoverOpenTimerRef.current = null;
+    }
+    if (hoverCloseTimerRef.current) {
+      window.clearTimeout(hoverCloseTimerRef.current);
+      hoverCloseTimerRef.current = null;
+    }
     hideTooltip();
     onSetActivePopout(null);
-    dragSessionRef.current = {
-      startClientX: e.clientX,
-      startClientY: e.clientY,
-      startPosX: settings.toolbarPosition.x,
-      startPosY: settings.toolbarPosition.y,
-      latestX: settings.toolbarPosition.x,
-      latestY: settings.toolbarPosition.y,
-      moved: false,
+
+    const startWinX = settings?.toolbarPosition?.x ?? 16;
+    const startWinY = settings?.toolbarPosition?.y ?? 76;
+    const startClientX = e.clientX;
+    const startClientY = e.clientY;
+
+    let moved = false;
+    let latestX = startWinX;
+    let latestY = startWinY;
+
+    const cleanup = () => {
+      window.removeEventListener('pointermove', onWindowPointerMove, true);
+      window.removeEventListener('pointerup', cleanup, true);
+      window.removeEventListener('pointercancel', cleanup, true);
+      window.removeEventListener('mouseup', cleanup, true);
+      window.removeEventListener('blur', cleanup, true);
+      activeDragRef.current = null;
+      dragSessionRef.current = null;
+
+      if (moved) {
+        let finalX = latestX;
+        let finalY = latestY;
+        if (settings.edgeSnapping) {
+          const vw = window.innerWidth;
+          const width = panelRef.current?.offsetWidth ?? 34;
+          if (finalX <= 28) {
+            finalX = 12;
+          } else if (finalX + width >= vw - 28) {
+            finalX = Math.max(12, vw - width - 12);
+          }
+        }
+        onUpdateSettings((p) => ({
+          ...p,
+          toolbarPosition: { x: finalX, y: finalY },
+        }));
+      }
     };
 
     const onWindowPointerMove = (ev: PointerEvent) => {
-      const sess = dragSessionRef.current;
-      if (!sess) return;
-      const dx = ev.clientX - sess.startClientX;
-      const dy = ev.clientY - sess.startClientY;
-      if (!sess.moved && Math.hypot(dx, dy) < 3) return;
-      sess.moved = true;
+      if (ev.buttons !== undefined && (ev.buttons & 1) === 0) {
+        cleanup();
+        return;
+      }
+
+      const dx = ev.clientX - startClientX;
+      const dy = ev.clientY - startClientY;
+
+      if (!moved && Math.hypot(dx, dy) < 3) return;
+      moved = true;
 
       const vw = window.innerWidth;
       const vh = window.innerHeight;
       const width = panelRef.current?.offsetWidth ?? 34;
       const height = panelRef.current?.offsetHeight ?? 56;
-      const nextX = Math.round(Math.max(8, Math.min(vw - width - 8, sess.startPosX + dx)));
-      const nextY = Math.round(
-        Math.max(8, Math.min(vh - Math.min(height, vh - 16) - 8, sess.startPosY + dy))
+      latestX = Math.round(Math.max(8, Math.min(vw - width - 8, startWinX + dx)));
+      latestY = Math.round(
+        Math.max(8, Math.min(vh - Math.min(height, vh - 16) - 8, startWinY + dy))
       );
-      sess.latestX = nextX;
-      sess.latestY = nextY;
 
       onUpdateSettings((prev) => ({
         ...prev,
-        toolbarPosition: { x: nextX, y: nextY },
+        toolbarPosition: { x: latestX, y: latestY },
       }));
     };
 
-    const cleanup = (ev?: PointerEvent) => {
-      window.removeEventListener('pointermove', onWindowPointerMove, true);
-      window.removeEventListener('pointerup', cleanup, true);
-      window.removeEventListener('pointercancel', cleanup, true);
-      finishDragSession(ev?.clientX, ev?.clientY);
-    };
+    activeDragRef.current = { cleanup };
 
     window.addEventListener('pointermove', onWindowPointerMove, true);
     window.addEventListener('pointerup', cleanup, true);
     window.addEventListener('pointercancel', cleanup, true);
+    window.addEventListener('mouseup', cleanup, true);
+    window.addEventListener('blur', cleanup, true);
   };
 
   const handleToolbarKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
     if (e.key === 'Escape' && activePopout) {
+      e.preventDefault();
       e.stopPropagation();
+      isClickPinnedRef.current = false;
       onSetActivePopout(null);
       return;
     }
@@ -629,26 +705,39 @@ export const FloatingToolbar: React.FC<FloatingToolbarProps> = ({
   const shapeMenuActive = isShapeTool(activeTool);
 
   const estimatedHeight = isCompactState ? 56 : isDense ? 390 : 426;
+  const rawTbX = settings?.toolbarPosition?.x ?? 16;
+  const rawTbY = settings?.toolbarPosition?.y ?? 76;
   const clampedToolbarX =
     typeof window !== 'undefined'
-      ? Math.max(8, Math.min(window.innerWidth - 42, settings.toolbarPosition.x))
-      : settings.toolbarPosition.x;
+      ? Math.max(8, Math.min(window.innerWidth - 42, rawTbX))
+      : rawTbX;
   const clampedToolbarY =
     typeof window !== 'undefined'
       ? Math.max(
           8,
           Math.min(
             Math.max(8, window.innerHeight - estimatedHeight - 8),
-            settings.toolbarPosition.y
+            rawTbY
           )
         )
-      : settings.toolbarPosition.y;
+      : rawTbY;
+
+  const effectiveOpenSide = desktopOpenSide ?? popoutPosition.openSide;
 
   const shortcutFor = (action: string) =>
     settings.shortcuts.find((s) => s.action === action)?.keys;
 
-  const activeStyle = (active: boolean): React.CSSProperties | undefined =>
-    active ? { backgroundColor: accent } : undefined;
+  const activeStyle = (active: boolean): React.CSSProperties =>
+    ({
+      ...(active ? { backgroundColor: accent } : {}),
+      cursor: 'pointer',
+      WebkitAppRegion: 'no-drag',
+    }) as React.CSSProperties;
+
+  const buttonBaseStyle: React.CSSProperties = {
+    cursor: 'pointer',
+    WebkitAppRegion: 'no-drag',
+  } as React.CSSProperties;
 
   const cursorActive =
     activeTool === 'pointer' || activeTool === 'cursor' || activeTool === 'select' || activeTool === 'laser';
@@ -657,7 +746,11 @@ export const FloatingToolbar: React.FC<FloatingToolbarProps> = ({
   const brushDotPx = Math.max(5, Math.min(12, Math.round(4 + (activeBrush.thickness / 36) * 8)));
 
   return (
-    <div ref={toolbarRef} onKeyDown={handleToolbarKeyDown} className="select-none">
+    <div
+      ref={toolbarRef}
+      onKeyDown={handleToolbarKeyDown}
+      className={`select-none ${isDesktopToolbarWindow ? 'relative w-full h-full' : ''}`}
+    >
       {/* Main Single-Column Floating Toolbar (Exact Epic Pen Proportions) */}
       <div
         ref={panelRef}
@@ -670,28 +763,42 @@ export const FloatingToolbar: React.FC<FloatingToolbarProps> = ({
         data-interaction-mode={activeTool === 'pointer' || activeTool === 'cursor' ? 'pointer' : 'drawing'}
         data-presentation-mode={presentationMode ? 'true' : 'false'}
         onMouseEnter={cancelHoverClose}
-        style={{
-          position: 'fixed',
-          left: clampedToolbarX,
-          top: clampedToolbarY,
-          zIndex: 2147483635,
-          maxHeight: 'calc(100vh - 16px)',
-          pointerEvents: 'auto',
-        }}
-        className={`w-[34px] flex flex-col items-center px-[3px] py-[4px] rounded-[4px] border backdrop-blur-xl transition-colors duration-150 overflow-y-auto pointer-events-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden ${surfaceClasses}`}
+        style={
+          isDesktopToolbarWindow
+            ? {
+                position: 'absolute',
+                left: 4,
+                top: 4,
+                maxHeight: 'calc(100vh - 8px)',
+                pointerEvents: 'auto',
+              }
+            : {
+                position: 'fixed',
+                left: clampedToolbarX,
+                top: clampedToolbarY,
+                zIndex: 2147483635,
+                maxHeight: 'calc(100vh - 16px)',
+                pointerEvents: 'auto',
+              }
+        }
+        className={`w-[34px] flex flex-col items-center px-[3px] py-[4px] rounded-[4px] border ${isDesktopToolbarWindow ? '' : 'backdrop-blur-xl transition-colors duration-150'} overflow-y-auto pointer-events-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden ${surfaceClasses}`}
       >
         {/* 1. Drag Handle (Dark Circular Cap inspired by Epic Pen handle) */}
         <button
           type="button"
           data-testid="toolbar-drag-handle"
-          onPointerDown={handleDragPointerDown}
+          onPointerDown={isDesktopToolbarWindow ? undefined : handleDragPointerDown}
           onMouseEnter={(e) => scheduleHoverOpen(null, e.currentTarget, 'Drag Toolbar')}
           onMouseLeave={hideTooltip}
           aria-label="Drag toolbar"
-          style={{ touchAction: 'none' }}
+          style={
+            isDesktopToolbarWindow
+              ? ({ touchAction: 'none', WebkitAppRegion: 'drag', cursor: 'grab' } as React.CSSProperties)
+              : ({ touchAction: 'none', WebkitAppRegion: 'no-drag', cursor: 'grab' } as React.CSSProperties)
+          }
           className="w-[24px] h-[24px] rounded-full bg-[#151821] text-white border border-slate-700/75 shadow-sm inline-flex items-center justify-center cursor-grab active:cursor-grabbing shrink-0 hover:bg-[#222736] transition-colors"
         >
-          <GripHorizontal className="w-[12px] h-[12px]" strokeWidth={1.8} />
+          <GripHorizontal className="w-[12px] h-[12px] pointer-events-none" strokeWidth={1.8} />
         </button>
 
         {/* 2. Eye Toggle (Open Eye -> Close Eye) */}
@@ -699,6 +806,7 @@ export const FloatingToolbar: React.FC<FloatingToolbarProps> = ({
           type="button"
           data-testid="toolbar-eye-toggle"
           data-eye-state="open"
+          onPointerDown={(e) => e.stopPropagation()}
           onClick={(e) => {
             e.stopPropagation();
             hideTooltip();
@@ -741,13 +849,18 @@ export const FloatingToolbar: React.FC<FloatingToolbarProps> = ({
               aria-pressed={cursorActive}
               aria-expanded={activePopout === 'cursor'}
               style={activeStyle(cursorActive)}
+              onPointerDown={(e) => e.stopPropagation()}
               onMouseEnter={(e) =>
                 scheduleHoverOpen('cursor', e.currentTarget, 'Pointer (Default Cursor)', shortcutFor('cursor'))
               }
               onMouseLeave={scheduleHoverClose}
               onClick={(e) => {
-                onSelectTool('pointer');
-                openPopoutFor('cursor', e.currentTarget);
+                if (activePopout === 'cursor') {
+                  onSetActivePopout(null);
+                } else {
+                  onSelectTool('pointer');
+                  openPopoutFor('cursor', e.currentTarget);
+                }
               }}
               className={toolBtnClass(cursorActive)}
             >
@@ -769,6 +882,7 @@ export const FloatingToolbar: React.FC<FloatingToolbarProps> = ({
               aria-pressed={settings.timer.enabled}
               aria-expanded={activePopout === 'timer'}
               style={activeStyle(settings.timer.enabled)}
+              onPointerDown={(e) => e.stopPropagation()}
               onMouseEnter={(e) =>
                 scheduleHoverOpen(
                   'timer',
@@ -779,7 +893,13 @@ export const FloatingToolbar: React.FC<FloatingToolbarProps> = ({
                 )
               }
               onMouseLeave={scheduleHoverClose}
-              onClick={(e) => openPopoutFor('timer', e.currentTarget)}
+              onClick={(e) => {
+                if (activePopout === 'timer') {
+                  onSetActivePopout(null);
+                } else {
+                  openPopoutFor('timer', e.currentTarget);
+                }
+              }}
               className={toolBtnClass(settings.timer.enabled)}
             >
               <Timer className={iconDim} strokeWidth={iconStroke} />
@@ -795,17 +915,23 @@ export const FloatingToolbar: React.FC<FloatingToolbarProps> = ({
             {/* 5. Pen */}
             <button
               type="button"
+              data-testid="toolbar-pen-btn"
               aria-label="Pen"
               aria-pressed={activeTool === 'pen'}
               aria-expanded={activePopout === 'pen'}
               style={activeStyle(activeTool === 'pen')}
+              onPointerDown={(e) => e.stopPropagation()}
               onMouseEnter={(e) =>
                 scheduleHoverOpen('pen', e.currentTarget, 'Pen Tool', shortcutFor('pen'))
               }
               onMouseLeave={scheduleHoverClose}
               onClick={(e) => {
-                onSelectTool('pen');
-                openPopoutFor('pen', e.currentTarget);
+                if (activePopout === 'pen') {
+                  onSetActivePopout(null);
+                } else {
+                  onSelectTool('pen');
+                  openPopoutFor('pen', e.currentTarget);
+                }
               }}
               className={toolBtnClass(activeTool === 'pen')}
             >
@@ -816,10 +942,12 @@ export const FloatingToolbar: React.FC<FloatingToolbarProps> = ({
             {/* 6. Highlighter */}
             <button
               type="button"
+              data-testid="toolbar-highlighter-btn"
               aria-label="Highlighter"
               aria-pressed={activeTool === 'highlighter'}
               aria-expanded={activePopout === 'highlighter'}
               style={activeStyle(activeTool === 'highlighter')}
+              onPointerDown={(e) => e.stopPropagation()}
               onMouseEnter={(e) =>
                 scheduleHoverOpen(
                   'highlighter',
@@ -830,8 +958,12 @@ export const FloatingToolbar: React.FC<FloatingToolbarProps> = ({
               }
               onMouseLeave={scheduleHoverClose}
               onClick={(e) => {
-                onSelectTool('highlighter');
-                openPopoutFor('highlighter', e.currentTarget);
+                if (activePopout === 'highlighter') {
+                  onSetActivePopout(null);
+                } else {
+                  onSelectTool('highlighter');
+                  openPopoutFor('highlighter', e.currentTarget);
+                }
               }}
               className={toolBtnClass(activeTool === 'highlighter')}
             >
@@ -842,17 +974,25 @@ export const FloatingToolbar: React.FC<FloatingToolbarProps> = ({
             {/* 7. Arrow & Shapes */}
             <button
               type="button"
+              data-testid="toolbar-shapes-btn"
               aria-label="Arrow and Shapes"
               aria-expanded={activePopout === 'shapes'}
               aria-pressed={shapeMenuActive}
               style={activeStyle(shapeMenuActive)}
+              onPointerDown={(e) => e.stopPropagation()}
               onMouseEnter={(e) =>
                 scheduleHoverOpen('shapes', e.currentTarget, 'Arrow & Shapes', shortcutFor('arrow'))
               }
               onMouseLeave={scheduleHoverClose}
               onClick={(e) => {
-                if (!shapeMenuActive) onSelectTool('arrow');
-                openPopoutFor('shapes', e.currentTarget);
+                if (activePopout === 'shapes') {
+                  onSetActivePopout(null);
+                } else {
+                  if (!shapeMenuActive) {
+                    onSelectTool('arrow');
+                  }
+                  openPopoutFor('shapes', e.currentTarget);
+                }
               }}
               className={toolBtnClass(shapeMenuActive)}
             >
@@ -867,17 +1007,23 @@ export const FloatingToolbar: React.FC<FloatingToolbarProps> = ({
             {/* 8. Text */}
             <button
               type="button"
+              data-testid="toolbar-text-btn"
               aria-label="Text"
               aria-pressed={activeTool === 'text'}
               aria-expanded={activePopout === 'text'}
               style={activeStyle(activeTool === 'text')}
+              onPointerDown={(e) => e.stopPropagation()}
               onMouseEnter={(e) =>
                 scheduleHoverOpen('text', e.currentTarget, 'Text Tool', shortcutFor('text'))
               }
               onMouseLeave={scheduleHoverClose}
               onClick={(e) => {
-                onSelectTool('text');
-                openPopoutFor('text', e.currentTarget);
+                if (activePopout === 'text') {
+                  onSetActivePopout(null);
+                } else {
+                  onSelectTool('text');
+                  openPopoutFor('text', e.currentTarget);
+                }
               }}
               className={toolBtnClass(activeTool === 'text')}
             >
@@ -888,17 +1034,23 @@ export const FloatingToolbar: React.FC<FloatingToolbarProps> = ({
             {/* 9. Eraser */}
             <button
               type="button"
+              data-testid="toolbar-eraser-btn"
               aria-label="Eraser"
               aria-pressed={activeTool === 'eraser'}
               aria-expanded={activePopout === 'eraser'}
               style={activeStyle(activeTool === 'eraser')}
+              onPointerDown={(e) => e.stopPropagation()}
               onMouseEnter={(e) =>
                 scheduleHoverOpen('eraser', e.currentTarget, 'Eraser & Clear', shortcutFor('eraser'))
               }
               onMouseLeave={scheduleHoverClose}
               onClick={(e) => {
-                onSelectTool('eraser');
-                openPopoutFor('eraser', e.currentTarget);
+                if (activePopout === 'eraser') {
+                  onSetActivePopout(null);
+                } else {
+                  onSelectTool('eraser');
+                  openPopoutFor('eraser', e.currentTarget);
+                }
               }}
               className={toolBtnClass(activeTool === 'eraser')}
             >
@@ -912,6 +1064,8 @@ export const FloatingToolbar: React.FC<FloatingToolbarProps> = ({
               data-testid="toolbar-brush-btn"
               aria-label="Brush Size"
               aria-expanded={activePopout === 'brush'}
+              style={buttonBaseStyle}
+              onPointerDown={(e) => e.stopPropagation()}
               onMouseEnter={(e) =>
                 scheduleHoverOpen(
                   'brush',
@@ -920,7 +1074,13 @@ export const FloatingToolbar: React.FC<FloatingToolbarProps> = ({
                 )
               }
               onMouseLeave={scheduleHoverClose}
-              onClick={(e) => openPopoutFor('brush', e.currentTarget)}
+              onClick={(e) => {
+                if (activePopout === 'brush') {
+                  onSetActivePopout(null);
+                } else {
+                  openPopoutFor('brush', e.currentTarget);
+                }
+              }}
               className={iconBtnClass(activePopout === 'brush')}
             >
               <span
@@ -940,8 +1100,11 @@ export const FloatingToolbar: React.FC<FloatingToolbarProps> = ({
             {/* 11. Undo */}
             <button
               type="button"
+              data-testid="toolbar-undo-btn"
               aria-label="Undo"
               disabled={!canUndoAll}
+              style={{ ...buttonBaseStyle, cursor: canUndoAll ? 'pointer' : 'not-allowed' }}
+              onPointerDown={(e) => e.stopPropagation()}
               onMouseEnter={(e) =>
                 scheduleHoverOpen('undo', e.currentTarget, 'Undo', shortcutFor('undo'))
               }
@@ -956,8 +1119,11 @@ export const FloatingToolbar: React.FC<FloatingToolbarProps> = ({
             {/* 12. Redo */}
             <button
               type="button"
+              data-testid="toolbar-redo-btn"
               aria-label="Redo"
               disabled={!canRedoAll}
+              style={{ ...buttonBaseStyle, cursor: canRedoAll ? 'pointer' : 'not-allowed' }}
+              onPointerDown={(e) => e.stopPropagation()}
               onMouseEnter={(e) =>
                 scheduleHoverOpen(null, e.currentTarget, 'Redo', shortcutFor('redo'))
               }
@@ -974,6 +1140,8 @@ export const FloatingToolbar: React.FC<FloatingToolbarProps> = ({
               data-testid="toolbar-clear-btn"
               aria-label="Clear All Annotations"
               disabled={annotationCount === 0}
+              style={{ ...buttonBaseStyle, cursor: annotationCount > 0 ? 'pointer' : 'not-allowed' }}
+              onPointerDown={(e) => e.stopPropagation()}
               onMouseEnter={(e) =>
                 scheduleHoverOpen(null, e.currentTarget, 'Clear All', shortcutFor('clear'))
               }
@@ -994,11 +1162,18 @@ export const FloatingToolbar: React.FC<FloatingToolbarProps> = ({
               aria-expanded={activePopout === 'board'}
               aria-pressed={boardMode !== 'webpage'}
               style={activeStyle(boardMode !== 'webpage')}
+              onPointerDown={(e) => e.stopPropagation()}
               onMouseEnter={(e) =>
                 scheduleHoverOpen('board', e.currentTarget, 'Whiteboard & Sessions', shortcutFor('whiteboard'))
               }
               onMouseLeave={scheduleHoverClose}
-              onClick={(e) => openPopoutFor('board', e.currentTarget)}
+              onClick={(e) => {
+                if (activePopout === 'board') {
+                  onSetActivePopout(null);
+                } else {
+                  openPopoutFor('board', e.currentTarget);
+                }
+              }}
               className={toolBtnClass(boardMode !== 'webpage')}
             >
               <Presentation className={iconDim} strokeWidth={iconStroke} />
@@ -1011,6 +1186,8 @@ export const FloatingToolbar: React.FC<FloatingToolbarProps> = ({
               data-testid="toolbar-screenshot-btn"
               aria-label="Screenshot"
               aria-expanded={activePopout === 'screenshot'}
+              style={buttonBaseStyle}
+              onPointerDown={(e) => e.stopPropagation()}
               onMouseEnter={(e) =>
                 scheduleHoverOpen(
                   'screenshot',
@@ -1020,7 +1197,13 @@ export const FloatingToolbar: React.FC<FloatingToolbarProps> = ({
                 )
               }
               onMouseLeave={scheduleHoverClose}
-              onClick={(e) => openPopoutFor('screenshot', e.currentTarget)}
+              onClick={(e) => {
+                if (activePopout === 'screenshot') {
+                  onSetActivePopout(null);
+                } else {
+                  openPopoutFor('screenshot', e.currentTarget);
+                }
+              }}
               className={iconBtnClass(activePopout === 'screenshot')}
             >
               <Camera className={iconDim} strokeWidth={iconStroke} />
@@ -1034,6 +1217,8 @@ export const FloatingToolbar: React.FC<FloatingToolbarProps> = ({
               aria-label="Video Recorder"
               aria-pressed={isRecording}
               aria-expanded={activePopout === 'recorder'}
+              style={buttonBaseStyle}
+              onPointerDown={(e) => e.stopPropagation()}
               onMouseEnter={(e) =>
                 scheduleHoverOpen(
                   'recorder',
@@ -1042,7 +1227,13 @@ export const FloatingToolbar: React.FC<FloatingToolbarProps> = ({
                 )
               }
               onMouseLeave={scheduleHoverClose}
-              onClick={(e) => openPopoutFor('recorder', e.currentTarget)}
+              onClick={(e) => {
+                if (activePopout === 'recorder') {
+                  onSetActivePopout(null);
+                } else {
+                  openPopoutFor('recorder', e.currentTarget);
+                }
+              }}
               className={`${btnDim} relative inline-flex items-center justify-center rounded-[3px] transition-colors duration-100 cursor-pointer shrink-0 ${
                 isRecording
                   ? 'bg-rose-600 text-white shadow-sm'
@@ -1071,11 +1262,19 @@ export const FloatingToolbar: React.FC<FloatingToolbarProps> = ({
               data-testid="toolbar-settings-btn"
               aria-label="Settings"
               aria-expanded={activePopout === 'settings'}
+              style={buttonBaseStyle}
+              onPointerDown={(e) => e.stopPropagation()}
               onMouseEnter={(e) =>
                 scheduleHoverOpen('settings', e.currentTarget, 'Preferences & Settings')
               }
               onMouseLeave={scheduleHoverClose}
-              onClick={(e) => openPopoutFor('settings', e.currentTarget)}
+              onClick={(e) => {
+                if (activePopout === 'settings') {
+                  onSetActivePopout(null);
+                } else {
+                  openPopoutFor('settings', e.currentTarget);
+                }
+              }}
               className={iconBtnClass(activePopout === 'settings')}
             >
               <Settings className={iconDim} strokeWidth={iconStroke} />
@@ -1087,13 +1286,22 @@ export const FloatingToolbar: React.FC<FloatingToolbarProps> = ({
             {/* 18. Signature Epic Pen Bottom Color Selector (2x2 CMYK mini grid + active swatch) */}
             <button
               type="button"
+              data-testid="toolbar-color-btn"
               aria-label="Color"
               aria-expanded={activePopout === 'color'}
+              style={buttonBaseStyle}
+              onPointerDown={(e) => e.stopPropagation()}
               onMouseEnter={(e) =>
                 scheduleHoverOpen('color', e.currentTarget, `Color (${activeBrush.color})`)
               }
               onMouseLeave={scheduleHoverClose}
-              onClick={(e) => openPopoutFor('color', e.currentTarget)}
+              onClick={(e) => {
+                if (activePopout === 'color') {
+                  onSetActivePopout(null);
+                } else {
+                  openPopoutFor('color', e.currentTarget);
+                }
+              }}
               className={`w-[26px] p-[2px] flex flex-col items-stretch gap-[2px] rounded-[3px] border cursor-pointer transition-colors shrink-0 ${
                 activePopout === 'color'
                   ? isDark
@@ -1150,11 +1358,17 @@ export const FloatingToolbar: React.FC<FloatingToolbarProps> = ({
         </div>
       )}
 
-      {/* Contextual Epic-Style Hover Flyouts */}
-      {!isCompactState && (
+      {/* Contextual Epic-Style Hover Flyouts (In desktop mode, rendered by dedicated dropdownWindow) */}
+      {!isCompactState && !isDesktopToolbarWindow && (
         <ToolbarPopouts
           activePopout={activePopout}
-          popoutPosition={popoutPosition}
+          popoutPosition={
+            isDesktopToolbarWindow
+              ? (desktopOpenSide === 'left'
+                  ? { ...popoutPosition, left: undefined, right: 44, openSide: 'left' }
+                  : { ...popoutPosition, left: 44, right: undefined, openSide: 'right' })
+              : popoutPosition
+          }
           activeTool={activeTool}
           boardMode={boardMode}
           boardPageIndex={boardPageIndex}
@@ -1211,6 +1425,7 @@ export const FloatingToolbar: React.FC<FloatingToolbarProps> = ({
           onCaptureArea={onCaptureArea}
           onCopyScreenshot={onCopyScreenshot}
           onSavePng={onSavePng}
+          onSelectRecordingArea={onSelectRecordingArea}
           onStartRecording={onStartRecording}
           onPauseRecording={onPauseRecording}
           onResumeRecording={onResumeRecording}

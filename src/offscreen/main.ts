@@ -419,7 +419,7 @@ async function startOffscreenRecording(payload: {
       return { ok: false, error: `MediaRecorder is in invalid state: ${recorder.state}` };
     }
 
-    recorder.start(250);
+    recorder.start(1000);
     recDebugLog('Offscreen MediaRecorder state', {
       state: recorder.state,
       mimeType: actualMimeType,

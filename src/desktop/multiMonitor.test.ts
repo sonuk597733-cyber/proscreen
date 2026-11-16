@@ -128,6 +128,26 @@ test('clampToolbarToDisplays prevents off-screen placement', () => {
   // Try placing off the bottom
   const clampedBottom = clampToolbarToDisplays(50, 2000, 50, 400, displays);
   assert.equal(clampedBottom.y, 1040 - 400);
+
+  // Full vertical range dragging: toolbar can move freely down to bottom edge while keeping handle accessible
+  const clampedDraggingBottom = clampToolbarToDisplays(50, 2000, 44, 520, displays, {
+    allowFullVerticalRange: true,
+  });
+  assert.equal(clampedDraggingBottom.y, 1040 - 44, 'Dragging allows toolbar to reach bottom of work area');
+  assert.equal(clampedDraggingBottom.x, 50);
+
+  // Full drag in all four corners
+  const topLeft = clampToolbarToDisplays(-500, -500, 44, 520, displays, { allowFullVerticalRange: true });
+  assert.deepEqual(topLeft, { x: 0, y: 0 });
+
+  const topRight = clampToolbarToDisplays(3000, -500, 44, 520, displays, { allowFullVerticalRange: true });
+  assert.deepEqual(topRight, { x: 1920 - 44, y: 0 });
+
+  const bottomLeft = clampToolbarToDisplays(-500, 3000, 44, 520, displays, { allowFullVerticalRange: true });
+  assert.deepEqual(bottomLeft, { x: 0, y: 1040 - 44 });
+
+  const bottomRight = clampToolbarToDisplays(3000, 3000, 44, 520, displays, { allowFullVerticalRange: true });
+  assert.deepEqual(bottomRight, { x: 1920 - 44, y: 1040 - 44 });
 });
 
 test('globalToDisplayCoords translates coordinates accurately', () => {

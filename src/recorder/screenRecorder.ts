@@ -1,10 +1,12 @@
 import {
+  RecordingAreaRect,
   RecordingMode,
   RecordingQuality,
   RecordingResolution,
   RecordingSettings,
 } from '../types/settings';
 import { isExtensionContext } from '../utils/env';
+import { StudioAudioMixer, acquireMicrophoneStream } from './audioEngine';
 import { recDebugLog } from './debugLog';
 
 export type RecordingStatus = 'idle' | 'recording' | 'paused' | 'stopping';
@@ -26,8 +28,14 @@ export interface RecordingArtifact {
   mode?: RecordingMode;
   videoWidth?: number;
   videoHeight?: number;
+  sourceWidth?: number;
+  sourceHeight?: number;
+  codec?: string;
+  frameRate?: number;
+  quality?: RecordingQuality;
   hasAudio?: boolean;
   fromOffscreen?: boolean;
+  savedPath?: string;
 }
 
 export type CaptureErrorPhase =
@@ -39,11 +47,12 @@ export type CaptureErrorPhase =
 const MAX_DATA_URL_DOWNLOAD_BYTES = 35 * 1024 * 1024;
 
 const CANDIDATE_FORMATS: RecordingFormatOption[] = [
-  { label: 'WebM (VP9 + Opus)', mimeType: 'video/webm;codecs=vp9,opus' },
-  { label: 'WebM (VP9)', mimeType: 'video/webm;codecs=vp9' },
+  { label: 'WebM (Studio HD)', mimeType: 'video/webm' },
+  { label: 'MP4 (H.264 HD)', mimeType: 'video/mp4' },
   { label: 'WebM (VP8 + Opus)', mimeType: 'video/webm;codecs=vp8,opus' },
-  { label: 'WebM (Standard)', mimeType: 'video/webm' },
-  { label: 'MP4 (H.264)', mimeType: 'video/mp4' },
+  { label: 'WebM (VP9)', mimeType: 'video/webm;codecs=vp9' },
+  { label: 'MP4 (H.264 + AAC)', mimeType: 'video/mp4;codecs=avc1,mp4a.40.2' },
+  { label: 'WebM (VP9 + Opus)', mimeType: 'video/webm;codecs=vp9,opus' },
 ];
 
 export function getSupportedRecordingFormats(): RecordingFormatOption[] {
@@ -59,10 +68,16 @@ export function getSupportedRecordingFormats(): RecordingFormatOption[] {
   });
 }
 
-export function resolveRecordingMimeType(preferred: string): string {
+export function resolveRecordingMimeType(preferred: string, hasAudio = true): string {
   const supported = getSupportedRecordingFormats();
   if (preferred && preferred !== 'auto' && supported.some((f) => f.mimeType === preferred)) {
     return preferred;
+  }
+  if (!hasAudio) {
+    const videoOnly = supported.find(
+      (f) => !f.mimeType.includes('opus') && !f.mimeType.includes('mp4a')
+    );
+    if (videoOnly) return videoOnly.mimeType;
   }
   return supported[0]?.mimeType ?? 'video/webm';
 }
@@ -71,18 +86,193 @@ export function getExtensionForMimeType(mimeType: string): 'mp4' | 'webm' {
   return mimeType.toLowerCase().includes('mp4') ? 'mp4' : 'webm';
 }
 
+export function calculateRecommendedBitrate(
+  resolution: RecordingResolution,
+  frameRate: 30 | 60 | 120,
+  quality: RecordingQuality
+): { videoBitsPerSecond: number; audioBitsPerSecond: number } {
+  let baseVideo = 6_000_000;
+  if (resolution === '16k') baseVideo = 80_000_000;
+  else if (resolution === '8k') baseVideo = 45_000_000;
+  else if (resolution === '4k') baseVideo = 20_000_000;
+  else if (resolution === '1440p') baseVideo = 10_000_000;
+  else if (resolution === '1080p') baseVideo = 6_000_000;
+  else if (resolution === '720p') baseVideo = 3_000_000;
+
+  if (frameRate === 120) {
+    baseVideo = Math.round(baseVideo * 2.0);
+  } else if (frameRate === 60) {
+    baseVideo = Math.round(baseVideo * 1.4);
+  }
+
+  const qualityMultiplier =
+    quality === 'ultra-pro'
+      ? 2.0
+      : quality === 'ultra'
+      ? 1.5
+      : quality === 'standard'
+      ? 0.65
+      : 1.0;
+  const videoBitsPerSecond = Math.round(baseVideo * qualityMultiplier);
+
+  const audioBitsPerSecond =
+    quality === 'ultra-pro'
+      ? 320_000
+      : quality === 'ultra'
+      ? 256_000
+      : quality === 'high'
+      ? 192_000
+      : 128_000;
+
+  return { videoBitsPerSecond, audioBitsPerSecond };
+}
+
 export function getBitrateForQuality(quality: RecordingQuality): number {
+  if (quality === 'ultra-pro') return 12_000_000;
   if (quality === 'ultra') return 8_000_000;
   if (quality === 'standard') return 2_500_000;
   return 5_000_000;
 }
 
+export interface AutoRecordingProfile {
+  resolution: RecordingResolution;
+  frameRate: 30 | 60 | 120;
+  mimeType: string;
+  videoBitsPerSecond: number;
+  audioBitsPerSecond: number;
+  quality: RecordingQuality;
+}
+
+export function selectAutomaticRecordingProfile(
+  sourceW?: number,
+  sourceH?: number
+): AutoRecordingProfile {
+  const dpr = typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1;
+  const screenW = sourceW ?? (typeof window !== 'undefined' ? (window.screen?.width || 1920) * dpr : 1920);
+  const screenH = sourceH ?? (typeof window !== 'undefined' ? (window.screen?.height || 1080) * dpr : 1080);
+  const totalPixels = screenW * screenH;
+
+  const supported = getSupportedRecordingFormats();
+  const mimeType = supported.length > 0 ? supported[0].mimeType : 'video/webm;codecs=vp8,opus';
+
+  const frameRate: 30 | 60 = 60;
+  let resolution: RecordingResolution = '1080p';
+  let quality: RecordingQuality = 'high';
+
+  if (totalPixels >= 3840 * 2160 * 0.85) {
+    resolution = '4k';
+    quality = 'ultra';
+  } else if (totalPixels >= 2560 * 1440 * 0.85) {
+    resolution = '1440p';
+    quality = 'ultra';
+  } else if (totalPixels >= 1920 * 1080 * 0.85) {
+    resolution = '1080p';
+    quality = 'high';
+  } else {
+    resolution = '720p';
+    quality = 'standard';
+  }
+
+  const { videoBitsPerSecond, audioBitsPerSecond } = calculateRecommendedBitrate(
+    resolution,
+    frameRate,
+    quality
+  );
+
+  return {
+    resolution,
+    frameRate,
+    mimeType,
+    videoBitsPerSecond,
+    audioBitsPerSecond,
+    quality,
+  };
+}
+
 export function getResolutionBounds(
   resolution: RecordingResolution
 ): { width?: { ideal: number }; height?: { ideal: number } } {
+  if (resolution === '16k') return { width: { ideal: 15360 }, height: { ideal: 8640 } };
+  if (resolution === '8k') return { width: { ideal: 7680 }, height: { ideal: 4320 } };
+  if (resolution === '4k') return { width: { ideal: 3840 }, height: { ideal: 2160 } };
+  if (resolution === '1440p') return { width: { ideal: 2560 }, height: { ideal: 1440 } };
   if (resolution === '1080p') return { width: { ideal: 1920 }, height: { ideal: 1080 } };
   if (resolution === '720p') return { width: { ideal: 1280 }, height: { ideal: 720 } };
   return {};
+}
+
+export interface ResolutionCapability {
+  resolution: RecordingResolution;
+  label: string;
+  width: number;
+  height: number;
+  supported: boolean;
+  isNative: boolean;
+  reason?: string;
+}
+
+export function getResolutionCapabilities(
+  sourceW?: number,
+  sourceH?: number
+): Record<'4k' | '8k' | '16k', ResolutionCapability> {
+  const curW = sourceW ?? (typeof window !== 'undefined' ? (window.screen?.width || 1920) : 1920);
+  const curH = sourceH ?? (typeof window !== 'undefined' ? (window.screen?.height || 1080) : 1080);
+
+  let maxTextureSize = 8192;
+  if (typeof document !== 'undefined') {
+    try {
+      const c = document.createElement('canvas');
+      const gl = c.getContext('webgl') || c.getContext('experimental-webgl');
+      if (gl) {
+        maxTextureSize =
+          (gl as WebGLRenderingContext).getParameter(
+            (gl as WebGLRenderingContext).MAX_TEXTURE_SIZE
+          ) || 8192;
+      }
+    } catch {}
+  }
+
+  const supports8K = maxTextureSize >= 7680;
+  const supports16K = maxTextureSize >= 15360;
+
+  return {
+    '4k': {
+      resolution: '4k',
+      label: '4K Ultra HD (3840 × 2160)',
+      width: 3840,
+      height: 2160,
+      supported: true,
+      isNative: curW >= 3840 && curH >= 2160,
+      reason:
+        curW < 3840
+          ? `Display is ${curW}×${curH} — captures at full native display resolution without upscaling.`
+          : undefined,
+    },
+    '8k': {
+      resolution: '8k',
+      label: '8K Master (7680 × 4320)',
+      width: 7680,
+      height: 4320,
+      supported: supports8K,
+      isNative: curW >= 7680 && curH >= 4320,
+      reason: !supports8K
+        ? '8K output exceeds current GPU texture limits. 4K profile recommended.'
+        : curW < 7680
+        ? `Display is ${curW}×${curH} — captures at maximum native physical detail.`
+        : undefined,
+    },
+    '16k': {
+      resolution: '16k',
+      label: '16K Extreme (15360 × 8640)',
+      width: 15360,
+      height: 8640,
+      supported: supports16K,
+      isNative: curW >= 15360 && curH >= 8640,
+      reason: !supports16K
+        ? '16K requires specialized GPU hardware with >16GB VRAM and Level 6+ AV1/VP9 encoder. Falling back to highest supported resolution (8K / 4K).'
+        : `Experimental profile: high memory bandwidth. Display is ${curW}×${curH}.`,
+    },
+  };
 }
 
 export function buildDisplayMediaOptions(
@@ -92,13 +282,25 @@ export function buildDisplayMediaOptions(
   selfBrowserSurface?: 'include' | 'exclude';
 } {
   const resBounds = getResolutionBounds(settings.resolution);
-  const video: MediaTrackConstraints & { displaySurface?: 'browser' | 'window' | 'monitor' } = {
-    frameRate: { ideal: settings.frameRate },
+  const video: MediaTrackConstraints & {
+    displaySurface?: 'browser' | 'window' | 'monitor';
+  } = {
+    frameRate: { ideal: settings.frameRate, max: settings.frameRate },
     ...resBounds,
   };
 
+  if (settings.resolution === 'source' && typeof window !== 'undefined' && window.screen) {
+    const dpr = window.devicePixelRatio || 1;
+    const sw = window.screen.width * dpr;
+    const sh = window.screen.height * dpr;
+    if (sw > 0 && sh > 0) {
+      video.width = { ideal: Math.round(sw) };
+      video.height = { ideal: Math.round(sh) };
+    }
+  }
+
   if (settings.mode === 'tab') {
-    video.displaySurface = 'browser';
+    video.displaySurface = typeof window !== 'undefined' && (window as any).proscreenDesktop ? 'monitor' : 'browser';
   } else if (settings.mode === 'window') {
     video.displaySurface = 'window';
   } else {
@@ -258,22 +460,35 @@ export function validatePreRecordingStream(
 export function createSafeMediaRecorder(
   stream: MediaStream,
   preferredMime: string,
-  bitrate: number
+  bitrates: number | { videoBitsPerSecond?: number; audioBitsPerSecond?: number }
 ): { recorder: MediaRecorder; mimeType: string } {
-  const mimeType = resolveRecordingMimeType(preferredMime);
+  const hasAudio = stream.getAudioTracks().length > 0;
+  const mimeType = resolveRecordingMimeType(preferredMime, hasAudio);
+  const vBps = typeof bitrates === 'number' ? bitrates : bitrates.videoBitsPerSecond;
+  const aBps = typeof bitrates === 'object' && hasAudio ? bitrates.audioBitsPerSecond : undefined;
+
   try {
     const recorder = new MediaRecorder(stream, {
       mimeType,
-      videoBitsPerSecond: bitrate,
+      videoBitsPerSecond: vBps,
+      audioBitsPerSecond: aBps,
     });
     return { recorder, mimeType: recorder.mimeType || mimeType };
   } catch {
     try {
-      const recorder = new MediaRecorder(stream, { mimeType });
+      const recorder = new MediaRecorder(stream, {
+        mimeType,
+        videoBitsPerSecond: vBps,
+      });
       return { recorder, mimeType: recorder.mimeType || mimeType };
     } catch {
-      const recorder = new MediaRecorder(stream);
-      return { recorder, mimeType: recorder.mimeType || 'video/webm' };
+      try {
+        const recorder = new MediaRecorder(stream, { mimeType });
+        return { recorder, mimeType: recorder.mimeType || mimeType };
+      } catch {
+        const recorder = new MediaRecorder(stream);
+        return { recorder, mimeType: recorder.mimeType || 'video/webm' };
+      }
     }
   }
 }
@@ -294,6 +509,110 @@ function blobToDataUrl(blob: Blob): Promise<string | null> {
   });
 }
 
+/**
+ * Injects or updates EBML Duration element (0x44, 0x89) into WebM files so that
+ * HTMLMediaElement (video tags), Chrome, Edge, and media players have finite duration,
+ * accurate timeline scrubbing, and instant seeking.
+ */
+export function injectWebmDuration(buffer: Uint8Array | ArrayBuffer, durationMs: number): Uint8Array {
+  if (!buffer || buffer.byteLength < 48 || durationMs <= 0) {
+    return buffer instanceof Uint8Array ? buffer : new Uint8Array(buffer);
+  }
+  const u8 = buffer instanceof Uint8Array ? buffer : new Uint8Array(buffer);
+
+  // EBML Header check: 0x1A, 0x45, 0xDF, 0xA3
+  if (u8[0] !== 0x1a || u8[1] !== 0x45 || u8[2] !== 0xdf || u8[3] !== 0xa3) {
+    return u8;
+  }
+
+  // Find Info element ID: 0x15, 0x49, 0xA9, 0x66 within the first 4KB
+  const searchLimit = Math.min(u8.length - 4, 4096);
+  let infoPos = -1;
+  for (let i = 0; i < searchLimit; i++) {
+    if (u8[i] === 0x15 && u8[i + 1] === 0x49 && u8[i + 2] === 0xa9 && u8[i + 3] === 0x66) {
+      infoPos = i;
+      break;
+    }
+  }
+  if (infoPos === -1) return u8;
+
+  const vintPos = infoPos + 4;
+  const firstByte = u8[vintPos];
+  let vintLen = 1;
+  let mask = 0x80;
+  while ((firstByte & mask) === 0 && vintLen <= 8) {
+    mask >>= 1;
+    vintLen++;
+  }
+  if (vintLen > 4) return u8;
+
+  let infoSize = firstByte & (mask - 1);
+  for (let i = 1; i < vintLen; i++) {
+    infoSize = (infoSize << 8) | u8[vintPos + i];
+  }
+
+  const infoContentStart = vintPos + vintLen;
+  const infoContentEnd = infoContentStart + infoSize;
+  if (infoContentEnd > u8.length) return u8;
+
+  // Check if Duration element (0x44, 0x89) already exists in Info content
+  let durPos = -1;
+  for (let i = infoContentStart; i < infoContentEnd - 2; i++) {
+    if (u8[i] === 0x44 && u8[i + 1] === 0x89) {
+      durPos = i;
+      break;
+    }
+  }
+
+  // If Duration element already exists, update its float value in-place
+  if (durPos !== -1) {
+    const durVint = u8[durPos + 2];
+    const view = new DataView(u8.buffer, u8.byteOffset, u8.byteLength);
+    if (durVint === 0x84) {
+      view.setFloat32(durPos + 3, durationMs, false);
+      return u8;
+    } else if (durVint === 0x88) {
+      view.setFloat64(durPos + 3, durationMs, false);
+      return u8;
+    }
+  }
+
+  // Duration element needs to be inserted: [0x44, 0x89, 0x84, 4-byte-float-BE] -> 7 bytes
+  const durElement = new Uint8Array(7);
+  durElement[0] = 0x44;
+  durElement[1] = 0x89;
+  durElement[2] = 0x84;
+  const durView = new DataView(durElement.buffer);
+  durView.setFloat32(3, durationMs, false);
+
+  const newInfoSize = infoSize + 7;
+  let newVintBytes: Uint8Array;
+  if (newInfoSize < 127) {
+    newVintBytes = new Uint8Array([0x80 | newInfoSize]);
+  } else if (newInfoSize < 16383) {
+    newVintBytes = new Uint8Array([(0x4000 | newInfoSize) >> 8, (0x4000 | newInfoSize) & 0xff]);
+  } else {
+    newVintBytes = new Uint8Array([
+      (0x200000 | newInfoSize) >> 16,
+      ((0x200000 | newInfoSize) >> 8) & 0xff,
+      (0x200000 | newInfoSize) & 0xff,
+    ]);
+  }
+
+  const out = new Uint8Array(u8.length - vintLen + newVintBytes.length + 7);
+  out.set(u8.subarray(0, vintPos), 0);
+  let cur = vintPos;
+  out.set(newVintBytes, cur);
+  cur += newVintBytes.length;
+  out.set(u8.subarray(infoContentStart, infoContentEnd), cur);
+  cur += infoSize;
+  out.set(durElement, cur);
+  cur += 7;
+  out.set(u8.subarray(infoContentEnd), cur);
+
+  return out;
+}
+
 export interface RecorderLifecycleCallbacks {
   onStatusChange: (status: RecordingStatus) => void;
   onComplete: (artifact: RecordingArtifact) => void;
@@ -302,12 +621,206 @@ export interface RecorderLifecycleCallbacks {
   onWarning: (message: string) => void;
 }
 
+/**
+ * AreaCropProcessor captures a full-display stream, applies continuous hardware-accelerated
+ * cropping to the selected bounding box, and generates a cropped MediaStream containing ONLY
+ * the target rectangle with zero surrounding desktop pixels or black bars.
+ */
+export class AreaCropProcessor {
+  private videoEl: HTMLVideoElement | null = null;
+  private canvasEl: HTMLCanvasElement | null = null;
+  private ctx: CanvasRenderingContext2D | null = null;
+  private animFrameId: number | null = null;
+  private heartbeatTimer: ReturnType<typeof setInterval> | null = null;
+  private croppedStream: MediaStream | null = null;
+  private destroyed = false;
+
+  async init(
+    sourceStream: MediaStream,
+    areaRect: RecordingAreaRect,
+    frameRate = 30
+  ): Promise<MediaStreamTrack | null> {
+    if (typeof document === 'undefined') {
+      return null;
+    }
+
+    try {
+      const video = document.createElement('video');
+      video.muted = true;
+      video.autoplay = true;
+      video.playsInline = true;
+      video.style.position = 'fixed';
+      video.style.top = '-9999px';
+      video.style.left = '-9999px';
+      video.style.width = '1px';
+      video.style.height = '1px';
+      video.style.opacity = '0.01';
+      video.style.pointerEvents = 'none';
+      if (typeof document !== 'undefined' && document.body) {
+        document.body.appendChild(video);
+      }
+      video.srcObject = sourceStream;
+
+      await new Promise<void>((resolve) => {
+        const onLoaded = () => {
+          video.removeEventListener('loadedmetadata', onLoaded);
+          resolve();
+        };
+        if (video.videoWidth > 0 && video.videoHeight > 0) {
+          resolve();
+        } else {
+          video.addEventListener('loadedmetadata', onLoaded);
+          setTimeout(() => resolve(), 1200);
+        }
+      });
+
+      await video.play().catch(() => {});
+
+      const displayW =
+        areaRect.displayBounds?.width ||
+        (typeof window !== 'undefined'
+          ? window.innerWidth || window.screen?.width || 1920
+          : 1920);
+      const displayH =
+        areaRect.displayBounds?.height ||
+        (typeof window !== 'undefined'
+          ? window.innerHeight || window.screen?.height || 1080
+          : 1080);
+
+      const scaleX = video.videoWidth > 0 && displayW > 0 ? video.videoWidth / displayW : 1;
+      const scaleY = video.videoHeight > 0 && displayH > 0 ? video.videoHeight / displayH : 1;
+
+      const sx = Math.max(0, Math.round(areaRect.x * scaleX));
+      const sy = Math.max(0, Math.round(areaRect.y * scaleY));
+      const sourceW = video.videoWidth > 0 ? video.videoWidth : displayW;
+      const sourceH = video.videoHeight > 0 ? video.videoHeight : displayH;
+      const sw = Math.max(16, Math.min(sourceW - sx, Math.round(areaRect.width * scaleX)));
+      const sh = Math.max(16, Math.min(sourceH - sy, Math.round(areaRect.height * scaleY)));
+
+      // Align dimensions to even numbers (macroblock alignment) to prevent encoder resampling stutter
+      const swEven = Math.max(16, sw - (sw % 2));
+      const shEven = Math.max(16, sh - (sh % 2));
+
+      const canvas = document.createElement('canvas');
+      canvas.width = swEven;
+      canvas.height = shEven;
+      const ctx = canvas.getContext('2d', { alpha: false, desynchronized: true });
+      if (!ctx) return null;
+
+      this.videoEl = video;
+      this.canvasEl = canvas;
+      this.ctx = ctx;
+
+      let lastRenderTime = performance.now();
+      const targetIntervalMs = Math.max(16, Math.round(1000 / Math.max(1, frameRate)));
+
+      const renderFrame = () => {
+        if (this.destroyed) return;
+        lastRenderTime = performance.now();
+        try {
+          if (video.readyState >= 2) {
+            ctx.drawImage(video, sx, sy, swEven, shEven, 0, 0, canvas.width, canvas.height);
+          }
+        } catch {
+          // Ignore transient rendering errors
+        }
+
+        const videoAny = video as unknown as {
+          requestVideoFrameCallback?: (cb: () => void) => number;
+        };
+        if (typeof videoAny.requestVideoFrameCallback === 'function') {
+          this.animFrameId = videoAny.requestVideoFrameCallback(renderFrame);
+        } else if (typeof requestAnimationFrame === 'function') {
+          this.animFrameId = requestAnimationFrame(renderFrame);
+        }
+      };
+
+      renderFrame();
+
+      // Background heartbeat: keeps canvas rendering active even if requestVideoFrameCallback
+      // or requestAnimationFrame is deprioritized by Chromium when the window is non-focused.
+      this.heartbeatTimer = setInterval(() => {
+        if (this.destroyed) {
+          if (this.heartbeatTimer) clearInterval(this.heartbeatTimer);
+          return;
+        }
+        if (performance.now() - lastRenderTime >= targetIntervalMs * 1.5) {
+          renderFrame();
+        }
+      }, targetIntervalMs);
+
+      const canvasAny = canvas as unknown as {
+        captureStream?: (fps?: number) => MediaStream;
+      };
+      if (typeof canvasAny.captureStream === 'function') {
+        const stream = canvasAny.captureStream(frameRate);
+        this.croppedStream = stream;
+        const track = stream.getVideoTracks()[0] ?? null;
+        if (track && 'contentHint' in track) {
+          try {
+            (track as any).contentHint = 'motion';
+          } catch {}
+        }
+        return track;
+      }
+      return null;
+    } catch {
+      this.cleanup();
+      return null;
+    }
+  }
+
+  cleanup() {
+    this.destroyed = true;
+    if (this.heartbeatTimer) {
+      clearInterval(this.heartbeatTimer);
+      this.heartbeatTimer = null;
+    }
+    if (this.animFrameId !== null) {
+      const videoAny = this.videoEl as unknown as {
+        cancelVideoFrameCallback?: (id: number) => void;
+      } | null;
+      if (videoAny && typeof videoAny.cancelVideoFrameCallback === 'function') {
+        try {
+          videoAny.cancelVideoFrameCallback(this.animFrameId);
+        } catch {}
+      } else if (typeof cancelAnimationFrame === 'function') {
+        try {
+          cancelAnimationFrame(this.animFrameId);
+        } catch {}
+      }
+      this.animFrameId = null;
+    }
+
+    try {
+      this.croppedStream?.getTracks().forEach((t) => t.stop());
+    } catch {}
+
+    if (this.videoEl) {
+      try {
+        this.videoEl.pause();
+        this.videoEl.srcObject = null;
+        if (this.videoEl.parentNode) {
+          this.videoEl.parentNode.removeChild(this.videoEl);
+        }
+      } catch {}
+      this.videoEl = null;
+    }
+
+    this.canvasEl = null;
+    this.ctx = null;
+    this.croppedStream = null;
+  }
+}
+
 export class ProScreenRecorder {
   private recorder: MediaRecorder | null = null;
   private displayStream: MediaStream | null = null;
   private micStream: MediaStream | null = null;
   private mixedStream: MediaStream | null = null;
   private audioCtx: AudioContext | null = null;
+  private audioMixer: StudioAudioMixer | null = null;
+  private cropProcessor: AreaCropProcessor | null = null;
   private chunks: Blob[] = [];
   private activeMimeType = 'video/webm';
   private activeMode: RecordingMode = 'tab';
@@ -373,10 +886,22 @@ export class ProScreenRecorder {
     } catch {
       // Ignore AudioContext close error
     }
+    try {
+      this.audioMixer?.cleanup();
+    } catch {
+      // Ignore audioMixer cleanup error
+    }
+    try {
+      this.cropProcessor?.cleanup();
+    } catch {
+      // Ignore cropProcessor cleanup error
+    }
+    this.cropProcessor = null;
     this.displayStream = null;
     this.micStream = null;
     this.mixedStream = null;
     this.audioCtx = null;
+    this.audioMixer = null;
     this.recorder = null;
   }
 
@@ -636,8 +1161,12 @@ export class ProScreenRecorder {
           tabAudio: settings.tabAudio,
         });
         const displayConstraints = buildDisplayMediaOptions(settings);
+        recDebugLog('Calling navigator.mediaDevices.getDisplayMedia', { displayConstraints });
         displayStream = await navigator.mediaDevices.getDisplayMedia(displayConstraints);
-        recDebugLog('Permission result: getDisplayMedia granted', { mode: settings.mode });
+        recDebugLog('getDisplayMedia succeeded', {
+          videoTracks: displayStream.getVideoTracks().length,
+          audioTracks: displayStream.getAudioTracks().length,
+        });
       }
 
       this.displayStream = displayStream;
@@ -659,14 +1188,26 @@ export class ProScreenRecorder {
         displayAudioTracks: displayStream.getAudioTracks().length,
       });
 
+      // Set contentHint to 'motion' for smooth 60 FPS recording with zero dropped frames
+      if ('contentHint' in primaryVideoTrack) {
+        try {
+          (primaryVideoTrack as any).contentHint = 'motion';
+        } catch {}
+      }
+
       // Best-effort resolution & FPS preference without causing OverconstrainedError
       if (typeof primaryVideoTrack.applyConstraints === 'function') {
         const resBounds = getResolutionBounds(settings.resolution);
+        const physicalConstraints: MediaTrackConstraints = {
+          frameRate: { ideal: settings.frameRate, max: settings.frameRate },
+          ...resBounds,
+        };
+        if (settings.resolution === 'source') {
+          physicalConstraints.width = { ideal: 3840 };
+          physicalConstraints.height = { ideal: 2160 };
+        }
         void primaryVideoTrack
-          .applyConstraints({
-            frameRate: { ideal: settings.frameRate },
-            ...resBounds,
-          })
+          .applyConstraints(physicalConstraints)
           .catch(() => {});
       }
 
@@ -677,11 +1218,35 @@ export class ProScreenRecorder {
         height: typeof trackSettings.height === 'number' ? trackSettings.height : undefined,
       };
 
-      // 4. Optional Microphone capture & distinct audio failure reporting
+      // Area Recording: Crop display stream to exact region if requested
+      let activeVideoTrack = primaryVideoTrack;
+      if (settings.mode === 'area' && settings.areaRect) {
+        const cropProc = new AreaCropProcessor();
+        this.cropProcessor = cropProc;
+        const croppedTrack = await cropProc.init(
+          displayStream,
+          settings.areaRect,
+          settings.frameRate
+        );
+        if (croppedTrack) {
+          activeVideoTrack = croppedTrack;
+          this.capturedDimensions = {
+            width: Math.round(settings.areaRect.width),
+            height: Math.round(settings.areaRect.height),
+          };
+        }
+      }
+
+      // 4. Microphone capture & studio audio mixing
       let micStream: MediaStream | null = null;
-      if (settings.micAudio && navigator.mediaDevices?.getUserMedia) {
+      if (settings.micAudio && typeof navigator !== 'undefined' && Boolean(navigator.mediaDevices?.getUserMedia)) {
         try {
-          micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+          micStream = await acquireMicrophoneStream({
+            deviceId: settings.micDeviceId,
+            echoCancellation: settings.echoCancellation,
+            noiseSuppression: settings.noiseSuppression,
+            autoGainControl: settings.autoGainControl,
+          });
           this.micStream = micStream;
         } catch (micErr) {
           const micErrName = micErr instanceof Error ? micErr.name : '';
@@ -700,9 +1265,8 @@ export class ProScreenRecorder {
         );
       }
 
-      const tracks: MediaStreamTrack[] = [...videoTracks];
+      const tracks: MediaStreamTrack[] = [activeVideoTrack];
       const displayAudio = displayStream.getAudioTracks();
-      const micAudio = micStream?.getAudioTracks() ?? [];
 
       if (settings.tabAudio && displayAudio.length === 0 && !inExtension) {
         this.callbacks.onWarning(
@@ -710,36 +1274,33 @@ export class ProScreenRecorder {
         );
       }
 
-      if (displayAudio.length > 0 && micAudio.length > 0 && typeof AudioContext !== 'undefined') {
-        const audioCtx = new AudioContext();
-        this.audioCtx = audioCtx;
-        if (audioCtx.state === 'suspended') {
-          await audioCtx.resume().catch(() => {});
-        }
-        const dest = audioCtx.createMediaStreamDestination();
-        audioCtx.createMediaStreamSource(new MediaStream(displayAudio)).connect(dest);
-        audioCtx.createMediaStreamSource(new MediaStream(micAudio)).connect(dest);
-        tracks.push(...dest.stream.getAudioTracks());
-        this.capturedHasAudio = dest.stream.getAudioTracks().length > 0;
-      } else if (displayAudio.length > 0) {
-        tracks.push(...displayAudio);
-        this.capturedHasAudio = true;
-      } else if (micAudio.length > 0) {
-        tracks.push(...micAudio);
-        this.capturedHasAudio = true;
-      }
+      const mixer = new StudioAudioMixer();
+      this.audioMixer = mixer;
+      const mixedAudioTracks = await mixer.init({
+        tabStream: displayAudio.length > 0 ? new MediaStream(displayAudio) : null,
+        micStream: this.micStream,
+        micGain: settings.micGain,
+      });
+      tracks.push(...mixedAudioTracks);
+      this.capturedHasAudio = mixedAudioTracks.length > 0;
 
       const combinedStream = new MediaStream(tracks);
       this.mixedStream = combinedStream;
 
-      // 5. MediaRecorder creation & pre-start state verification
+      // 5. MediaRecorder creation & adaptive bitrate calculation
+      const bitrates = calculateRecommendedBitrate(
+        settings.resolution,
+        settings.frameRate,
+        settings.quality
+      );
+
       let recorder: MediaRecorder;
       let mimeType: string;
       try {
         const created = createSafeMediaRecorder(
           combinedStream,
           settings.mimeType,
-          getBitrateForQuality(settings.quality)
+          bitrates
         );
         recorder = created.recorder;
         mimeType = created.mimeType;
@@ -836,6 +1397,11 @@ export class ProScreenRecorder {
           mode: this.activeMode,
           videoWidth: dims.width,
           videoHeight: dims.height,
+          sourceWidth: trackSettings.width,
+          sourceHeight: trackSettings.height,
+          codec: this.activeMimeType,
+          frameRate: settings.frameRate,
+          quality: settings.quality,
           hasAudio,
           fromOffscreen: false,
         };
@@ -849,8 +1415,9 @@ export class ProScreenRecorder {
         }
       });
 
-      recorder.start(250);
-      recDebugLog('MediaRecorder started', {
+      recDebugLog('Starting MediaRecorder', { mimeType: this.activeMimeType });
+      recorder.start(1000);
+      recDebugLog('MediaRecorder started successfully', {
         state: recorder.state,
         mimeType: this.activeMimeType,
       });
@@ -863,6 +1430,7 @@ export class ProScreenRecorder {
       this.setStatus('recording');
       return true;
     } catch (err) {
+      console.error('[ProScreen:Recorder] Capture initialization error:', err);
       this.cleanupMediaResources();
       this.setStatus('idle');
       recDebugLog('Capture initialization error', {
@@ -874,7 +1442,7 @@ export class ProScreenRecorder {
     }
   }
 
-  pause(): boolean {
+  pause(now = Date.now()): boolean {
     if (this.status !== 'recording') return false;
     if (this.usingOffscreen && isExtensionContext() && chrome.runtime?.sendMessage) {
       chrome.runtime.sendMessage({ type: 'PAUSE_TAB_RECORDING' }, (res) => {
@@ -882,20 +1450,21 @@ export class ProScreenRecorder {
           this.callbacks.onWarning('Could not pause offscreen recording cleanly.');
         }
       });
-      this.accumulatedMs += Math.max(0, Date.now() - this.startedAt);
+      this.accumulatedMs += Math.max(0, now - this.startedAt);
       this.setStatus('paused');
       return true;
     }
     if (this.recorder && this.recorder.state === 'recording') {
       this.recorder.pause();
-      this.accumulatedMs += Math.max(0, Date.now() - this.startedAt);
+      void this.audioMixer?.pause();
+      this.accumulatedMs += Math.max(0, now - this.startedAt);
       this.setStatus('paused');
       return true;
     }
     return false;
   }
 
-  resume(): boolean {
+  resume(now = Date.now()): boolean {
     if (this.status !== 'paused') return false;
     if (this.usingOffscreen && isExtensionContext() && chrome.runtime?.sendMessage) {
       chrome.runtime.sendMessage({ type: 'RESUME_TAB_RECORDING' }, (res) => {
@@ -903,24 +1472,25 @@ export class ProScreenRecorder {
           this.callbacks.onWarning('Could not resume offscreen recording cleanly.');
         }
       });
-      this.startedAt = Date.now();
+      this.startedAt = now;
       this.setStatus('recording');
       return true;
     }
     if (this.recorder && this.recorder.state === 'paused') {
       this.recorder.resume();
-      this.startedAt = Date.now();
+      void this.audioMixer?.resume();
+      this.startedAt = now;
       this.setStatus('recording');
       return true;
     }
     return false;
   }
 
-  stop(): boolean {
+  stop(now = Date.now()): boolean {
     if (this.status !== 'recording' && this.status !== 'paused') return false;
     this.cancelled = false;
     if (this.status === 'recording') {
-      this.accumulatedMs += Math.max(0, Date.now() - this.startedAt);
+      this.accumulatedMs += Math.max(0, now - this.startedAt);
     }
 
     if (this.usingOffscreen && isExtensionContext() && chrome.runtime?.sendMessage) {
@@ -941,13 +1511,6 @@ export class ProScreenRecorder {
 
     if (this.recorder && this.recorder.state !== 'inactive') {
       this.setStatus('stopping');
-      try {
-        if (this.recorder.state === 'recording' && typeof this.recorder.requestData === 'function') {
-          this.recorder.requestData();
-        }
-      } catch {
-        // Ignore requestData errors when stopping immediately
-      }
       this.recorder.stop();
       return true;
     }
@@ -1013,9 +1576,89 @@ export class ProScreenRecorder {
 export async function downloadRecordingArtifact(
   artifact: RecordingArtifact,
   saveAs = false
-): Promise<{ ok: boolean; error?: string }> {
-  if (!artifact.blobUrl && !artifact.downloadUrl && !artifact.fromOffscreen) {
+): Promise<{ ok: boolean; path?: string; error?: string }> {
+  const effectiveUrl =
+    artifact.blobUrl ||
+    (artifact.savedPath ? `proscreen-media://local/${artifact.savedPath.replace(/\\/g, '/')}` : '');
+
+  if (!effectiveUrl && !artifact.downloadUrl && !artifact.fromOffscreen) {
     return { ok: false, error: 'Recording file URL is no longer available.' };
+  }
+
+  // 1. Electron Desktop Native Saving (buffer-first or direct disk copy)
+  if (typeof window !== 'undefined' && window.proscreenDesktop) {
+    const desktop = window.proscreenDesktop;
+    if (desktop.saveRecordingBuffer) {
+      // If file already exists on disk, fast copy directly to new destination
+      if (artifact.savedPath) {
+        try {
+          const res = await desktop.saveRecordingBuffer(
+            undefined,
+            artifact.filename,
+            saveAs,
+            artifact.savedPath
+          );
+          if (res.ok && res.path) {
+            artifact.savedPath = res.path;
+            return { ok: true, path: res.path };
+          }
+          if (res.error && !res.error.includes('No video buffer')) {
+            return { ok: false, error: res.error };
+          }
+        } catch {
+          // Fall back to buffer write below
+        }
+      }
+
+      if (effectiveUrl) {
+        try {
+          const resp = await fetch(effectiveUrl);
+          const arrayBuf = await resp.arrayBuffer();
+          const finalBuf =
+            artifact.filename.endsWith('.webm') && artifact.durationMs
+              ? injectWebmDuration(arrayBuf, artifact.durationMs)
+              : new Uint8Array(arrayBuf);
+          if (artifact.filename.endsWith('.webm') && artifact.durationMs) {
+            try {
+              const patchedBlob = new Blob([finalBuf as unknown as BlobPart], { type: artifact.mimeType });
+              artifact.blobUrl = URL.createObjectURL(patchedBlob);
+            } catch {
+              // Keep original blob URL if recreation fails
+            }
+          }
+          const res = await desktop.saveRecordingBuffer(
+            finalBuf,
+            artifact.filename,
+            saveAs,
+            artifact.savedPath
+          );
+          if (res.ok && res.path) {
+            artifact.savedPath = res.path;
+            return { ok: true, path: res.path };
+          }
+          if (res.error) return { ok: false, error: res.error };
+          return { ok: false };
+        } catch (err) {
+          return { ok: false, error: String(err) };
+        }
+      }
+    }
+    if (desktop.saveCaptureFile && artifact.blobUrl) {
+      try {
+        const resp = await fetch(artifact.blobUrl);
+        const blob = await resp.blob();
+        const dataUrl = await blobToDataUrl(blob);
+        if (dataUrl) {
+          const res = await desktop.saveCaptureFile(dataUrl, artifact.filename);
+          if (res.ok && res.path) {
+            artifact.savedPath = res.path;
+            return { ok: true, path: res.path };
+          }
+        }
+      } catch (err) {
+        return { ok: false, error: String(err) };
+      }
+    }
   }
 
   if (isExtensionContext() && chrome.runtime?.sendMessage) {

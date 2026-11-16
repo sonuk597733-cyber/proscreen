@@ -12,9 +12,23 @@ export type ResolvedThemeMode = 'dark' | 'light';
 export type ToolbarOrientation = 'vertical' | 'horizontal';
 export type ToolbarSize = 'compact' | 'standard';
 
-export type RecordingMode = 'tab' | 'window' | 'screen';
-export type RecordingQuality = 'standard' | 'high' | 'ultra';
-export type RecordingResolution = 'source' | '1080p' | '720p';
+export type RecordingMode = 'tab' | 'window' | 'screen' | 'area';
+export type RecordingQuality = 'high' | 'ultra' | 'ultra-pro' | 'standard';
+export type RecordingResolution = '4k' | '8k' | '16k' | 'source' | '1440p' | '1080p' | '720p';
+
+export interface RecordingAreaRect {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  displayId?: string;
+  displayBounds?: {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+  };
+}
 
 export interface TimerSettings {
   enabled: boolean;
@@ -26,10 +40,18 @@ export interface RecordingSettings {
   mode: RecordingMode;
   quality: RecordingQuality;
   resolution: RecordingResolution;
-  frameRate: 30 | 60;
+  frameRate: 30 | 60 | 120;
   mimeType: string;
   micAudio: boolean;
   tabAudio: boolean;
+  micDeviceId?: string;
+  micGain?: number;
+  echoCancellation?: boolean;
+  noiseSuppression?: boolean;
+  autoGainControl?: boolean;
+  areaRect?: RecordingAreaRect | null;
+  videoBitrate?: number | 'auto';
+  codec?: string;
 }
 
 export interface ExportPreferences {

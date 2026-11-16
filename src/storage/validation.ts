@@ -82,11 +82,14 @@ export function createDefaultSettings(): UserSettings {
     recording: {
       mode: 'tab',
       quality: 'high',
-      resolution: 'source',
-      frameRate: 30,
+      resolution: '1080p',
+      frameRate: 60,
       mimeType: 'auto',
       micAudio: false,
       tabAudio: true,
+      micGain: 1.4,
+      areaRect: null,
+      videoBitrate: 'auto',
     },
     exportPrefs: {
       askWhereToSave: false,
@@ -451,26 +454,47 @@ export function mergeAndValidateSettings(raw: unknown): UserSettings {
       mode:
         obj.recording?.mode === 'screen' ||
         obj.recording?.mode === 'window' ||
-        obj.recording?.mode === 'tab'
+        obj.recording?.mode === 'tab' ||
+        obj.recording?.mode === 'area'
           ? obj.recording.mode
           : defaults.recording.mode,
       quality:
-        obj.recording?.quality === 'standard' ||
         obj.recording?.quality === 'high' ||
-        obj.recording?.quality === 'ultra'
+        obj.recording?.quality === 'ultra' ||
+        obj.recording?.quality === 'ultra-pro' ||
+        obj.recording?.quality === 'standard'
           ? obj.recording.quality
           : defaults.recording.quality,
       resolution:
+        obj.recording?.resolution === '4k' ||
+        obj.recording?.resolution === '8k' ||
+        obj.recording?.resolution === '16k' ||
         obj.recording?.resolution === 'source' ||
+        obj.recording?.resolution === '1440p' ||
         obj.recording?.resolution === '1080p' ||
         obj.recording?.resolution === '720p'
           ? obj.recording.resolution
           : defaults.recording.resolution,
-      frameRate: obj.recording?.frameRate === 60 ? 60 : 30,
+      frameRate:
+        obj.recording?.frameRate === 120
+          ? 120
+          : obj.recording?.frameRate === 60
+          ? 60
+          : obj.recording?.frameRate === 30
+          ? 30
+          : defaults.recording.frameRate,
       mimeType:
         typeof obj.recording?.mimeType === 'string' && obj.recording.mimeType.trim()
           ? obj.recording.mimeType.trim()
           : defaults.recording.mimeType,
+      videoBitrate:
+        typeof obj.recording?.videoBitrate === 'number' && obj.recording.videoBitrate > 0
+          ? obj.recording.videoBitrate
+          : 'auto',
+      codec:
+        typeof obj.recording?.codec === 'string' && obj.recording.codec.trim()
+          ? obj.recording.codec.trim()
+          : undefined,
       micAudio:
         typeof obj.recording?.micAudio === 'boolean'
           ? obj.recording.micAudio
@@ -479,6 +503,56 @@ export function mergeAndValidateSettings(raw: unknown): UserSettings {
         typeof obj.recording?.tabAudio === 'boolean'
           ? obj.recording.tabAudio
           : defaults.recording.tabAudio,
+      micDeviceId:
+        typeof obj.recording?.micDeviceId === 'string' ? obj.recording.micDeviceId : undefined,
+      micGain:
+        typeof obj.recording?.micGain === 'number' && Number.isFinite(obj.recording.micGain)
+          ? Math.max(0.5, Math.min(2.5, Math.round(obj.recording.micGain * 100) / 100))
+          : (defaults.recording.micGain ?? 1.4),
+      areaRect:
+        obj.recording?.areaRect &&
+        typeof obj.recording.areaRect.x === 'number' &&
+        typeof obj.recording.areaRect.y === 'number' &&
+        typeof obj.recording.areaRect.width === 'number' &&
+        typeof obj.recording.areaRect.height === 'number' &&
+        obj.recording.areaRect.width > 0 &&
+        obj.recording.areaRect.height > 0
+          ? {
+              x: Math.round(obj.recording.areaRect.x),
+              y: Math.round(obj.recording.areaRect.y),
+              width: Math.round(obj.recording.areaRect.width),
+              height: Math.round(obj.recording.areaRect.height),
+              ...(typeof obj.recording.areaRect.displayId === 'string'
+                ? { displayId: obj.recording.areaRect.displayId }
+                : {}),
+              ...(obj.recording.areaRect.displayBounds &&
+              typeof obj.recording.areaRect.displayBounds.x === 'number' &&
+              typeof obj.recording.areaRect.displayBounds.y === 'number' &&
+              typeof obj.recording.areaRect.displayBounds.width === 'number' &&
+              typeof obj.recording.areaRect.displayBounds.height === 'number'
+                ? {
+                    displayBounds: {
+                      x: Math.round(obj.recording.areaRect.displayBounds.x),
+                      y: Math.round(obj.recording.areaRect.displayBounds.y),
+                      width: Math.round(obj.recording.areaRect.displayBounds.width),
+                      height: Math.round(obj.recording.areaRect.displayBounds.height),
+                    },
+                  }
+                : {}),
+            }
+          : null,
+      echoCancellation:
+        typeof obj.recording?.echoCancellation === 'boolean'
+          ? obj.recording.echoCancellation
+          : true,
+      noiseSuppression:
+        typeof obj.recording?.noiseSuppression === 'boolean'
+          ? obj.recording.noiseSuppression
+          : true,
+      autoGainControl:
+        typeof obj.recording?.autoGainControl === 'boolean'
+          ? obj.recording.autoGainControl
+          : false,
     },
     exportPrefs: {
       askWhereToSave:

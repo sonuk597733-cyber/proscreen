@@ -121,7 +121,7 @@ export const ColorBrushPopover: React.FC<ColorBrushPopoverProps> = ({
       data-testid="color-brush-popover"
       role="dialog"
       aria-label="Color and brush studio"
-      className={`pointer-events-auto w-[324px] min-w-[324px] max-w-[calc(100vw-32px)] max-h-[calc(100vh-16px)] overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden rounded-lg border p-3 shadow-[0_14px_34px_-6px_rgba(0,0,0,0.28)] backdrop-blur-xl transition-colors ${
+      className={`pointer-events-auto w-[324px] min-w-[324px] max-w-[calc(100vw-32px)] max-h-[min(520px,calc(100vh-16px))] overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden rounded-lg border p-3 shadow-[0_14px_34px_-6px_rgba(0,0,0,0.28)] backdrop-blur-xl transition-colors ${
         isDark
           ? 'bg-[#1B1D24]/98 border-[#2E323E] text-[#E4E7EF]'
           : 'bg-[#FBFBFD]/98 border-[#CBD2E1] text-[#111827]'
@@ -139,7 +139,10 @@ export const ColorBrushPopover: React.FC<ColorBrushPopoverProps> = ({
         >
           <button
             type="button"
-            onClick={() => onSelectToolTarget('pen')}
+            onClick={() => {
+              onSelectToolTarget('pen');
+              onClose();
+            }}
             className={`px-2 py-1 text-[11px] font-medium rounded transition-colors whitespace-nowrap cursor-pointer ${
               !isHighlighter && !isLaser
                 ? isDark
@@ -152,7 +155,10 @@ export const ColorBrushPopover: React.FC<ColorBrushPopoverProps> = ({
           </button>
           <button
             type="button"
-            onClick={() => onSelectToolTarget('highlighter')}
+            onClick={() => {
+              onSelectToolTarget('highlighter');
+              onClose();
+            }}
             className={`px-2 py-1 text-[11px] font-medium rounded transition-colors whitespace-nowrap cursor-pointer ${
               isHighlighter
                 ? isDark
@@ -165,7 +171,10 @@ export const ColorBrushPopover: React.FC<ColorBrushPopoverProps> = ({
           </button>
           <button
             type="button"
-            onClick={() => onSelectToolTarget('laser')}
+            onClick={() => {
+              onSelectToolTarget('laser');
+              onClose();
+            }}
             className={`px-2 py-1 text-[11px] font-medium rounded transition-colors whitespace-nowrap cursor-pointer ${
               isLaser
                 ? isDark
@@ -225,6 +234,12 @@ export const ColorBrushPopover: React.FC<ColorBrushPopoverProps> = ({
             max={maxThickness}
             value={currentThickness}
             onChange={(e) => onChangeThickness(Number(e.target.value))}
+            onPointerUp={onClose}
+            onKeyUp={(e) => {
+              if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End', 'PageUp', 'PageDown'].includes(e.key)) {
+                onClose();
+              }
+            }}
             className="w-full accent-blue-500 cursor-pointer"
           />
         </div>
@@ -246,6 +261,12 @@ export const ColorBrushPopover: React.FC<ColorBrushPopoverProps> = ({
               max={100}
               value={Math.round(currentOpacity * 100)}
               onChange={(e) => onChangeOpacity(Number(e.target.value) / 100)}
+              onPointerUp={onClose}
+              onKeyUp={(e) => {
+                if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End', 'PageUp', 'PageDown'].includes(e.key)) {
+                  onClose();
+                }
+              }}
               className="w-full accent-blue-500 cursor-pointer"
             />
           </div>
@@ -277,7 +298,10 @@ export const ColorBrushPopover: React.FC<ColorBrushPopoverProps> = ({
                 type="button"
                 aria-label={`Color ${preset.name}`}
                 title={`${preset.name} (${preset.hex})`}
-                onClick={() => onChangeColor(preset.hex)}
+                onClick={() => {
+                  onChangeColor(preset.hex);
+                  onClose();
+                }}
                 style={{ backgroundColor: preset.hex }}
                 className={`w-full aspect-square rounded-md border transition-transform cursor-pointer ${
                   active
@@ -303,7 +327,10 @@ export const ColorBrushPopover: React.FC<ColorBrushPopoverProps> = ({
                   key={hex}
                   type="button"
                   aria-label={`Favorite color ${hex}`}
-                  onClick={() => onChangeColor(hex)}
+                  onClick={() => {
+                    onChangeColor(hex);
+                    onClose();
+                  }}
                   style={{ backgroundColor: hex }}
                   className="w-5 h-5 rounded border border-slate-500/40 cursor-pointer"
                 />
@@ -319,7 +346,10 @@ export const ColorBrushPopover: React.FC<ColorBrushPopoverProps> = ({
                 key={hex}
                 type="button"
                 aria-label={`Recent color ${hex}`}
-                onClick={() => onChangeColor(hex)}
+                onClick={() => {
+                  onChangeColor(hex);
+                  onClose();
+                }}
                 style={{ backgroundColor: hex }}
                 className="w-5 h-5 rounded border border-slate-500/40 cursor-pointer"
               />
@@ -344,6 +374,7 @@ export const ColorBrushPopover: React.FC<ColorBrushPopoverProps> = ({
             aria-label="Custom color picker"
             value={normalizeHex(currentColor) ?? '#2563EB'}
             onChange={(e) => onChangeColor(e.target.value.toUpperCase())}
+            onBlur={onClose}
             className="w-7 h-7 rounded cursor-pointer border-0 bg-transparent shrink-0"
           />
           <div className="flex-1">
@@ -356,6 +387,13 @@ export const ColorBrushPopover: React.FC<ColorBrushPopoverProps> = ({
               aria-label="HEX color input"
               value={hexInput}
               onChange={(e) => handleHexChange(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  onClose();
+                }
+              }}
+              onBlur={onClose}
               className={`w-full px-2 py-1 text-xs font-mono rounded border ${
                 isDark
                   ? 'bg-[#14161C] border-[#313644] text-[#E4E7EF]'

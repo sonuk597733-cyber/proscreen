@@ -1,7 +1,6 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { FloatingToolbar } from '../toolbar/FloatingToolbar';
 import { FloatingEyeRestoreButton } from '../components/FloatingEyeRestoreButton';
-import { FirstLaunchOnboardingModal } from '../components/FirstLaunchOnboardingModal';
 import { PopoutId } from '../toolbar/ToolbarPopouts';
 import { DesktopSharedState } from './desktopTypes';
 import { createDefaultSettings } from '../storage/validation';
@@ -13,8 +12,13 @@ export const DesktopToolbarApp: React.FC = () => {
   const desktop = typeof window !== 'undefined' ? window.proscreenDesktop : undefined;
 
   const [activePopout, setActivePopout] = useState<PopoutId | null>(null);
-  const [showOnboarding, setShowOnboarding] = useState(false);
-  const [settings, setSettings] = useState<UserSettings>(() => createDefaultSettings());
+  const [settings, setSettings] = useState<UserSettings>(() => {
+    const defaults = createDefaultSettings();
+    if (typeof window !== 'undefined' && window.proscreenDesktop) {
+      defaults.recording.mode = 'screen';
+    }
+    return defaults;
+  });
   const [state, setState] = useState<DesktopSharedState>({
     activeTool: 'pointer',
     interactionMode: 'pointer',
@@ -37,55 +41,211 @@ export const DesktopToolbarApp: React.FC = () => {
     activePageIndex: 0,
     boardPageCount: 1,
     isRecording: false,
+    recordingStatus: 'idle',
+    recordingElapsedMs: 0,
+    latestRecording: null,
   });
+
+  const isDraggingRef = useRef(false);
+
+  // Controlled diagnostic mode: bounded ring buffer (max 100 events) for mouse/drag tracing without memory leaks
+  useEffect(() => {
+    const ringBuffer: Array<{ time: number; event: string; detail?: unknown }> = [];
+    const pushDiag = (event: string, detail?: unknown) => {
+      ringBuffer.push({ time: Date.now(), event, detail });
+      if (ringBuffer.length > 100) ringBuffer.shift();
+    };
+    (window as unknown as { __PROSCREEN_DIAGNOSTICS__: typeof ringBuffer }).__PROSCREEN_DIAGNOSTICS__ = ringBuffer;
+
+    const onPointerDown = (e: PointerEvent) => {
+      const target = e.target as HTMLElement | null;
+      pushDiag('pointerdown', {
+        x: Math.round(e.clientX),
+        y: Math.round(e.clientY),
+        target: target?.getAttribute('data-testid') || target?.tagName,
+      });
+    };
+    const onPointerUp = (e: PointerEvent) => {
+      pushDiag('pointerup', { x: Math.round(e.clientX), y: Math.round(e.clientY) });
+    };
+    window.addEventListener('pointerdown', onPointerDown, true);
+    window.addEventListener('pointerup', onPointerUp, true);
+    return () => {
+      window.removeEventListener('pointerdown', onPointerDown, true);
+      window.removeEventListener('pointerup', onPointerUp, true);
+    };
+  }, []);
 
   // Load persistent desktop settings on mount
   useEffect(() => {
     if (!desktop) return;
     void desktop.loadDesktopSettings().then((loaded) => {
       if (loaded) {
-        setSettings(loaded);
-        if (loaded.hasSeenOnboarding === false) {
-          setShowOnboarding(true);
-        }
-      } else {
-        setShowOnboarding(true);
+        setSettings((prev) => {
+          const merged = { ...prev, ...loaded };
+          if (merged.recording && merged.recording.mode === 'tab') {
+            merged.recording.mode = 'screen';
+          }
+          return merged;
+        });
       }
     });
   }, [desktop]);
-
-  const handleCloseOnboarding = (dontShowAgain: boolean) => {
-    setShowOnboarding(false);
-    if (dontShowAgain) {
-      setSettings((prev) => {
-        const next = { ...prev, hasSeenOnboarding: true };
-        desktop?.saveDesktopSettings(next);
-        return next;
-      });
-    }
-  };
 
   // Synchronize live state from Main process / Overlay
   useEffect(() => {
     if (!desktop) return;
     const unsub = desktop.onStateChange((next) => {
-      setState(next);
+      setState((prev) => {
+        let changed = false;
+        for (const k in next) {
+          const key = k as keyof typeof next;
+          if (prev[key] !== next[key]) {
+            changed = true;
+            break;
+          }
+        }
+        return changed ? { ...prev, ...next } : prev;
+      });
+      if (next.toolbarPosition) {
+        setSettings((prev) => {
+          if (
+            prev.toolbarPosition?.x === next.toolbarPosition.x &&
+            prev.toolbarPosition?.y === next.toolbarPosition.y
+          ) {
+            return prev;
+          }
+          return { ...prev, toolbarPosition: next.toolbarPosition };
+        });
+      }
+      if (next.restoreButtonPosition) {
+        setSettings((prev) => {
+          if (
+            prev.restoreButtonPosition?.x === next.restoreButtonPosition.x &&
+            prev.restoreButtonPosition?.y === next.restoreButtonPosition.y
+          ) {
+            return prev;
+          }
+          return { ...prev, restoreButtonPosition: next.restoreButtonPosition };
+        });
+      }
     });
-    void desktop.getState().then(setState);
+    void desktop.getState().then((s) => {
+      setState((prev) => {
+        let changed = false;
+        for (const k in s) {
+          const key = k as keyof typeof s;
+          if (prev[key] !== s[key]) {
+            changed = true;
+            break;
+          }
+        }
+        return changed ? { ...prev, ...s } : prev;
+      });
+      if (s.toolbarPosition) {
+        setSettings((prev) => {
+          if (
+            prev.toolbarPosition?.x === s.toolbarPosition.x &&
+            prev.toolbarPosition?.y === s.toolbarPosition.y
+          ) {
+            return prev;
+          }
+          return { ...prev, toolbarPosition: s.toolbarPosition };
+        });
+      }
+      if (s.restoreButtonPosition) {
+        setSettings((prev) => {
+          if (
+            prev.restoreButtonPosition?.x === s.restoreButtonPosition.x &&
+            prev.restoreButtonPosition?.y === s.restoreButtonPosition.y
+          ) {
+            return prev;
+          }
+          return { ...prev, restoreButtonPosition: s.restoreButtonPosition };
+        });
+      }
+    });
     return unsub;
   }, [desktop]);
+
+  // Dynamically resize toolbar window & manage mouse pass-through:
+  // - Eye OFF / Restore button: 44x44, accepts clicks
+  // - Normal vertical toolbar: 44x520 (fits all 18 tools), accepts clicks
+  // - Hidden / unmounted: setToolbarIgnoreMouse(true) so no invisible mouse trap can ever exist
+  // NOTE: When a dropdown/popout opens, the toolbar window is NEVER resized or moved.
+  // The dropdown opens in a dedicated transparent utility window, keeping the toolbar 100% stationary!
+  useEffect(() => {
+    if (!desktop || isDraggingRef.current) return;
+
+    if (!state.toolbarVisible && state.restoreButtonVisible) {
+      desktop.setToolbarBounds({ width: 44, height: 44 });
+      desktop.setToolbarIgnoreMouse(false);
+    } else if (state.toolbarVisible) {
+      desktop.setToolbarBounds({ width: 44, height: 520 });
+      desktop.setToolbarIgnoreMouse(false);
+    } else {
+      // Safety guard: if neither toolbar nor restore button is visible, pass clicks through 100%
+      desktop.setToolbarIgnoreMouse(true);
+    }
+  }, [desktop, state.toolbarVisible, state.restoreButtonVisible]);
+
+  // Synchronize when popout is closed from main process (e.g. popout window blurred or Esc pressed)
+  const activeTransitionRef = useRef(0);
+
+  useEffect(() => {
+    if (!desktop?.onPopoutClosed) return;
+    const unsub = desktop.onPopoutClosed((info) => {
+      if (
+        !info ||
+        typeof info.transitionId !== 'number' ||
+        info.transitionId === activeTransitionRef.current
+      ) {
+        setActivePopout(null);
+      }
+    });
+    return unsub;
+  }, [desktop]);
+
+  // Auto-dismiss active popout when user clicks outside the toolbar or presses Escape inside toolbar window
+  useEffect(() => {
+    if (!activePopout) return;
+
+    const handlePointerDown = (e: MouseEvent) => {
+      const target = e.target as HTMLElement | null;
+      if (
+        target &&
+        !target.closest('[data-testid="proscreen-toolbar"]')
+      ) {
+        activeTransitionRef.current++;
+        desktop?.closePopout?.({ transitionId: activeTransitionRef.current });
+        setActivePopout(null);
+      }
+    };
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        e.stopPropagation();
+        activeTransitionRef.current++;
+        desktop?.closePopout?.({ transitionId: activeTransitionRef.current });
+        setActivePopout(null);
+      }
+    };
+
+    window.addEventListener('mousedown', handlePointerDown, true);
+    window.addEventListener('keydown', handleKeyDown, true);
+
+    return () => {
+      window.removeEventListener('mousedown', handlePointerDown, true);
+      window.removeEventListener('keydown', handleKeyDown, true);
+    };
+  }, [activePopout, desktop]);
 
   const handleUpdateSettings = (updater: (prev: UserSettings) => UserSettings) => {
     setSettings((prev) => {
       const next = updater(prev);
-      if (
-        next.toolbarPosition.x !== prev.toolbarPosition.x ||
-        next.toolbarPosition.y !== prev.toolbarPosition.y
-      ) {
-        desktop?.moveToolbar(next.toolbarPosition.x, next.toolbarPosition.y);
-        desktop?.saveToolbarPosition(next.toolbarPosition.x, next.toolbarPosition.y);
-      }
       desktop?.saveDesktopSettings(next);
+      desktop?.dispatchAction('update-settings', next);
       return next;
     });
   };
@@ -114,19 +274,32 @@ export const DesktopToolbarApp: React.FC = () => {
         }}
       >
         <FloatingEyeRestoreButton
-          position={settings.restoreButtonPosition}
+          position={settings.restoreButtonPosition || { x: 16, y: 76 }}
           onPositionChange={(pos) => {
             setSettings((prev) => {
-              const next = { ...prev, restoreButtonPosition: pos };
+              const next = { ...prev, restoreButtonPosition: pos, toolbarPosition: pos };
               desktop?.saveDesktopSettings(next);
               return next;
             });
             desktop?.saveRestoreButtonPosition(pos.x, pos.y);
           }}
           onDesktopMove={(x, y) => {
+            isDraggingRef.current = true;
             desktop?.moveToolbar(x, y);
           }}
-          onRestore={() => desktop?.setEye(true)}
+          onSaveDesktopPosition={(x, y) => {
+            isDraggingRef.current = false;
+            setSettings((prev) => {
+              const next = { ...prev, restoreButtonPosition: { x, y }, toolbarPosition: { x, y } };
+              desktop?.saveDesktopSettings(next);
+              return next;
+            });
+            desktop?.saveRestoreButtonPosition(x, y);
+          }}
+          onRestore={() => {
+            isDraggingRef.current = false;
+            desktop?.setEye(true);
+          }}
           edgeSnapping={settings.edgeSnapping}
           isDesktopToolbarWindow={true}
         />
@@ -138,15 +311,21 @@ export const DesktopToolbarApp: React.FC = () => {
     return null;
   }
 
+  const tbX = settings.toolbarPosition?.x ?? 16;
+  const screenWidth = typeof window !== 'undefined' && window.screen?.availWidth ? window.screen.availWidth : 1920;
+  const isNearRight = (screenWidth - (tbX + 44) < 340) && tbX >= 340;
+
   return (
     <div
       id="desktop-toolbar-root"
-      className="p-1 select-none font-sans"
+      className="select-none font-sans w-full h-full relative"
       style={{
-        backgroundColor: 'transparent',
+        backgroundColor: activePopout ? 'rgba(0, 0, 0, 0.001)' : 'transparent',
+        pointerEvents: 'auto',
       }}
     >
       <FloatingToolbar
+        desktopOpenSide={isNearRight ? 'left' : 'right'}
         activeTool={state.activeTool}
         boardMode={state.boardMode}
         boardPageIndex={state.activePageIndex}
@@ -159,9 +338,9 @@ export const DesktopToolbarApp: React.FC = () => {
         presentationMode={state.presentationMode}
         isCapturing={false}
         activeTimerCountdownMs={null}
-        recordingStatus={state.isRecording ? 'recording' : 'idle'}
-        recordingElapsedMs={0}
-        latestRecording={null}
+        recordingStatus={state.recordingStatus || (state.isRecording ? 'recording' : 'idle')}
+        recordingElapsedMs={state.recordingElapsedMs || 0}
+        latestRecording={state.latestRecording || null}
         recordingSupported={true}
         supportedRecordingFormats={getSupportedRecordingFormats()}
         canUndoAll={state.canUndo}
@@ -179,7 +358,37 @@ export const DesktopToolbarApp: React.FC = () => {
         }}
         savedSessions={[]}
         activePopout={activePopout}
-        onSetActivePopout={setActivePopout}
+        isDesktopToolbarWindow={true}
+        onDesktopMove={(x, y) => {
+          isDraggingRef.current = true;
+          activeTransitionRef.current++;
+          desktop?.closePopout?.({ transitionId: activeTransitionRef.current });
+          setActivePopout(null);
+          desktop?.moveToolbar(x, y);
+        }}
+        onSaveDesktopPosition={(x, y) => {
+          isDraggingRef.current = false;
+          setSettings((prev) => {
+            const next = { ...prev, toolbarPosition: { x, y }, restoreButtonPosition: { x, y } };
+            desktop?.saveDesktopSettings(next);
+            return next;
+          });
+          desktop?.saveToolbarPosition(x, y);
+        }}
+        onSetActivePopout={(id, anchorOffsetY) => {
+          activeTransitionRef.current++;
+          const thisTransition = activeTransitionRef.current;
+          setActivePopout(id);
+          if (id) {
+            desktop?.openPopout?.({
+              popoutId: id,
+              anchorOffsetY: anchorOffsetY ?? 20,
+              transitionId: thisTransition,
+            });
+          } else {
+            desktop?.closePopout?.({ transitionId: thisTransition });
+          }
+        }}
         onSelectTool={handleSelectTool}
         onSwitchBoard={(mode) => desktop?.dispatchAction('switch-board', mode)}
         onPrevBoardPage={() => desktop?.dispatchAction('prev-board-page')}
@@ -215,14 +424,18 @@ export const DesktopToolbarApp: React.FC = () => {
         }}
         onCopyScreenshot={() => desktop?.dispatchAction('copy-screenshot')}
         onSavePng={() => desktop?.dispatchAction('save-png')}
-        onStartRecording={() => desktop?.dispatchAction('toggle-recording')}
-        onPauseRecording={() => {}}
-        onResumeRecording={() => {}}
-        onStopRecording={() => desktop?.dispatchAction('toggle-recording')}
-        onCancelRecording={() => {}}
-        onDownloadLatestRecording={() => {}}
-        onPreviewLatestRecording={() => {}}
-        onClearTemporaryRecording={() => {}}
+        onSelectRecordingArea={() => {
+          desktop?.dispatchAction('select-recording-area');
+          desktop?.setInteractionMode('drawing');
+        }}
+        onStartRecording={() => desktop?.dispatchAction('start-recording', settings.recording)}
+        onPauseRecording={() => desktop?.dispatchAction('pause-recording')}
+        onResumeRecording={() => desktop?.dispatchAction('resume-recording')}
+        onStopRecording={() => desktop?.dispatchAction('stop-recording')}
+        onCancelRecording={() => desktop?.dispatchAction('cancel-recording')}
+        onDownloadLatestRecording={() => desktop?.dispatchAction('download-recording', state.latestRecording)}
+        onPreviewLatestRecording={() => desktop?.dispatchAction('preview-recording', state.latestRecording)}
+        onClearTemporaryRecording={() => desktop?.dispatchAction('clear-recording')}
         onSaveSession={(name) => desktop?.dispatchAction('save-session', name)}
         onRestoreSession={() => {}}
         onDeleteSession={() => {}}
@@ -234,11 +447,6 @@ export const DesktopToolbarApp: React.FC = () => {
         onOpenEye={() => desktop?.setEye(true)}
         onToggleEye={() => desktop?.toggleEye()}
         onRestoreToolbar={() => desktop?.setEye(true)}
-      />
-
-      <FirstLaunchOnboardingModal
-        isOpen={showOnboarding}
-        onClose={handleCloseOnboarding}
       />
     </div>
   );

@@ -8,6 +8,7 @@ interface FloatingEyeRestoreButtonProps {
   edgeSnapping?: boolean;
   isDesktopToolbarWindow?: boolean;
   onDesktopMove?: (x: number, y: number) => void;
+  onSaveDesktopPosition?: (x: number, y: number) => void;
 }
 
 export const FloatingEyeRestoreButton: React.FC<FloatingEyeRestoreButtonProps> = ({
@@ -17,77 +18,60 @@ export const FloatingEyeRestoreButton: React.FC<FloatingEyeRestoreButtonProps> =
   edgeSnapping = true,
   isDesktopToolbarWindow = false,
   onDesktopMove,
+  onSaveDesktopPosition,
 }) => {
+  const safePosition = position || { x: 16, y: 76 };
   const [isHovered, setIsHovered] = useState(false);
-  const dragRef = useRef<{
-    startX: number;
-    startY: number;
-    initPosX: number;
-    initPosY: number;
-    latestX: number;
-    latestY: number;
-    moved: boolean;
-  } | null>(null);
+  const activeDragRef = useRef<{ cleanup: () => void } | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (activeDragRef.current) {
+        activeDragRef.current.cleanup();
+      }
+    };
+  }, []);
 
   const handlePointerDown = (e: React.PointerEvent<HTMLButtonElement>) => {
     if (e.button !== 0) return;
     e.preventDefault();
     e.stopPropagation();
 
-    dragRef.current = {
-      startX: e.clientX,
-      startY: e.clientY,
-      initPosX: position.x,
-      initPosY: position.y,
-      latestX: position.x,
-      latestY: position.y,
-      moved: false,
-    };
+    if (activeDragRef.current) {
+      activeDragRef.current.cleanup();
+    }
 
-    const onPointerMove = (ev: PointerEvent) => {
-      const sess = dragRef.current;
-      if (!sess) return;
+    const startScreenX = Number.isFinite(e.screenX) && e.screenX !== 0 ? e.screenX : e.clientX;
+    const startScreenY = Number.isFinite(e.screenY) && e.screenY !== 0 ? e.screenY : e.clientY;
+    const startWinX =
+      isDesktopToolbarWindow && typeof window !== 'undefined' && Number.isFinite(window.screenX)
+        ? window.screenX
+        : safePosition.x;
+    const startWinY =
+      isDesktopToolbarWindow && typeof window !== 'undefined' && Number.isFinite(window.screenY)
+        ? window.screenY
+        : safePosition.y;
 
-      const dx = ev.clientX - sess.startX;
-      const dy = ev.clientY - sess.startY;
+    let moved = false;
+    let latestX = startWinX;
+    let latestY = startWinY;
+    let moveRafId: number | null = null;
 
-      if (!sess.moved && Math.hypot(dx, dy) < 4) return;
-      sess.moved = true;
-
-      const vw = window.innerWidth;
-      const vh = window.innerHeight;
-      const size = 40;
-
-      let nextX = Math.round(sess.initPosX + dx);
-      let nextY = Math.round(sess.initPosY + dy);
-
-      if (!isDesktopToolbarWindow) {
-        nextX = Math.max(8, Math.min(vw - size - 8, nextX));
-        nextY = Math.max(8, Math.min(vh - size - 8, nextY));
+    const cleanup = () => {
+      if (moveRafId !== null) {
+        cancelAnimationFrame(moveRafId);
+        moveRafId = null;
       }
-
-      sess.latestX = nextX;
-      sess.latestY = nextY;
-
-      if (isDesktopToolbarWindow && onDesktopMove) {
-        onDesktopMove(nextX, nextY);
-      } else {
-        onPositionChange({ x: nextX, y: nextY });
-      }
-    };
-
-    const onPointerUp = (ev: PointerEvent) => {
       window.removeEventListener('pointermove', onPointerMove, true);
-      window.removeEventListener('pointerup', onPointerUp, true);
-      window.removeEventListener('pointercancel', onPointerUp, true);
+      window.removeEventListener('pointerup', cleanup, true);
+      window.removeEventListener('pointercancel', cleanup, true);
+      window.removeEventListener('mouseup', cleanup, true);
+      window.removeEventListener('blur', cleanup, true);
+      activeDragRef.current = null;
 
-      const sess = dragRef.current;
-      dragRef.current = null;
-      if (!sess) return;
-
-      if (sess.moved) {
-        let finalX = sess.latestX;
-        let finalY = sess.latestY;
+      if (moved) {
+        let finalX = latestX;
+        let finalY = latestY;
 
         if (edgeSnapping && !isDesktopToolbarWindow) {
           const vw = window.innerWidth;
@@ -100,15 +84,61 @@ export const FloatingEyeRestoreButton: React.FC<FloatingEyeRestoreButtonProps> =
         }
 
         onPositionChange({ x: finalX, y: finalY });
+        if (isDesktopToolbarWindow && onSaveDesktopPosition) {
+          onSaveDesktopPosition(finalX, finalY);
+        }
       } else {
+        if (isDesktopToolbarWindow && onSaveDesktopPosition) {
+          onSaveDesktopPosition(startWinX, startWinY);
+        }
         // Normal click without movement -> restore toolbar
         onRestore();
       }
     };
 
+    const onPointerMove = (ev: PointerEvent) => {
+      if (ev.buttons !== undefined && (ev.buttons & 1) === 0) {
+        cleanup();
+        return;
+      }
+
+      const curScreenX = Number.isFinite(ev.screenX) && ev.screenX !== 0 ? ev.screenX : ev.clientX;
+      const curScreenY = Number.isFinite(ev.screenY) && ev.screenY !== 0 ? ev.screenY : ev.clientY;
+      const dx = curScreenX - startScreenX;
+      const dy = curScreenY - startScreenY;
+
+      if (!moved && Math.hypot(dx, dy) < 4) return;
+      moved = true;
+
+      latestX = Math.round(startWinX + dx);
+      latestY = Math.round(startWinY + dy);
+
+      if (isDesktopToolbarWindow && onDesktopMove) {
+        if (moveRafId === null) {
+          moveRafId = requestAnimationFrame(() => {
+            moveRafId = null;
+            if (activeDragRef.current) {
+              onDesktopMove(latestX, latestY);
+            }
+          });
+        }
+      } else {
+        const vw = window.innerWidth;
+        const vh = window.innerHeight;
+        const size = 40;
+        const clampedX = Math.max(8, Math.min(vw - size - 8, latestX));
+        const clampedY = Math.max(8, Math.min(vh - size - 8, latestY));
+        onPositionChange({ x: clampedX, y: clampedY });
+      }
+    };
+
+    activeDragRef.current = { cleanup };
+
     window.addEventListener('pointermove', onPointerMove, true);
-    window.addEventListener('pointerup', onPointerUp, true);
-    window.addEventListener('pointercancel', onPointerUp, true);
+    window.addEventListener('pointerup', cleanup, true);
+    window.addEventListener('pointercancel', cleanup, true);
+    window.addEventListener('mouseup', cleanup, true);
+    window.addEventListener('blur', cleanup, true);
   };
 
   const style: React.CSSProperties = isDesktopToolbarWindow
@@ -120,8 +150,8 @@ export const FloatingEyeRestoreButton: React.FC<FloatingEyeRestoreButtonProps> =
       }
     : {
         position: 'fixed',
-        left: `${position.x}px`,
-        top: `${position.y}px`,
+        left: `${safePosition.x}px`,
+        top: `${safePosition.y}px`,
         zIndex: 2147483645,
         pointerEvents: 'auto',
       };

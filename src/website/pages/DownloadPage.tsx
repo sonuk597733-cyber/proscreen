@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { OFFICIAL_RELEASES, SYSTEM_REQUIREMENTS, ReleaseAsset } from '../constants';
+import { OFFICIAL_RELEASES, SYSTEM_REQUIREMENTS } from '../constants';
+import { ReleaseAsset } from '../types';
 import { useRouter } from '../router';
 import {
   Download,
@@ -52,7 +53,7 @@ export const DownloadPage: React.FC = () => {
         <div className="text-center max-w-3xl mx-auto space-y-4">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-mono font-medium bg-blue-500/10 border border-blue-500/25 text-blue-300">
             <Download className="w-3.5 h-3.5" />
-            <span>Official Download & Release Center</span>
+            <span>Official Download Center • First 6 Months Free</span>
           </div>
 
           <h1 className="text-4xl sm:text-6xl font-extrabold text-white tracking-tight">

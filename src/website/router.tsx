@@ -63,7 +63,9 @@ export const RouterProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     setCurrentRoute(route);
     // Update hash for universal static hosting compatibility without 404s
     if (route === 'home') {
-      if (window.location.hash) {
+      if (anchorId) {
+        window.location.hash = `#${anchorId}`;
+      } else if (window.location.hash) {
         history.pushState(null, '', window.location.pathname);
       }
     } else {
@@ -81,6 +83,16 @@ export const RouterProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
   };
+
+  useEffect(() => {
+    const rawHash = window.location.hash.replace(/^#\/?/, '').split('?')[0];
+    if (rawHash && ['features', 'how-it-works', 'use-cases', 'pricing', 'download', 'faq'].includes(rawHash)) {
+      setTimeout(() => {
+        const el = document.getElementById(rawHash);
+        if (el) el.scrollIntoView({ behavior: 'smooth' });
+      }, 150);
+    }
+  }, []);
 
   useEffect(() => {
     const handlePopState = () => {

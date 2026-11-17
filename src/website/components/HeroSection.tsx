@@ -105,7 +105,7 @@ export const HeroSection: React.FC = () => {
               <button
                 type="button"
                 onClick={() => navigate('home', 'download')}
-                className="inline-flex items-center justify-center gap-2.5 rounded-2xl bg-sky-500 px-7 py-4 text-base font-semibold text-slate-950 shadow-lg shadow-sky-500/25 transition-colors hover:bg-sky-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-600"
+                className="inline-flex items-center justify-center gap-2.5 rounded-2xl bg-sky-500 px-7 py-4 text-base font-semibold text-slate-950 shadow-lg shadow-sky-500/25 transition-colors hover:bg-sky-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-500"
               >
                 <Download className="w-5 h-5" />
                 <span>Download for Windows</span>
@@ -132,7 +132,7 @@ export const HeroSection: React.FC = () => {
         </div>
 
         {/* Product showcase */}
-        <div className="relative mt-14 lg:mt-16 overflow-hidden rounded-3xl bg-slate-950 p-4 sm:p-6 lg:p-8 shadow-2xl shadow-slate-900/20">
+        <div className="site-product-frame relative mt-14 lg:mt-16 overflow-hidden rounded-3xl bg-slate-950 p-4 sm:p-6 lg:p-8 shadow-2xl shadow-slate-900/20">
           <div
             aria-hidden="true"
             className="pointer-events-none absolute -top-32 left-1/3 w-[28rem] h-80 rounded-full bg-sky-500/20 blur-3xl"

@@ -130,6 +130,70 @@
   color: #1d4ed8;
 }
 
+/* Keep small accent labels readable against white rather than relying on
+   pastel-on-white colors inherited from the dark theme. */
+.site-shell:not(.site-shell--playground) :is(
+  [class~="text-blue-300"], [class~="text-blue-400"],
+  [class~="text-sky-300"], [class~="text-sky-400"],
+  [class~="text-indigo-300"], [class~="text-indigo-400"],
+  [class~="text-emerald-300"], [class~="text-emerald-400"],
+  [class~="text-amber-300"], [class~="text-amber-400"],
+  [class~="text-rose-300"], [class~="text-rose-400"]
+) {
+  color: #1d4ed8;
+}
+
+/* Real product screenshots sit in a dark app frame. Preserve that contrast
+   and authentic studio chrome while the surrounding marketing pages stay light. */
+.site-shell:not(.site-shell--playground) .site-product-frame {
+  background-color: #080d19;
+  color: #f8fafc;
+}
+
+.site-shell:not(.site-shell--playground) .site-product-frame :is(
+  [class~="bg-slate-950"], [class~="bg-slate-950/60"], [class~="bg-slate-950/90"],
+  [class~="bg-slate-900"], [class~="bg-slate-900/90"], [class~="bg-slate-900/80"],
+  [class~="bg-slate-900/60"], [class~="bg-slate-900/40"], [class~="bg-slate-800"],
+  [class~="bg-slate-800/80"], [class~="bg-slate-800/60"]
+) {
+  background-color: #0f172a;
+}
+
+.site-shell:not(.site-shell--playground) .site-product-frame :is(
+  [class~="text-white"], [class~="text-slate-100"], [class~="text-slate-200"],
+  [class~="text-slate-300"], [class~="text-slate-400"]
+) {
+  color: #e2e8f0;
+}
+
+.site-shell:not(.site-shell--playground) .site-product-frame :is(
+  [class~="border-slate-800"], [class~="border-slate-800/60"],
+  [class~="border-slate-800/80"], [class~="border-slate-700"],
+  [class~="border-white/10"], [class~="border-white/15"]
+) {
+  border-color: rgb(148 163 184 / 20%);
+}
+
+.site-shell:not(.site-shell--playground) .site-product-frame :is(
+  [class~="text-blue-300"], [class~="text-blue-400"],
+  [class~="text-sky-300"], [class~="text-sky-400"],
+  [class~="text-indigo-300"], [class~="text-indigo-400"],
+  [class~="text-emerald-300"], [class~="text-emerald-400"],
+  [class~="text-amber-300"], [class~="text-amber-400"],
+  [class~="text-rose-300"], [class~="text-rose-400"]
+) {
+  color: #7dd3fc;
+}
+
+.site-shell:not(.site-shell--playground) .site-product-frame [class~="hover:bg-slate-800"]:hover,
+.site-shell:not(.site-shell--playground) .site-product-frame [class~="hover:bg-slate-900/40"]:hover {
+  background-color: rgb(255 255 255 / 10%);
+}
+
+.site-shell:not(.site-shell--playground) .site-product-frame [class~="hover:text-white"]:hover {
+  color: #fff;
+}
+
 .site-shell:not(.site-shell--playground) ::-webkit-scrollbar-track {
   background: #f1f5f9;
 }
@@ -141,6 +205,16 @@
 
 .site-shell:not(.site-shell--playground) ::-webkit-scrollbar-thumb:hover {
   background: #94a3b8;
+}
+
+@media (max-width: 640px) {
+  .site-shell:not(.site-shell--playground) {
+    overflow-x: clip;
+  }
+
+  .site-shell:not(.site-shell--playground) :is(h1, h2, h3) {
+    overflow-wrap: anywhere;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

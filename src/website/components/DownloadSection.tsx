@@ -12,6 +12,7 @@ import {
   Terminal,
   Cpu,
   MemoryStick,
+  Chrome,
 } from 'lucide-react';
 
 type Upcoming = {
@@ -45,7 +46,7 @@ const shorten = (hash?: string) =>
 export const DownloadSection: React.FC = () => {
   const [copiedSha, setCopiedSha] = useState<string | null>(null);
   const { releases } = useLatestReleases();
-  const { installer, portable } = releases;
+  const { installer, portable, extensionZip } = releases;
 
   const copyChecksum = async (hash: string | undefined, id: string) => {
     if (!hash) return;
@@ -170,6 +171,23 @@ export const DownloadSection: React.FC = () => {
                 </span>
                 <span className="font-mono text-xs text-slate-400">{portable.sizeFormatted}</span>
               </a>
+
+              <a
+                href={extensionZip.downloadUrl}
+                download={extensionZip.fileName}
+                className="flex items-center justify-between gap-3 rounded-2xl bg-white/5 hover:bg-white/10 ring-1 ring-white/15 px-5 py-4 font-semibold transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-300 sm:col-span-2"
+              >
+                <span className="flex items-center gap-3">
+                  <Chrome className="w-5 h-5 text-amber-400" />
+                  <span className="leading-tight text-left">
+                    Download Chrome Extension (ZIP)
+                    <span className="block text-xs font-medium text-slate-400">
+                      Manifest V3 • Chrome, Edge, Brave & Opera
+                    </span>
+                  </span>
+                </span>
+                <span className="font-mono text-xs text-slate-400">{extensionZip.sizeFormatted}</span>
+              </a>
             </div>
 
             {/* Verify */}
@@ -180,6 +198,7 @@ export const DownloadSection: React.FC = () => {
               </p>
               <ChecksumRow label="Installer" hash={installer?.sha256} id="installer" />
               <ChecksumRow label="Portable" hash={portable?.sha256} id="portable" />
+              <ChecksumRow label="Extension" hash={extensionZip?.sha256} id="extension" />
             </div>
 
             {/* Requirements */}

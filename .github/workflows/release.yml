@@ -72,16 +72,16 @@ jobs:
           } else {
             $tagName = "v$version"
           }
-          echo "version=$version" >> $env:GITHUB_OUTPUT
-          echo "tag_name=$tagName" >> $env:GITHUB_OUTPUT
-          echo "setup_file=ProScreen-Setup-$version.exe" >> $env:GITHUB_OUTPUT
-          echo "portable_file=ProScreen-Portable-$version.exe" >> $env:GITHUB_OUTPUT
-          echo "extension_file=ProScreen-Chrome-Extension-$version.zip" >> $env:GITHUB_OUTPUT
+          "version=$version" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+          "tag_name=$tagName" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+          "setup_file=ProScreen-Setup-$version.exe" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+          "portable_file=ProScreen-Portable-$version.exe" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+          "extension_file=ProScreen-Chrome-Extension-$version.zip" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
 
       - name: Build Windows Binaries (NSIS Installer & Portable)
         env:
           GITHUB_PAGES: 'false'
-        run: npm run dist:win
+        run: npm run dist:win -- --publish never
 
       - name: Package Chrome Extension ZIP
         env:
@@ -147,12 +147,12 @@ jobs:
           }
           $manifest | ConvertTo-Json -Depth 4 | Set-Content -Path "release/release-manifest.json" -Encoding UTF8
 
-          echo "setup_size_formatted=$setupMb" >> $env:GITHUB_OUTPUT
-          echo "portable_size_formatted=$portableMb" >> $env:GITHUB_OUTPUT
-          echo "extension_size_formatted=$extKb" >> $env:GITHUB_OUTPUT
-          echo "setup_hash=$setupHash" >> $env:GITHUB_OUTPUT
-          echo "portable_hash=$portableHash" >> $env:GITHUB_OUTPUT
-          echo "extension_hash=$extHash" >> $env:GITHUB_OUTPUT
+          "setup_size_formatted=$setupMb" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+          "portable_size_formatted=$portableMb" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+          "extension_size_formatted=$extKb" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+          "setup_hash=$setupHash" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+          "portable_hash=$portableHash" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+          "extension_hash=$extHash" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
 
       - name: Upload Verified Windows Build Artifacts
         uses: actions/upload-artifact@v4
@@ -177,14 +177,23 @@ jobs:
           name: proscreen-windows-release
           path: release-artifacts
 
+      - name: Inspect Extracted Artifacts Directory
+        run: |
+          echo "=== Content of release-artifacts ==="
+          ls -laR release-artifacts
+
       - name: Publish GitHub Release Assets
         uses: softprops/action-gh-release@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
+          token: ${{ secrets.GITHUB_TOKEN }}
           tag_name: ${{ needs.build-windows.outputs.tag_name }}
           name: ProScreen v${{ needs.build-windows.outputs.version }} — Windows & Chrome Release
           draft: false
           prerelease: false
           make_latest: true
+          fail_on_unmatched_files: true
           body: |
             # ProScreen v${{ needs.build-windows.outputs.version }} — Official Production Release
 
@@ -203,7 +212,7 @@ jobs:
             Get-FileHash -Path "${{ needs.build-windows.outputs.portable_file }}" -Algorithm SHA256
             ```
           files: |
-            release-artifacts/${{ needs.build-windows.outputs.setup_file }}
-            release-artifacts/${{ needs.build-windows.outputs.portable_file }}
-            release-artifacts/${{ needs.build-windows.outputs.extension_file }}
-            release-artifacts/release-manifest.json
+            release-artifacts/**/${{ needs.build-windows.outputs.setup_file }}
+            release-artifacts/**/${{ needs.build-windows.outputs.portable_file }}
+            release-artifacts/**/${{ needs.build-windows.outputs.extension_file }}
+            release-artifacts/**/release-manifest.json

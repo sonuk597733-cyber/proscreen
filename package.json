@@ -12,8 +12,9 @@
     "build": "vite build",
     "build:website": "node scripts/build-website.js",
     "build:extension": "vite build",
+    "package:extension": "node scripts/package-extension.js",
     "build:desktop": "vite build && electron-builder --dir",
-    "dist:win": "vite build && electron-builder --win",
+    "dist:win": "vite build && electron-builder --win --publish never",
     "electron:start": "electron .",
     "preview": "vite preview",
     "clean": "rm -rf dist dist-electron release server.js",
@@ -23,6 +24,7 @@
   "build": {
     "appId": "com.proscreen.annotationstudio",
     "productName": "ProScreen",
+    "publish": null,
     "directories": {
       "output": "release"
     },

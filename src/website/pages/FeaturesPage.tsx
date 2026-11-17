@@ -216,7 +216,7 @@ export const FeaturesPage: React.FC = () => {
             className="inline-flex items-center gap-3 px-8 py-4 rounded-xl text-base font-bold text-white bg-gradient-to-r from-blue-600 to-sky-500 hover:from-blue-500 hover:to-sky-400 shadow-xl shadow-blue-500/30 transition-all hover:scale-105 active:scale-100"
           >
             <Download className="w-5 h-5" />
-            <span>Download ProScreen for Windows (v1.0.0)</span>
+            <span>Download ProScreen for Windows (v1.0.2)</span>
           </button>
         </div>
       </div>

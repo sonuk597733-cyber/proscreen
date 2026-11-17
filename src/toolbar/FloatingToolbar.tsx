@@ -347,7 +347,22 @@ export const FloatingToolbar: React.FC<FloatingToolbarProps> = ({
   }, [activePopout, onSetActivePopout, isDesktopToolbarWindow]);
 
   useEffect(() => {
+    const clearHoverState = () => {
+      if (hoverOpenTimerRef.current) {
+        window.clearTimeout(hoverOpenTimerRef.current);
+        hoverOpenTimerRef.current = null;
+      }
+      if (hoverCloseTimerRef.current) {
+        window.clearTimeout(hoverCloseTimerRef.current);
+        hoverCloseTimerRef.current = null;
+      }
+      setTooltip(null);
+    };
+    window.addEventListener('blur', clearHoverState);
+    document.addEventListener('mouseleave', clearHoverState);
     return () => {
+      window.removeEventListener('blur', clearHoverState);
+      document.removeEventListener('mouseleave', clearHoverState);
       if (activeDragRef.current) activeDragRef.current.cleanup();
       if (hoverOpenTimerRef.current) window.clearTimeout(hoverOpenTimerRef.current);
       if (hoverCloseTimerRef.current) window.clearTimeout(hoverCloseTimerRef.current);
@@ -484,15 +499,20 @@ export const FloatingToolbar: React.FC<FloatingToolbarProps> = ({
     });
   };
 
-  const hideTooltip = () => {
-    setTooltip(null);
-  };
-
-  const openPopoutFor = (id: PopoutId, el: HTMLElement | null, isClick = true) => {
+  const cancelHoverOpenTimer = () => {
     if (hoverOpenTimerRef.current) {
       window.clearTimeout(hoverOpenTimerRef.current);
       hoverOpenTimerRef.current = null;
     }
+  };
+
+  const hideTooltip = () => {
+    cancelHoverOpenTimer();
+    setTooltip(null);
+  };
+
+  const openPopoutFor = (id: PopoutId, el: HTMLElement | null, isClick = true) => {
+    cancelHoverOpenTimer();
     if (hoverCloseTimerRef.current) {
       window.clearTimeout(hoverCloseTimerRef.current);
       hoverCloseTimerRef.current = null;
@@ -517,6 +537,7 @@ export const FloatingToolbar: React.FC<FloatingToolbarProps> = ({
       window.clearTimeout(hoverCloseTimerRef.current);
       hoverCloseTimerRef.current = null;
     }
+    cancelHoverOpenTimer();
     if (!id) {
       showTooltipFor(el, label, shortcut);
       return;
@@ -1109,7 +1130,10 @@ export const FloatingToolbar: React.FC<FloatingToolbarProps> = ({
                 scheduleHoverOpen('undo', e.currentTarget, 'Undo', shortcutFor('undo'))
               }
               onMouseLeave={scheduleHoverClose}
-              onClick={() => onUndo('all')}
+              onClick={() => {
+                hideTooltip();
+                onUndo('all');
+              }}
               className={iconBtnClass(false, !canUndoAll)}
             >
               <Undo2 className={iconDim} strokeWidth={iconStroke} />
@@ -1128,7 +1152,10 @@ export const FloatingToolbar: React.FC<FloatingToolbarProps> = ({
                 scheduleHoverOpen(null, e.currentTarget, 'Redo', shortcutFor('redo'))
               }
               onMouseLeave={hideTooltip}
-              onClick={() => onRedo('all')}
+              onClick={() => {
+                hideTooltip();
+                onRedo('all');
+              }}
               className={iconBtnClass(false, !canRedoAll)}
             >
               <Redo2 className={iconDim} strokeWidth={iconStroke} />
@@ -1146,7 +1173,10 @@ export const FloatingToolbar: React.FC<FloatingToolbarProps> = ({
                 scheduleHoverOpen(null, e.currentTarget, 'Clear All', shortcutFor('clear'))
               }
               onMouseLeave={hideTooltip}
-              onClick={onClearScreen}
+              onClick={() => {
+                hideTooltip();
+                onClearScreen();
+              }}
               className={iconBtnClass(false, annotationCount === 0)}
             >
               <Trash2 className={iconDim} strokeWidth={iconStroke} />

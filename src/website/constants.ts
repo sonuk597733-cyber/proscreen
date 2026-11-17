@@ -12,7 +12,7 @@ export const getReleaseDownloadUrl = (fileName: string): string => {
       return `/downloads/${fileName}`;
     }
   }
-  return `https://github.com/${GITHUB_REPO}/releases/download/v1.0.0/${fileName}`;
+  return `https://github.com/${GITHUB_REPO}/releases/download/v1.0.2/${fileName}`;
 };
 
 export const OFFICIAL_RELEASES: {
@@ -21,12 +21,12 @@ export const OFFICIAL_RELEASES: {
   extensionZip: ReleaseAsset;
 } = {
   installer: {
-    fileName: 'ProScreen-Setup-1.0.0.exe',
-    version: '1.0.0',
-    sizeBytes: 139175329,
-    sizeFormatted: '132.7 MB',
-    sha256: 'D7DB64EEF56D0313E4E6E5CF6352F6CD6E315628366B3A718963A49AD80A388D',
-    downloadUrl: `https://github.com/${GITHUB_REPO}/releases/download/v1.0.0/ProScreen-Setup-1.0.0.exe`,
+    fileName: 'ProScreen-Setup-1.0.2.exe',
+    version: '1.0.2',
+    sizeBytes: 140345406,
+    sizeFormatted: '133.8 MB',
+    sha256: '9C208855EBB06A6BCB90F2ACF7BD6021D56D626345A67A7098C0F75223D82E1A',
+    downloadUrl: `https://github.com/${GITHUB_REPO}/releases/download/v1.0.2/ProScreen-Setup-1.0.2.exe`,
     releaseDate: 'November 2026',
     targetOS: 'Windows 10 / Windows 11 (64-bit)',
     architecture: 'x64 (Intel / AMD)',
@@ -41,12 +41,12 @@ export const OFFICIAL_RELEASES: {
     ],
   },
   portable: {
-    fileName: 'ProScreen-Portable-1.0.0.exe',
-    version: '1.0.0',
-    sizeBytes: 124183853,
-    sizeFormatted: '118.4 MB',
-    sha256: 'A933048460EBCB7D5C76C421D170F8F0A914EB7B6B320D88665A6056EE9B58D2',
-    downloadUrl: `https://github.com/${GITHUB_REPO}/releases/download/v1.0.0/ProScreen-Portable-1.0.0.exe`,
+    fileName: 'ProScreen-Portable-1.0.2.exe',
+    version: '1.0.2',
+    sizeBytes: 125310194,
+    sizeFormatted: '119.5 MB',
+    sha256: 'D1F1D4F4D8A00BDCA5B9F29D777CB12010599372477695B4705BA2BB9944E78B',
+    downloadUrl: `https://github.com/${GITHUB_REPO}/releases/download/v1.0.2/ProScreen-Portable-1.0.2.exe`,
     releaseDate: 'November 2026',
     targetOS: 'Windows 10 / Windows 11 (64-bit)',
     architecture: 'x64 (Intel / AMD)',
@@ -61,12 +61,12 @@ export const OFFICIAL_RELEASES: {
     ],
   },
   extensionZip: {
-    fileName: 'ProScreen-Chrome-Extension-1.0.0.zip',
-    version: '1.0.0',
-    sizeBytes: 798637,
-    sizeFormatted: '779.9 KB',
-    sha256: '40B58190175316611860DAC801D91E12DA3E4821E2637313C49B520F647E6D7A',
-    downloadUrl: `https://github.com/${GITHUB_REPO}/releases/download/v1.0.0/ProScreen-Chrome-Extension-1.0.0.zip`,
+    fileName: 'ProScreen-Chrome-Extension-1.0.2.zip',
+    version: '1.0.2',
+    sizeBytes: 2185662,
+    sizeFormatted: '2.1 MB',
+    sha256: '2A96BF8A2A956ED1FF0B835DF1EAB67EE93DECB31580D079E340C5B8FEE2A551',
+    downloadUrl: `https://github.com/${GITHUB_REPO}/releases/download/v1.0.2/ProScreen-Chrome-Extension-1.0.2.zip`,
     releaseDate: 'November 2026',
     targetOS: 'Chromium Browsers (Chrome, Edge, Brave, Opera, Vivaldi)',
     architecture: 'Universal Manifest V3',
@@ -344,6 +344,49 @@ export const PLATFORM_MATRIX = [
 ];
 
 export const CHANGELOG: ChangelogRelease[] = [
+  {
+    version: '1.0.2',
+    date: 'November 17, 2026',
+    tagline: 'Production Release — Epic Pen Pro Redesign, Zero-Stutter 60 FPS Engine & Preview Modal Repair',
+    status: 'stable',
+    highlights: [
+      'Official Production Release v1.0.2 with complete Windows NSIS Installer, Portable EXE, and Chrome Extension ZIP',
+      'Epic Pen Pro-inspired pure white mode website redesign with alternating visual storytelling rows',
+      'Zero-avoidable-stutter 60 FPS recording engine with Direct3D/DXGI GPU acceleration and duration metadata injection',
+      'Full Recording Preview Modal functionality: timeline seeking, replay, 0.5x–2x playback speed, volume/mute, fullscreen, and direct file access',
+      'Hardened Electron startup and multi-monitor lifecycle with robust window Z-order and DPI scaling',
+      'Dynamic GitHub release distribution with live SHA-256 verification and automatic asset hydration',
+    ],
+    sections: [
+      {
+        category: 'Recording & Playback Engine',
+        items: [
+          'DXGI Desktop Duplication 60 FPS screen capture pipeline with zero dropped frames on Windows 10/11',
+          'Restored and verified all 14 Preview Modal controls including frame seeking, speed multiplier, and audio volume',
+          'Injected duration metadata into WebM/MP4 recordings for smooth continuous timeline scrubbing without freezing',
+          'Custom media protocol (proscreen-media://) for high-performance zero-copy local video streaming',
+          'Dual-channel studio audio mixer with 48 kHz sampling, voice gain staging, and brickwall peak limiting',
+        ],
+      },
+      {
+        category: 'UI & User Experience',
+        items: [
+          'Pure white mode theme architecture following Epic Pen Pro design benchmarks',
+          'Alternating 2-column feature showcase with authentic application window mockups',
+          'Transparent pricing presentation: First 6 Months Free ($0), then $1/month with zero upfront billing',
+          'Direct download buttons with real file sizes (133.8 MB installer, 119.5 MB portable) and one-click SHA-256 copy',
+        ],
+      },
+      {
+        category: 'Windows Desktop Architecture',
+        items: [
+          'Refactored startup lifecycle into isolated, unit-tested modules (startupLifecycle, interactionLifecycle, electronPaths, mediaUrl)',
+          'Eliminated popout-to-toolbar bounds oscillation and coordinate flutter during right-edge docking',
+          'Enhanced Windows AppUserModelID registration for smooth taskbar and notification handling',
+        ],
+      },
+    ],
+  },
   {
     version: '1.0.0',
     date: 'November 14, 2026',

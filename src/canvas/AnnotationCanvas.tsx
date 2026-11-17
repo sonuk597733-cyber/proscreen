@@ -44,6 +44,8 @@ export const AnnotationCanvas: React.FC<AnnotationCanvasProps> = ({
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const isPointerDownRef = useRef(false);
   const rafRef = useRef<number | null>(null);
+  const onEndRef = useRef(onEnd);
+  onEndRef.current = onEnd;
 
   // Critical fix: When POINTER mode is active or Eye is closed, canvas must never intercept pointer events
   const isCursorPassThrough =
@@ -188,19 +190,36 @@ export const AnnotationCanvas: React.FC<AnnotationCanvasProps> = ({
       drawFrame.current();
       kickLoop();
     };
+    const finishIfInterrupted = () => {
+      if (!isPointerDownRef.current) return;
+      isPointerDownRef.current = false;
+      onEndRef.current();
+      kickLoop();
+    };
     window.addEventListener('resize', onResizeOrScroll);
     window.addEventListener('scroll', onResizeOrScroll, { passive: true });
     window.addEventListener('focus', onResizeOrScroll);
+    window.addEventListener('blur', finishIfInterrupted);
     document.addEventListener('visibilitychange', onResizeOrScroll);
     window.visualViewport?.addEventListener('resize', onResizeOrScroll);
     return () => {
       window.removeEventListener('resize', onResizeOrScroll);
       window.removeEventListener('scroll', onResizeOrScroll);
       window.removeEventListener('focus', onResizeOrScroll);
+      window.removeEventListener('blur', finishIfInterrupted);
       document.removeEventListener('visibilitychange', onResizeOrScroll);
       window.visualViewport?.removeEventListener('resize', onResizeOrScroll);
     };
   }, []);
+
+  // Ensure switching to cursor pass-through or hiding annotations never leaves a stuck pointer capture
+  useEffect(() => {
+    if (isCursorPassThrough && isPointerDownRef.current) {
+      isPointerDownRef.current = false;
+      onEndRef.current();
+      kickLoop();
+    }
+  }, [isCursorPassThrough]);
 
   // Track pointer position even in Cursor Mode when Cursor Spotlight or Cursor Highlight is active
   useEffect(() => {
@@ -264,7 +283,9 @@ export const AnnotationCanvas: React.FC<AnnotationCanvasProps> = ({
     if (!isPointerDownRef.current) return;
     isPointerDownRef.current = false;
     try {
-      e.currentTarget.releasePointerCapture(e.pointerId);
+      if (e.currentTarget.hasPointerCapture(e.pointerId)) {
+        e.currentTarget.releasePointerCapture(e.pointerId);
+      }
     } catch {
       // Ignore if pointer capture already released
     }
@@ -286,6 +307,7 @@ export const AnnotationCanvas: React.FC<AnnotationCanvasProps> = ({
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}
       onPointerCancel={handlePointerUp}
+      onLostPointerCapture={handlePointerUp}
       style={{
         cursor: getCursorStyle(),
         touchAction: isCursorPassThrough ? 'auto' : 'none',

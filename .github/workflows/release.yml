@@ -7,16 +7,33 @@ on:
   workflow_dispatch:
     inputs:
       tag_name:
-        description: 'Release Tag Name (e.g. v1.0.0)'
-        required: true
-        default: 'v1.0.0'
+        description: 'Optional release tag override (defaults to v<package.json version>)'
+        required: false
+        default: ''
 
 permissions:
   contents: write
 
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
-  build-and-release:
+  build-windows:
+    name: Build & Verify Windows NSIS Installer
     runs-on: windows-latest
+    outputs:
+      version: ${{ steps.meta.outputs.version }}
+      tag_name: ${{ steps.meta.outputs.tag_name }}
+      setup_file: ${{ steps.meta.outputs.setup_file }}
+      portable_file: ${{ steps.meta.outputs.portable_file }}
+      extension_file: ${{ steps.meta.outputs.extension_file }}
+      setup_size_formatted: ${{ steps.hashes.outputs.setup_size_formatted }}
+      portable_size_formatted: ${{ steps.hashes.outputs.portable_size_formatted }}
+      extension_size_formatted: ${{ steps.hashes.outputs.extension_size_formatted }}
+      setup_hash: ${{ steps.hashes.outputs.setup_hash }}
+      portable_hash: ${{ steps.hashes.outputs.portable_hash }}
+      extension_hash: ${{ steps.hashes.outputs.extension_hash }}
     steps:
       - name: Checkout Source Code
         uses: actions/checkout@v4
@@ -28,43 +45,165 @@ jobs:
           cache: 'npm'
 
       - name: Install Dependencies
-        run: npm ci
+        shell: pwsh
+        run: |
+          if (Test-Path package-lock.json) {
+            npm ci
+          } else {
+            npm install
+          }
+
+      - name: Run Automated Unit & Lifecycle Tests
+        run: npm test
+
+      - name: Run TypeScript Verification
+        run: npm run lint
+
+      - name: Resolve Version & Release Tag
+        id: meta
+        shell: pwsh
+        run: |
+          $version = (node -p "require('./package.json').version").Trim()
+          $inputTag = "${{ github.event.inputs.tag_name }}".Trim()
+          if ($inputTag -ne "") {
+            $tagName = $inputTag
+          } elseif ("${{ github.ref_type }}" -eq "tag") {
+            $tagName = "${{ github.ref_name }}"
+          } else {
+            $tagName = "v$version"
+          }
+          echo "version=$version" >> $env:GITHUB_OUTPUT
+          echo "tag_name=$tagName" >> $env:GITHUB_OUTPUT
+          echo "setup_file=ProScreen-Setup-$version.exe" >> $env:GITHUB_OUTPUT
+          echo "portable_file=ProScreen-Portable-$version.exe" >> $env:GITHUB_OUTPUT
+          echo "extension_file=ProScreen-Chrome-Extension-$version.zip" >> $env:GITHUB_OUTPUT
 
       - name: Build Windows Binaries (NSIS Installer & Portable)
+        env:
+          GITHUB_PAGES: 'false'
         run: npm run dist:win
 
-      - name: Compute Checksums
+      - name: Package Chrome Extension ZIP
+        env:
+          GITHUB_PAGES: 'false'
+        run: node scripts/package-extension.js
+
+      - name: Verify Installer Integrity & Compute SHA-256 Checksums
         id: hashes
         shell: pwsh
         run: |
-          $setupHash = (Get-FileHash release/ProScreen-Setup-1.0.0.exe -Algorithm SHA256).Hash
-          $portableHash = (Get-FileHash release/ProScreen-Portable-1.0.0.exe -Algorithm SHA256).Hash
-          echo "SETUP_HASH=$setupHash" >> $env:GITHUB_OUTPUT
-          echo "PORTABLE_HASH=$portableHash" >> $env:GITHUB_OUTPUT
+          $version = "${{ steps.meta.outputs.version }}"
+          $setupPath = "release/${{ steps.meta.outputs.setup_file }}"
+          $portablePath = "release/${{ steps.meta.outputs.portable_file }}"
+          $extPath = "release/${{ steps.meta.outputs.extension_file }}"
+
+          foreach ($path in @($setupPath, $portablePath, $extPath)) {
+            if (-not (Test-Path $path)) {
+              throw "Expected release binary not found: $path"
+            }
+          }
+
+          $setupSize = (Get-Item $setupPath).Length
+          $portableSize = (Get-Item $portablePath).Length
+          $extSize = (Get-Item $extPath).Length
+
+          if ($setupSize -lt 50MB) {
+            throw "Installer binary size unexpectedly small ($setupSize bytes): $setupPath"
+          }
+          if ($portableSize -lt 50MB) {
+            throw "Portable binary size unexpectedly small ($portableSize bytes): $portablePath"
+          }
+
+          $setupHash = (Get-FileHash $setupPath -Algorithm SHA256).Hash.ToUpper()
+          $portableHash = (Get-FileHash $portablePath -Algorithm SHA256).Hash.ToUpper()
+          $extHash = (Get-FileHash $extPath -Algorithm SHA256).Hash.ToUpper()
+
+          $setupMb = "{0:F1} MB" -f ($setupSize / 1MB)
+          $portableMb = "{0:F1} MB" -f ($portableSize / 1MB)
+          $extKb = "{0:F1} KB" -f ($extSize / 1KB)
+
+          $manifest = [ordered]@{
+            version = $version
+            tagName = "${{ steps.meta.outputs.tag_name }}"
+            builtAt = (Get-Date).ToUniversalTime().ToString("o")
+            installer = [ordered]@{
+              fileName = "${{ steps.meta.outputs.setup_file }}"
+              sizeBytes = $setupSize
+              sizeFormatted = $setupMb
+              sha256 = $setupHash
+            }
+            portable = [ordered]@{
+              fileName = "${{ steps.meta.outputs.portable_file }}"
+              sizeBytes = $portableSize
+              sizeFormatted = $portableMb
+              sha256 = $portableHash
+            }
+            extensionZip = [ordered]@{
+              fileName = "${{ steps.meta.outputs.extension_file }}"
+              sizeBytes = $extSize
+              sizeFormatted = $extKb
+              sha256 = $extHash
+            }
+          }
+          $manifest | ConvertTo-Json -Depth 4 | Set-Content -Path "release/release-manifest.json" -Encoding UTF8
+
+          echo "setup_size_formatted=$setupMb" >> $env:GITHUB_OUTPUT
+          echo "portable_size_formatted=$portableMb" >> $env:GITHUB_OUTPUT
+          echo "extension_size_formatted=$extKb" >> $env:GITHUB_OUTPUT
+          echo "setup_hash=$setupHash" >> $env:GITHUB_OUTPUT
+          echo "portable_hash=$portableHash" >> $env:GITHUB_OUTPUT
+          echo "extension_hash=$extHash" >> $env:GITHUB_OUTPUT
+
+      - name: Upload Verified Windows Build Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: proscreen-windows-release
+          if-no-files-found: error
+          path: |
+            release/${{ steps.meta.outputs.setup_file }}
+            release/${{ steps.meta.outputs.portable_file }}
+            release/${{ steps.meta.outputs.extension_file }}
+            release/release-manifest.json
+
+  publish-release:
+    name: Publish Verified Release Assets
+    needs: build-windows
+    if: success()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download Verified Windows Build Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: proscreen-windows-release
+          path: release-artifacts
 
       - name: Publish GitHub Release Assets
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ github.event.inputs.tag_name || github.ref_name }}
-          name: ProScreen v1.0.0 — Production Release (Windows & Chrome)
+          tag_name: ${{ needs.build-windows.outputs.tag_name }}
+          name: ProScreen v${{ needs.build-windows.outputs.version }} — Windows & Chrome Release
           draft: false
           prerelease: false
+          make_latest: true
           body: |
-            # ProScreen v1.0.0 — Production Release
+            # ProScreen v${{ needs.build-windows.outputs.version }} — Official Production Release
 
             Professional Windows Desktop & Chrome Screen Annotation Studio.
 
             ### Verified Binary Distribution & SHA-256 Checksums
             | Asset | Description | Size | SHA-256 Checksum |
             |---|---|---|---|
-            | `ProScreen-Setup-1.0.0.exe` | Windows NSIS Setup Installer | 132.7 MB | `${{ steps.hashes.outputs.SETUP_HASH }}` |
-            | `ProScreen-Portable-1.0.0.exe` | Windows Standalone Portable App | 118.4 MB | `${{ steps.hashes.outputs.PORTABLE_HASH }}` |
+            | `${{ needs.build-windows.outputs.setup_file }}` | Windows NSIS Setup Installer | ${{ needs.build-windows.outputs.setup_size_formatted }} | `${{ needs.build-windows.outputs.setup_hash }}` |
+            | `${{ needs.build-windows.outputs.portable_file }}` | Windows Standalone Portable App | ${{ needs.build-windows.outputs.portable_size_formatted }} | `${{ needs.build-windows.outputs.portable_hash }}` |
+            | `${{ needs.build-windows.outputs.extension_file }}` | Chrome Extension (Manifest V3) | ${{ needs.build-windows.outputs.extension_size_formatted }} | `${{ needs.build-windows.outputs.extension_hash }}` |
 
             ### Verification in PowerShell
             ```powershell
-            Get-FileHash -Path ProScreen-Setup-1.0.0.exe -Algorithm SHA256
-            Get-FileHash -Path ProScreen-Portable-1.0.0.exe -Algorithm SHA256
+            Get-FileHash -Path "${{ needs.build-windows.outputs.setup_file }}" -Algorithm SHA256
+            Get-FileHash -Path "${{ needs.build-windows.outputs.portable_file }}" -Algorithm SHA256
             ```
           files: |
-            release/ProScreen-Setup-1.0.0.exe
-            release/ProScreen-Portable-1.0.0.exe
+            release-artifacts/${{ needs.build-windows.outputs.setup_file }}
+            release-artifacts/${{ needs.build-windows.outputs.portable_file }}
+            release-artifacts/${{ needs.build-windows.outputs.extension_file }}
+            release-artifacts/release-manifest.json

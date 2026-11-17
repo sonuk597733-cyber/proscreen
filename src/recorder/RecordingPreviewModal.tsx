@@ -23,6 +23,7 @@ import {
   formatByteSize,
   formatRecordingDuration,
 } from './screenRecorder';
+import { toProScreenMediaUrl } from '../desktop/mediaUrl';
 
 interface RecordingPreviewModalProps {
   artifact: RecordingArtifact | null;
@@ -92,8 +93,7 @@ export const RecordingPreviewModal: React.FC<RecordingPreviewModalProps> = ({
       if (artifact.blobUrl) {
         setActiveSrc(artifact.blobUrl);
       } else if (artifact.savedPath) {
-        const sanitized = artifact.savedPath.replace(/\\/g, '/');
-        setActiveSrc(`proscreen-media://local/${sanitized}`);
+        setActiveSrc(toProScreenMediaUrl(artifact.savedPath));
       } else {
         setActiveSrc('');
       }
@@ -102,8 +102,7 @@ export const RecordingPreviewModal: React.FC<RecordingPreviewModalProps> = ({
         if (artifact.blobUrl) {
           setActiveSrc(artifact.blobUrl);
         } else if (artifact.savedPath) {
-          const sanitized = artifact.savedPath.replace(/\\/g, '/');
-          setActiveSrc(`proscreen-media://local/${sanitized}`);
+          setActiveSrc(toProScreenMediaUrl(artifact.savedPath));
         }
       }
     }
@@ -330,8 +329,7 @@ export const RecordingPreviewModal: React.FC<RecordingPreviewModalProps> = ({
   const handleVideoError = () => {
     if (!attemptedFallback && artifact.savedPath) {
       setAttemptedFallback(true);
-      const sanitized = artifact.savedPath.replace(/\\/g, '/');
-      setActiveSrc(`proscreen-media://local/${sanitized}`);
+      setActiveSrc(toProScreenMediaUrl(artifact.savedPath));
       return;
     }
     setPlaybackError(

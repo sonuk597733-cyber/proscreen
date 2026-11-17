@@ -1,6 +1,7 @@
 import React from 'react';
 import { useRouter } from '../router';
 import { PageRoute } from '../types';
+import { OFFICIAL_RELEASES } from '../constants';
 import { ShieldCheck, CheckCircle2, Download, Monitor } from 'lucide-react';
 
 export const Footer: React.FC = () => {
@@ -107,8 +108,8 @@ export const Footer: React.FC = () => {
             <ul className="space-y-2.5 text-sm">
               <li>
                 <a
-                  href="./downloads/ProScreen-Setup-1.0.0.exe"
-                  download
+                  href={OFFICIAL_RELEASES.installer.downloadUrl}
+                  download={OFFICIAL_RELEASES.installer.fileName}
                   className="flex items-center gap-1.5 hover:text-blue-600 transition-colors text-neutral-800 font-medium"
                 >
                   <Download className="w-3.5 h-3.5 text-blue-600" />
@@ -117,8 +118,8 @@ export const Footer: React.FC = () => {
               </li>
               <li>
                 <a
-                  href="./downloads/ProScreen-Portable-1.0.0.exe"
-                  download
+                  href={OFFICIAL_RELEASES.portable.downloadUrl}
+                  download={OFFICIAL_RELEASES.portable.fileName}
                   className="hover:text-blue-600 transition-colors"
                 >
                   Windows Portable

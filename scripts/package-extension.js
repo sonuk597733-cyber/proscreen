@@ -69,7 +69,7 @@ copyDirRecursive(path.join(distDir, 'icons'), path.join(stageDir, 'icons'));
 copyDirRecursive(path.join(distDir, 'assets'), path.join(stageDir, 'assets'));
 
 // 3. Create ZIP using PowerShell Compress-Archive
-const zipName = 'ProScreen-Chrome-Extension-1.0.0.zip';
+const zipName = `ProScreen-Chrome-Extension-${manifest.version}.zip`;
 const zipPath = path.join(releaseDir, zipName);
 if (fs.existsSync(zipPath)) {
   fs.unlinkSync(zipPath);
@@ -77,7 +77,7 @@ if (fs.existsSync(zipPath)) {
 
 console.log(`- Compressing to ${zipPath}...`);
 execSync(
-  `powershell -Command "Compress-Archive -Path '${stageDir}\\*' -DestinationPath '${zipPath}' -Force"`,
+  `powershell -NoProfile -Command "$ProgressPreference = 'SilentlyContinue'; Compress-Archive -Path '${stageDir}\\*' -DestinationPath '${zipPath}' -Force"`,
   { stdio: 'inherit' }
 );
 

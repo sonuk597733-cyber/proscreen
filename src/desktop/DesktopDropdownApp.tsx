@@ -2,8 +2,9 @@ import React, { useEffect, useRef, useState } from 'react';
 import { ToolbarPopouts, PopoutId } from '../toolbar/ToolbarPopouts';
 import { DesktopSharedState } from './desktopTypes';
 import { UserSettings } from '../types/settings';
-import { createDefaultSettings } from '../storage/validation';
+import { createDefaultSettings, mergeAndValidateSettings } from '../storage/validation';
 import { getSupportedRecordingFormats } from '../recorder/screenRecorder';
+import { classifyForwardedShortcut } from './interactionLifecycle';
 
 export const DesktopDropdownApp: React.FC = () => {
   const desktop = typeof window !== 'undefined' ? window.proscreenDesktop : undefined;
@@ -72,6 +73,16 @@ export const DesktopDropdownApp: React.FC = () => {
     const unsubState = desktop.onStateChange((s) => {
       setState((prev) => ({ ...prev, ...s }));
     });
+    const unsubSettings = desktop.onSettingsChanged?.((s) => {
+      if (!s) return;
+      setSettings((prev) => {
+        const merged = mergeAndValidateSettings({ ...prev, ...s });
+        if (merged.recording && merged.recording.mode === 'tab') {
+          merged.recording.mode = 'screen';
+        }
+        return merged;
+      });
+    });
     const unsubPopout = desktop.onPopoutData?.((data) => {
       if (typeof data.transitionId === 'number') {
         if (data.transitionId < latestTransitionRef.current) {
@@ -87,17 +98,39 @@ export const DesktopDropdownApp: React.FC = () => {
     });
     return () => {
       unsubState();
+      unsubSettings?.();
       unsubPopout?.();
     };
   }, [desktop]);
 
-  // Global Escape key listener to close popout
+  // Global Escape + forwarded editing shortcuts while popout holds OS focus
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         e.preventDefault();
         e.stopPropagation();
         desktop?.closePopout?.();
+        return;
+      }
+      const target = e.target as HTMLElement | null;
+      const isEditableTarget = Boolean(
+        target &&
+          (target.tagName === 'INPUT' ||
+            target.tagName === 'TEXTAREA' ||
+            target.tagName === 'SELECT' ||
+            target.isContentEditable)
+      );
+      const forwarded = classifyForwardedShortcut({
+        key: e.key,
+        ctrlKey: e.ctrlKey,
+        metaKey: e.metaKey,
+        shiftKey: e.shiftKey,
+        altKey: e.altKey,
+        isEditableTarget,
+      });
+      if (forwarded) {
+        e.preventDefault();
+        desktop?.dispatchAction(forwarded.action, forwarded.payload);
       }
     };
     window.addEventListener('keydown', handleKeyDown, true);

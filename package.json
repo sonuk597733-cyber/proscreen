@@ -4,7 +4,7 @@
   "description": "Professional Windows Desktop & Chrome Screen Annotation Studio",
   "author": "ProScreen Team",
   "private": true,
-  "version": "1.0.1-candidate",
+  "version": "1.0.2",
   "type": "module",
   "main": "dist-electron/main.cjs",
   "scripts": {
@@ -37,14 +37,21 @@
         "nsis",
         "portable"
       ],
-      "icon": "public/icons/icon512.png"
+      "icon": "public/icons/icon.ico"
     },
     "nsis": {
       "oneClick": false,
+      "perMachine": false,
+      "allowElevation": true,
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
       "shortcutName": "ProScreen",
+      "uninstallDisplayName": "ProScreen",
+      "deleteAppDataOnUninstall": false,
+      "runAfterFinish": true,
+      "installerIcon": "public/icons/icon.ico",
+      "uninstallerIcon": "public/icons/icon.ico",
       "artifactName": "${productName}-Setup-${version}.${ext}"
     },
     "portable": {

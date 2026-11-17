@@ -333,7 +333,7 @@ export const Navbar: React.FC = () => {
               </button>
 
               <p className="text-center text-xs text-slate-500">
-                Version 1.0.0 for Windows 11 and 10 (64-bit)
+                Version 1.0.2 for Windows 11 and 10 (64-bit)
               </p>
             </div>
           </nav>

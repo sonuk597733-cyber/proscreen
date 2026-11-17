@@ -9,6 +9,7 @@ import { PricingSection } from '../components/PricingSection';
 import { DownloadSection } from '../components/DownloadSection';
 import { FAQSection } from '../components/FAQSection';
 import { useRouter } from '../router';
+import { OFFICIAL_RELEASES } from '../constants';
 import { Download, Sparkles } from 'lucide-react';
 
 export const HomePage: React.FC = () => {
@@ -66,7 +67,7 @@ export const HomePage: React.FC = () => {
                 className="flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl bg-white text-blue-900 font-bold text-sm shadow-md hover:bg-neutral-100 transition-all"
               >
                 <Download className="w-4 h-4" />
-                <span>Download for Windows (132 MB)</span>
+                <span>Download for Windows ({OFFICIAL_RELEASES.installer.sizeFormatted})</span>
               </button>
             </div>
           </div>

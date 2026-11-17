@@ -7,11 +7,14 @@ import { isDrawingTool, ToolType } from '../types/annotation';
 import { ScreenshotModal } from '../screenshot/ScreenshotModal';
 import { RecordingPreviewModal } from '../recorder/RecordingPreviewModal';
 import { AreaSelector } from '../components/AreaSelector';
-import { UserSettings } from '../types/settings';
 import { mergeAndValidateSettings } from '../storage/validation';
+import { HistoryScope } from '../canvas/history';
+import { shouldOverlayReceiveMouse } from './interactionLifecycle';
 
 export const DesktopOverlayApp: React.FC = () => {
   const engine = useProScreenEngine('desktop:global');
+  const engineRef = useRef(engine);
+  engineRef.current = engine;
   const desktop = typeof window !== 'undefined' ? window.proscreenDesktop : undefined;
   const lastInteractionModeRef = useRef<'pointer' | 'drawing'>('pointer');
   const [liveToolbarPos, setLiveToolbarPos] = useState<{ x: number; y: number }>({ x: 16, y: 76 });
@@ -49,40 +52,42 @@ export const DesktopOverlayApp: React.FC = () => {
       return;
     }
     void desktop.getDesktopAnnotations().then((items) => {
-      if (Array.isArray(items) && items.length > 0 && engine.history.items.length === 0) {
-        engine.restoreAnnotations(items);
+      const currentEngine = engineRef.current;
+      if (Array.isArray(items) && items.length > 0 && currentEngine.history.items.length === 0) {
+        currentEngine.restoreAnnotations(items);
       }
       isHydratedRef.current = true;
     });
-  }, [desktop, engine]);
+  }, [desktop]);
 
   // Synchronize settings from main process across windows
   useEffect(() => {
     if (!desktop) return;
     void desktop.loadDesktopSettings().then((s) => {
       if (s) {
-        engine.setSettings(mergeAndValidateSettings(s));
+        engineRef.current.setSettings(mergeAndValidateSettings(s));
       }
     });
     if (desktop.onSettingsChanged) {
       const unsub = desktop.onSettingsChanged((s) => {
         if (s) {
-          engine.setSettings(mergeAndValidateSettings(s));
+          engineRef.current.setSettings(mergeAndValidateSettings(s));
         }
       });
       return unsub;
     }
-  }, [desktop, engine]);
+    return undefined;
+  }, [desktop]);
 
   useEffect(() => {
     if (!desktop?.onRestoreAnnotations) return;
     const unsub = desktop.onRestoreAnnotations((items) => {
       if (Array.isArray(items) && items.length > 0) {
-        engine.restoreAnnotations(items);
+        engineRef.current.restoreAnnotations(items);
       }
     });
     return unsub;
-  }, [desktop, engine]);
+  }, [desktop]);
 
   useEffect(() => {
     if (!desktop?.saveDesktopAnnotations || !isHydratedRef.current) return;
@@ -93,29 +98,30 @@ export const DesktopOverlayApp: React.FC = () => {
   useEffect(() => {
     if (!desktop) return;
 
-    const hasActiveModal =
+    const hasBlockingOverlayModal =
       engine.recordingPreviewOpen ||
       Boolean(engine.screenshotResult) ||
       engine.selectingArea ||
       engine.selectingRecordingArea;
 
-    const isDrawingOrCapturing =
-      hasActiveModal ||
-      (engine.toolbarVisible &&
-        engine.annotationsVisible &&
-        engine.activeTool !== 'pointer' &&
-        engine.activeTool !== 'cursor');
+    const isDrawingOrCapturing = shouldOverlayReceiveMouse({
+      interactionMode: hasBlockingOverlayModal ? 'drawing' : engine.interactionMode,
+      toolbarVisible: engine.toolbarVisible,
+      annotationsVisible: engine.annotationsVisible,
+      activeTool: engine.activeTool,
+      hasBlockingOverlayModal,
+    });
 
     const currentMode = isDrawingOrCapturing ? 'drawing' : 'pointer';
 
     if (currentMode !== lastInteractionModeRef.current) {
       lastInteractionModeRef.current = currentMode;
       desktop.setInteractionMode(currentMode);
-      desktop.setOverlayIgnoreMouse(currentMode === 'pointer');
     }
   }, [
     desktop,
     engine.activeTool,
+    engine.interactionMode,
     engine.toolbarVisible,
     engine.annotationsVisible,
     engine.selectingArea,
@@ -189,138 +195,135 @@ export const DesktopOverlayApp: React.FC = () => {
     if (!desktop) return;
 
     const unsub = desktop.onAction((action, payload) => {
+      const eng = engineRef.current;
       switch (action) {
         case 'select-tool':
-          engine.setActiveTool(payload as ToolType);
+          eng.setActiveTool(payload as ToolType);
           break;
         case 'switch-board':
-          engine.switchBoardMode(payload as 'webpage' | 'whiteboard' | 'blackboard');
+          eng.switchBoardMode(payload as 'webpage' | 'whiteboard' | 'blackboard');
           break;
         case 'prev-board-page':
-          engine.selectBoardPage(engine.activePageIndex - 1);
+          eng.selectBoardPage(eng.activePageIndex - 1);
           break;
         case 'next-board-page':
-          engine.selectBoardPage(engine.activePageIndex + 1);
+          eng.selectBoardPage(eng.activePageIndex + 1);
           break;
         case 'add-board-page':
-          engine.addBoardPage();
+          eng.addBoardPage();
           break;
         case 'clear-board':
-          engine.clearScreen(false);
+          eng.clearScreen(false);
           break;
         case 'export-board-png':
-          void engine.quickExportPng();
+          void eng.quickExportPng();
           break;
         case 'import-board-background':
-          engine.setBoardBackgroundImage(payload as string);
+          eng.setBoardBackgroundImage(payload as string);
           break;
         case 'clear-board-background':
-          engine.setBoardBackgroundImage(undefined);
+          eng.setBoardBackgroundImage(undefined);
           break;
         case 'change-color':
-          engine.setActiveColor(payload as string);
+          eng.setActiveColor(payload as string);
           break;
         case 'change-thickness':
-          engine.setActiveThickness(payload as number);
+          eng.setActiveThickness(payload as number);
           break;
         case 'change-opacity':
-          engine.setActiveOpacity(payload as number);
+          eng.setActiveOpacity(payload as number);
           break;
         case 'toggle-favorite':
-          engine.toggleFavorite(payload as string);
+          eng.toggleFavorite(payload as string);
           break;
         case 'delete-selected':
-          engine.deleteSelectedObject();
+          eng.deleteSelectedObject();
           break;
         case 'undo':
-          engine.undo();
+          eng.undo(payload as HistoryScope | undefined);
           break;
         case 'redo':
-          engine.redo();
+          eng.redo(payload as HistoryScope | undefined);
           break;
         case 'clear-screen':
-          engine.clearScreen(true);
+          eng.clearScreen(true);
           break;
         case 'toggle-ghost-mode':
-          engine.toggleGhostMode();
+          eng.toggleGhostMode();
           break;
         case 'toggle-presentation-mode':
-          engine.togglePresentationMode();
+          eng.togglePresentationMode();
           break;
         case 'capture-screenshot':
-          void engine.triggerCapture(null);
+          void eng.triggerCapture(null);
           break;
         case 'capture-area':
-          engine.setSelectingArea(true);
+          eng.setSelectingArea(true);
           break;
         case 'select-recording-area':
-          engine.setSelectingRecordingArea(true);
-          desktop.setInteractionMode('drawing');
-          desktop.setOverlayIgnoreMouse(false);
+          eng.setSelectingRecordingArea(true);
           break;
         case 'copy-screenshot':
-          void engine.quickCopyScreenshot();
+          void eng.quickCopyScreenshot();
           break;
         case 'save-png':
-          void engine.quickExportPng();
+          void eng.quickExportPng();
           break;
         case 'update-settings':
           if (payload) {
-            engine.updateSettings((prev) => mergeAndValidateSettings({ ...prev, ...(payload as object) }));
+            eng.updateSettings((prev) => mergeAndValidateSettings({ ...prev, ...(payload as object) }));
           }
           break;
         case 'toggle-recording':
-          void engine.toggleScreenRecording();
+          void eng.toggleScreenRecording();
           break;
         case 'start-recording':
-          void engine.startRecording(payload as any);
+          void eng.startRecording(payload as any);
           break;
         case 'pause-recording':
-          engine.pauseRecording();
+          eng.pauseRecording();
           break;
         case 'resume-recording':
-          engine.resumeRecording();
+          eng.resumeRecording();
           break;
         case 'stop-recording':
-          engine.stopRecording();
+          eng.stopRecording();
           break;
         case 'cancel-recording':
-          engine.cancelRecording();
+          eng.cancelRecording();
           break;
         case 'cancel-recording-area':
-          engine.cancelRecordingArea();
+          eng.cancelRecordingArea();
           break;
         case 'preview-recording':
           if (payload) {
-            engine.setLatestRecording(payload as any);
+            eng.setLatestRecording(payload as any);
           }
-          engine.setRecordingPreviewOpen(true);
-          desktop.setInteractionMode('drawing');
-          desktop.setOverlayIgnoreMouse(false);
+          eng.setRecordingPreviewOpen(true);
           break;
         case 'download-recording':
-          void engine.downloadLatestRecording();
+          void eng.downloadLatestRecording();
           break;
         case 'clear-recording':
-          engine.clearTemporaryRecording();
+          eng.clearTemporaryRecording();
           break;
         case 'save-session':
-          void engine.saveCurrentSession(payload as string | undefined);
+          void eng.saveCurrentSession(payload as string | undefined);
           break;
         case 'open-eye':
-          engine.openEye();
+          eng.openEye();
           break;
         case 'close-eye':
-          engine.closeEye();
+          eng.closeEye();
           break;
         case 'toggle-eye':
-          engine.toggleEye();
+          eng.toggleEye();
           break;
       }
     });
 
     return unsub;
-  }, [desktop, engine]);
+  }, [desktop]);
 
   // Eye OFF: The floating toolbar window is hidden, but the canvas overlay remains visible
   // so existing annotations and drawings remain on screen in pass-through mode without intercepting clicks.
@@ -441,15 +444,11 @@ export const DesktopOverlayApp: React.FC = () => {
           onClose={() => {
             engine.setRecordingPreviewOpen(false);
             desktop?.dispatchAction('close-preview');
-            desktop?.setInteractionMode('pointer');
-            desktop?.setOverlayIgnoreMouse(true);
           }}
           onDiscard={() => {
             engine.clearTemporaryRecording();
             desktop?.dispatchAction('clear-recording');
             desktop?.dispatchAction('close-preview');
-            desktop?.setInteractionMode('pointer');
-            desktop?.setOverlayIgnoreMouse(true);
           }}
           onDownload={(saveAs) => void engine.downloadLatestRecording(saveAs ?? true)}
         />

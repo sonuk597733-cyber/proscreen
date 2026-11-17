@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { OFFICIAL_RELEASES } from '../constants';
+import { useLatestReleases } from '../useLatestReleases';
 import {
   Monitor,
   Download,
@@ -44,7 +44,8 @@ const shorten = (hash?: string) =>
 
 export const DownloadSection: React.FC = () => {
   const [copiedSha, setCopiedSha] = useState<string | null>(null);
-  const { installer, portable } = OFFICIAL_RELEASES;
+  const { releases } = useLatestReleases();
+  const { installer, portable } = releases;
 
   const copyChecksum = async (hash: string | undefined, id: string) => {
     if (!hash) return;
@@ -125,7 +126,7 @@ export const DownloadSection: React.FC = () => {
                 </div>
               </div>
               <span className="rounded-full bg-white/10 px-3 py-1 text-xs font-semibold text-slate-200 ring-1 ring-white/10">
-                Version 1.0.0
+                Version {installer.version}
               </span>
             </div>
 
@@ -137,8 +138,8 @@ export const DownloadSection: React.FC = () => {
             {/* Download buttons */}
             <div className="relative mt-8 grid gap-3 sm:grid-cols-2">
               <a
-                href="./downloads/ProScreen-Setup-1.0.0.exe"
-                download
+                href={installer.downloadUrl}
+                download={installer.fileName}
                 className="group flex items-center justify-between gap-3 rounded-2xl bg-sky-500 hover:bg-sky-400 text-slate-950 px-5 py-4 font-semibold shadow-lg shadow-sky-500/20 transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-300"
               >
                 <span className="flex items-center gap-3">
@@ -150,12 +151,12 @@ export const DownloadSection: React.FC = () => {
                     </span>
                   </span>
                 </span>
-                <span className="font-mono text-xs text-slate-900/80">132.7 MB</span>
+                <span className="font-mono text-xs text-slate-900/80">{installer.sizeFormatted}</span>
               </a>
 
               <a
-                href="./downloads/ProScreen-Portable-1.0.0.exe"
-                download
+                href={portable.downloadUrl}
+                download={portable.fileName}
                 className="flex items-center justify-between gap-3 rounded-2xl bg-white/5 hover:bg-white/10 ring-1 ring-white/15 px-5 py-4 font-semibold transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-300"
               >
                 <span className="flex items-center gap-3">
@@ -167,7 +168,7 @@ export const DownloadSection: React.FC = () => {
                     </span>
                   </span>
                 </span>
-                <span className="font-mono text-xs text-slate-400">118.4 MB</span>
+                <span className="font-mono text-xs text-slate-400">{portable.sizeFormatted}</span>
               </a>
             </div>
 

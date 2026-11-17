@@ -78,6 +78,8 @@ export const SettingsDashboard: React.FC<SettingsDashboardProps> = ({
 
   const effectiveTheme = resolvedTheme ?? resolveThemeMode(settings.theme);
   const isDark = effectiveTheme === 'dark';
+  const isDesktopApp =
+    typeof window !== 'undefined' && Boolean((window as Window & { proscreenDesktop?: { isDesktop?: boolean } }).proscreenDesktop?.isDesktop);
   const conflicts = detectShortcutConflicts(settings.shortcuts);
   const formatOptions = supportedRecordingFormats ?? getSupportedRecordingFormats();
   const accentColor = settings.accentColor || '#2563EB';
@@ -103,7 +105,7 @@ export const SettingsDashboard: React.FC<SettingsDashboardProps> = ({
     <div
       data-testid="settings-dashboard"
       className={`w-full max-w-4xl rounded-xl border overflow-hidden shadow-2xl flex flex-col md:flex-row ${
-        isStandalonePage ? 'min-h-[640px] mx-auto my-6' : 'max-h-[86vh]'
+        isStandalonePage ? 'min-h-[540px] mx-auto my-0' : 'max-h-[86vh]'
       } ${isDark ? 'bg-[#0B1120] border-slate-700 text-slate-100' : 'bg-white border-slate-200 text-slate-900'}`}
     >
       {/* Left Navigation */}
@@ -115,7 +117,9 @@ export const SettingsDashboard: React.FC<SettingsDashboardProps> = ({
         <div>
           <div className="px-2 pb-4 border-b border-slate-500/20">
             <h2 className="text-base font-bold tracking-tight">ProScreen Settings</h2>
-            <p className="text-xs text-slate-400 mt-0.5">Extension & Studio Preferences</p>
+            <p className="text-xs text-slate-400 mt-0.5">
+              {isDesktopApp ? 'Windows Desktop Studio Preferences' : 'Extension & Studio Preferences'}
+            </p>
           </div>
           <nav className="mt-3 space-y-1" aria-label="Settings sections">
             {tabs.map((tab) => {
@@ -144,7 +148,9 @@ export const SettingsDashboard: React.FC<SettingsDashboardProps> = ({
 
         <div className="hidden md:block pt-4 border-t border-slate-500/20 text-[11px] text-slate-400 px-2">
           <div>ProScreen v1.0.0</div>
-          <div className="mt-0.5">Manifest V3 · Local Storage</div>
+          <div className="mt-0.5">
+            {isDesktopApp ? 'Windows Desktop · Local Storage' : 'Manifest V3 · Local Storage'}
+          </div>
         </div>
       </aside>
 
@@ -1098,38 +1104,53 @@ export const SettingsDashboard: React.FC<SettingsDashboardProps> = ({
           {activeTab === 'about' && (
             <div className="space-y-4 text-xs leading-relaxed">
               <div className={`p-4 rounded-xl border space-y-2 ${cardClass}`}>
-                <h4 className="font-semibold text-sm">ProScreen v1.0.0</h4>
+                <h4 className="font-semibold text-sm">
+                  {isDesktopApp ? 'ProScreen Desktop v1.0.0' : 'ProScreen v1.0.0'}
+                </h4>
                 <p className="text-slate-400">
-                  A Manifest V3 Chrome Extension and interactive studio built for teachers, software
-                  engineers, online presenters, and tutorial creators.
+                  {isDesktopApp
+                    ? 'A native Windows screen recording and on-screen annotation studio built for teachers, software engineers, online presenters, and video creators.'
+                    : 'A Manifest V3 Chrome Extension and interactive studio built for teachers, software engineers, online presenters, and tutorial creators.'}
                 </p>
                 <p className="text-slate-400">
                   <strong>Privacy:</strong> All drawings, color presets, shortcuts, screenshots,
-                  video recordings, and session snapshots remain strictly on your device using{' '}
-                  <code className="font-mono">chrome.storage.local</code> and local memory.
+                  video recordings, and session data remain strictly on your local machine.
                   ProScreen makes zero external analytics or telemetry requests.
                 </p>
               </div>
 
-              <div className={`p-4 rounded-xl border space-y-2 ${cardClass}`}>
-                <h4 className="font-semibold text-sm">Known Chrome Extension Platform Limitations</h4>
-                <ul className="list-disc pl-5 space-y-1.5 text-slate-400">
-                  <li>
-                    <strong>Browser Sandbox Boundary:</strong> Manifest V3 extensions can only
-                    annotate standard <code className="font-mono">http://</code> and{' '}
-                    <code className="font-mono">https://</code> web pages inside Chrome. They cannot
-                    draw over native Windows desktop apps, OS menus, or restricted{' '}
-                    <code className="font-mono">chrome://</code> and Chrome Web Store pages.
-                  </li>
-                  <li>
-                    <strong>Global Desktop Overlay Alternative:</strong> Cross-application Windows
-                    ink requires a separate Native Windows Companion (for example, a lightweight
-                    WinUI/Electron transparent click-through{' '}
-                    <code className="font-mono">WS_EX_LAYERED</code> window synced with ProScreen
-                    via Chrome Native Messaging).
-                  </li>
-                </ul>
-              </div>
+              {isDesktopApp ? (
+                <div className={`p-4 rounded-xl border space-y-2 ${cardClass}`}>
+                  <h4 className="font-semibold text-sm">Windows Desktop Tips</h4>
+                  <ul className="list-disc pl-5 space-y-1.5 text-slate-400">
+                    <li>
+                      <strong>Recordings Folder:</strong> Saved recordings are written to your Windows
+                      Videos folder (or custom Save As path) and are preserved across app updates or uninstall.
+                    </li>
+                    <li>
+                      <strong>Global Hotkeys:</strong> Press <code className="font-mono">Alt+Shift+P</code> to toggle
+                      the floating toolbar or <code className="font-mono">Alt+V</code> to return to click-through Pointer mode.
+                    </li>
+                  </ul>
+                </div>
+              ) : (
+                <div className={`p-4 rounded-xl border space-y-2 ${cardClass}`}>
+                  <h4 className="font-semibold text-sm">Known Chrome Extension Platform Limitations</h4>
+                  <ul className="list-disc pl-5 space-y-1.5 text-slate-400">
+                    <li>
+                      <strong>Browser Sandbox Boundary:</strong> Manifest V3 extensions can only
+                      annotate standard <code className="font-mono">http://</code> and{' '}
+                      <code className="font-mono">https://</code> web pages inside Chrome. They cannot
+                      draw over native Windows desktop apps, OS menus, or restricted{' '}
+                      <code className="font-mono">chrome://</code> and Chrome Web Store pages.
+                    </li>
+                    <li>
+                      <strong>Global Desktop Overlay Alternative:</strong> Cross-application Windows
+                      ink requires the ProScreen Windows Desktop application.
+                    </li>
+                  </ul>
+                </div>
+              )}
             </div>
           )}
         </div>

@@ -7,6 +7,11 @@ import { createDefaultSettings } from '../storage/validation';
 import { UserSettings } from '../types/settings';
 import { ToolType } from '../types/annotation';
 import { getSupportedRecordingFormats } from '../recorder/screenRecorder';
+import { mergeAndValidateSettings } from '../storage/validation';
+import {
+  classifyForwardedShortcut,
+  shouldToolbarApplyPopoutClosed,
+} from './interactionLifecycle';
 
 export const DesktopToolbarApp: React.FC = () => {
   const desktop = typeof window !== 'undefined' ? window.proscreenDesktop : undefined;
@@ -76,13 +81,13 @@ export const DesktopToolbarApp: React.FC = () => {
     };
   }, []);
 
-  // Load persistent desktop settings on mount
+  // Load persistent desktop settings on mount & listen for cross-window updates
   useEffect(() => {
     if (!desktop) return;
     void desktop.loadDesktopSettings().then((loaded) => {
       if (loaded) {
         setSettings((prev) => {
-          const merged = { ...prev, ...loaded };
+          const merged = mergeAndValidateSettings({ ...prev, ...loaded });
           if (merged.recording && merged.recording.mode === 'tab') {
             merged.recording.mode = 'screen';
           }
@@ -90,6 +95,19 @@ export const DesktopToolbarApp: React.FC = () => {
         });
       }
     });
+    if (desktop.onSettingsChanged) {
+      return desktop.onSettingsChanged((updated) => {
+        if (!updated) return;
+        setSettings((prev) => {
+          const merged = mergeAndValidateSettings({ ...prev, ...updated });
+          if (merged.recording && merged.recording.mode === 'tab') {
+            merged.recording.mode = 'screen';
+          }
+          return merged;
+        });
+      });
+    }
+    return undefined;
   }, [desktop]);
 
   // Synchronize live state from Main process / Overlay
@@ -189,21 +207,56 @@ export const DesktopToolbarApp: React.FC = () => {
     }
   }, [desktop, state.toolbarVisible, state.restoreButtonVisible]);
 
-  // Synchronize when popout is closed from main process (e.g. popout window blurred or Esc pressed)
-  const activeTransitionRef = useRef(0);
+  // Synchronize popout open/close sessions cleanly with main process so hover/tooltip
+  // state always resets reliably across blur, Esc, and repeated hover/click cycles.
+  const nextTransitionSeqRef = useRef(0);
+  const openSessionIdRef = useRef(0);
+
+  const dismissActivePopout = () => {
+    const closingSessionId = openSessionIdRef.current;
+    openSessionIdRef.current = 0;
+    setActivePopout(null);
+    desktop?.closePopout?.(closingSessionId > 0 ? { transitionId: closingSessionId } : undefined);
+  };
 
   useEffect(() => {
     if (!desktop?.onPopoutClosed) return;
     const unsub = desktop.onPopoutClosed((info) => {
-      if (
-        !info ||
-        typeof info.transitionId !== 'number' ||
-        info.transitionId === activeTransitionRef.current
-      ) {
+      if (shouldToolbarApplyPopoutClosed(openSessionIdRef.current, info)) {
+        openSessionIdRef.current = 0;
         setActivePopout(null);
       }
     });
     return unsub;
+  }, [desktop]);
+
+  // Forward Delete / Backspace / Undo / Redo when toolbar window holds OS focus
+  useEffect(() => {
+    if (!desktop) return;
+    const handleForwardedShortcuts = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement | null;
+      const isEditableTarget = Boolean(
+        target &&
+          (target.tagName === 'INPUT' ||
+            target.tagName === 'TEXTAREA' ||
+            target.tagName === 'SELECT' ||
+            target.isContentEditable)
+      );
+      const forwarded = classifyForwardedShortcut({
+        key: e.key,
+        ctrlKey: e.ctrlKey,
+        metaKey: e.metaKey,
+        shiftKey: e.shiftKey,
+        altKey: e.altKey,
+        isEditableTarget,
+      });
+      if (forwarded) {
+        e.preventDefault();
+        desktop.dispatchAction(forwarded.action, forwarded.payload);
+      }
+    };
+    window.addEventListener('keydown', handleForwardedShortcuts);
+    return () => window.removeEventListener('keydown', handleForwardedShortcuts);
   }, [desktop]);
 
   // Auto-dismiss active popout when user clicks outside the toolbar or presses Escape inside toolbar window
@@ -216,9 +269,7 @@ export const DesktopToolbarApp: React.FC = () => {
         target &&
         !target.closest('[data-testid="proscreen-toolbar"]')
       ) {
-        activeTransitionRef.current++;
-        desktop?.closePopout?.({ transitionId: activeTransitionRef.current });
-        setActivePopout(null);
+        dismissActivePopout();
       }
     };
 
@@ -226,9 +277,7 @@ export const DesktopToolbarApp: React.FC = () => {
       if (e.key === 'Escape') {
         e.preventDefault();
         e.stopPropagation();
-        activeTransitionRef.current++;
-        desktop?.closePopout?.({ transitionId: activeTransitionRef.current });
-        setActivePopout(null);
+        dismissActivePopout();
       }
     };
 
@@ -361,9 +410,7 @@ export const DesktopToolbarApp: React.FC = () => {
         isDesktopToolbarWindow={true}
         onDesktopMove={(x, y) => {
           isDraggingRef.current = true;
-          activeTransitionRef.current++;
-          desktop?.closePopout?.({ transitionId: activeTransitionRef.current });
-          setActivePopout(null);
+          dismissActivePopout();
           desktop?.moveToolbar(x, y);
         }}
         onSaveDesktopPosition={(x, y) => {
@@ -376,17 +423,18 @@ export const DesktopToolbarApp: React.FC = () => {
           desktop?.saveToolbarPosition(x, y);
         }}
         onSetActivePopout={(id, anchorOffsetY) => {
-          activeTransitionRef.current++;
-          const thisTransition = activeTransitionRef.current;
-          setActivePopout(id);
           if (id) {
+            nextTransitionSeqRef.current += 1;
+            const sessionId = nextTransitionSeqRef.current;
+            openSessionIdRef.current = sessionId;
+            setActivePopout(id);
             desktop?.openPopout?.({
               popoutId: id,
               anchorOffsetY: anchorOffsetY ?? 20,
-              transitionId: thisTransition,
+              transitionId: sessionId,
             });
           } else {
-            desktop?.closePopout?.({ transitionId: thisTransition });
+            dismissActivePopout();
           }
         }}
         onSelectTool={handleSelectTool}

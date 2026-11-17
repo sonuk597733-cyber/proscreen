@@ -121,7 +121,7 @@ export const ColorBrushPopover: React.FC<ColorBrushPopoverProps> = ({
       data-testid="color-brush-popover"
       role="dialog"
       aria-label="Color and brush studio"
-      className={`pointer-events-auto w-[324px] min-w-[324px] max-w-[calc(100vw-32px)] max-h-[min(520px,calc(100vh-16px))] overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden rounded-lg border p-3 shadow-[0_14px_34px_-6px_rgba(0,0,0,0.28)] backdrop-blur-xl transition-colors ${
+      className={`pointer-events-auto w-[min(324px,calc(100vw-18px))] max-w-[calc(100vw-18px)] max-h-[min(520px,calc(100vh-16px))] overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden rounded-lg border p-3 shadow-[0_14px_34px_-6px_rgba(0,0,0,0.28)] backdrop-blur-xl transition-colors ${
         isDark
           ? 'bg-[#1B1D24]/98 border-[#2E323E] text-[#E4E7EF]'
           : 'bg-[#FBFBFD]/98 border-[#CBD2E1] text-[#111827]'
@@ -393,7 +393,6 @@ export const ColorBrushPopover: React.FC<ColorBrushPopoverProps> = ({
                   onClose();
                 }
               }}
-              onBlur={onClose}
               className={`w-full px-2 py-1 text-xs font-mono rounded border ${
                 isDark
                   ? 'bg-[#14161C] border-[#313644] text-[#E4E7EF]'

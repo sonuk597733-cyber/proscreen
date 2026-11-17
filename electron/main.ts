@@ -26,6 +26,62 @@ import {
 import { calculateVirtualBounds, clampToolbarToDisplays } from '../src/desktop/multiMonitor';
 import { UserSettings } from '../src/types/settings';
 import { createDefaultSettings } from '../src/storage/validation';
+import {
+  pickFirstExistingPath,
+  resolveBundledIconCandidates,
+  resolveDesktopHtmlTarget,
+} from '../src/desktop/electronPaths';
+import { fromProScreenMediaUrl, toProScreenMediaUrl } from '../src/desktop/mediaUrl';
+import {
+  computePrimaryWindowBounds,
+  ensureDirectoryAndAppendLog,
+  evaluateStartupWindowHealth,
+  evaluateStudioStartupDecision,
+  formatDesktopLogEntry,
+  resolveProductionChromiumSwitches,
+  shouldLaunchFloatingToolbar,
+  shouldLaunchOverlayWindow,
+} from '../src/desktop/startupLifecycle';
+import {
+  computeFloatingZOrderStack,
+  PopoutTransitionCoordinator,
+} from '../src/desktop/interactionLifecycle';
+
+function getDesktopLogPath(): string {
+  try {
+    return path.join(app.getPath('userData'), 'proscreen-desktop.log');
+  } catch {
+    return path.join(process.cwd(), 'proscreen-desktop.log');
+  }
+}
+
+function appendDesktopLogSync(event: string, meta: Record<string, unknown> = {}): void {
+  const line = formatDesktopLogEntry(event, meta);
+  ensureDirectoryAndAppendLog(getDesktopLogPath(), line);
+  try {
+    console.log(`[${event}]`, JSON.stringify(meta));
+  } catch {}
+}
+
+function requestAppQuit(reason: string, meta: Record<string, unknown> = {}): void {
+  appendDesktopLogSync('INTENTIONAL_QUIT_REQUESTED', { reason, ...meta });
+  app.quit();
+}
+
+function handleFatalStartupError(source: string, err: unknown): void {
+  const message = err instanceof Error ? err.stack || err.message : String(err);
+  appendDesktopLogSync('FATAL_STARTUP_ERROR', { source, error: message });
+  try {
+    console.error(`[PROSCREEN FATAL:${source}]`, message);
+  } catch {}
+  try {
+    dialog.showErrorBox(
+      'ProScreen Startup Error',
+      `ProScreen encountered a startup error and could not open.\n\nDetails: ${err instanceof Error ? err.message : String(err)}\n\nDiagnostic log: ${getDesktopLogPath()}`
+    );
+  } catch {}
+  process.exit(1);
+}
 
 // Register custom media streaming protocol for smooth playback and seeking
 protocol.registerSchemesAsPrivileged([
@@ -42,32 +98,100 @@ protocol.registerSchemesAsPrivileged([
   },
 ]);
 
+if (process.platform === 'win32') {
+  try {
+    app.setAppUserModelId('com.proscreen.annotationstudio');
+  } catch {}
+}
+
+appendDesktopLogSync('APP_LAUNCH', {
+  pid: process.pid,
+  version: app.getVersion(),
+  isPackaged: app.isPackaged,
+  execPath: process.execPath,
+  platform: process.platform,
+  arch: process.arch,
+  userDataDir: (() => {
+    try {
+      return app.getPath('userData');
+    } catch {
+      return 'unavailable';
+    }
+  })(),
+  argv: process.argv.slice(0, 6),
+});
+
 // Ensure single instance lock
 const gotTheLock = app.requestSingleInstanceLock();
 if (!gotTheLock) {
-  try {
-    const p = path.join(app.getPath('userData'), 'proscreen-desktop.log');
-    fs.appendFileSync(p, `[${new Date().toISOString()}] Secondary instance prevented from starting.\n`);
-  } catch {}
+  appendDesktopLogSync('SINGLE_INSTANCE_LOCK_DENIED_SECONDARY_EXIT', {
+    pid: process.pid,
+    argv: process.argv.slice(0, 6),
+  });
   app.quit();
   process.exit(0);
 }
+appendDesktopLogSync('SINGLE_INSTANCE_LOCK_ACQUIRED', { pid: process.pid });
 
-app.on('second-instance', () => {
-  setEyeState(true);
-  if (toolbarWindow && !toolbarWindow.isDestroyed()) {
-    if (toolbarWindow.isMinimized()) toolbarWindow.restore();
-    toolbarWindow.show();
-    toolbarWindow.setAlwaysOnTop(true);
-    toolbarWindow.focus();
+app.on('second-instance', (_event, argv) => {
+  appendDesktopLogSync('SECOND_INSTANCE_ACTIVATED', { argv: argv.slice(0, 6) });
+  const activate = () => {
+    try {
+      if (!overlayWindow || overlayWindow.isDestroyed()) {
+        overlayWindow = createOverlayWindow();
+      }
+    } catch (err) {
+      appendDesktopLogSync('SECOND_INSTANCE_OVERLAY_RECOVER_ERROR', { error: String(err) });
+    }
+    try {
+      if (!toolbarWindow || toolbarWindow.isDestroyed()) {
+        toolbarWindow = createToolbarWindow();
+      }
+      setEyeState(true);
+      if (toolbarWindow && !toolbarWindow.isDestroyed()) {
+        if (toolbarWindow.isMinimized()) toolbarWindow.restore();
+        toolbarWindow.showInactive();
+        toolbarWindow.setAlwaysOnTop(true, 'screen-saver');
+      }
+    } catch (err) {
+      appendDesktopLogSync('SECOND_INSTANCE_TOOLBAR_RECOVER_ERROR', { error: String(err) });
+    }
+    try {
+      openSettingsWindow('second-instance');
+    } catch (err) {
+      appendDesktopLogSync('SECOND_INSTANCE_MAIN_WINDOW_ERROR', { error: String(err) });
+    }
+  };
+
+  if (app.isReady()) {
+    activate();
+  } else {
+    void app.whenReady().then(activate);
   }
 });
 
+let isAppStartupCompleted = false;
+
 process.on('uncaughtException', (err) => {
-  try {
-    const p = path.join(app.getPath('userData'), 'proscreen-desktop.log');
-    fs.appendFileSync(p, `[${new Date().toISOString()}] Uncaught exception: ${err?.stack || err}\n`);
-  } catch {}
+  const stack = err?.stack || String(err);
+  appendDesktopLogSync('UNCAUGHT_EXCEPTION', {
+    error: stack,
+    startupCompleted: isAppStartupCompleted,
+  });
+  if (!isAppStartupCompleted) {
+    handleFatalStartupError('uncaughtException', err);
+  }
+});
+
+process.on('unhandledRejection', (reason) => {
+  const detail = reason instanceof Error ? reason.stack || reason.message : String(reason);
+  appendDesktopLogSync('UNHANDLED_REJECTION', {
+    error: detail,
+    startupCompleted: isAppStartupCompleted,
+  });
+  if (!isAppStartupCompleted) {
+    handleFatalStartupError('unhandledRejection', reason);
+  }
 });
 
 let overlayWindow: BrowserWindow | null = null;
@@ -76,10 +200,16 @@ let popoutWindow: BrowserWindow | null = null;
 let settingsWindow: BrowserWindow | null = null;
 let tray: Tray | null = null;
 let authoritativeDesktopAnnotations: unknown[] = [];
-let popoutTransitionId = 0;
-let currentPopoutId: string | null = null;
+const popoutCoordinator = new PopoutTransitionCoordinator();
+let pendingPopoutPayload: {
+  popoutId: string | null;
+  openSide: 'left' | 'right';
+  anchorOffsetY?: number;
+  transitionId: number;
+} | null = null;
 let targetRecordingDisplayId: string | null = null;
 let targetRecordingMode: string | null = null;
+let ipcHandlersRegistered = false;
 
 const isDev = Boolean(process.env.VITE_DEV_SERVER_URL);
 const devServerUrl = process.env.VITE_DEV_SERVER_URL;
@@ -353,12 +483,66 @@ function saveSettingsToDisk(settings: UserSettings): boolean {
 }
 
 function logDesktopEvent(event: string, meta: Record<string, unknown> = {}) {
-  try {
-    const p = path.join(app.getPath('userData'), 'proscreen-desktop.log');
-    const line = `[${new Date().toISOString()}] [${event}] ${JSON.stringify(meta)}\n`;
-    fs.appendFile(p, line, () => {});
-    console.log(`[${event}]`, JSON.stringify(meta));
-  } catch {}
+  appendDesktopLogSync(event, meta);
+}
+
+function loadWindowContent(
+  win: BrowserWindow,
+  name: string,
+  target: { type: 'url'; url: string } | { type: 'file'; filePath: string },
+  options?: {
+    query?: Record<string, string>;
+    critical?: boolean;
+    onFailure?: (stage: string, error: string) => void;
+  }
+) {
+  if (target.type === 'url') {
+    const querySuffix = options?.query
+      ? `?${new URLSearchParams(options.query).toString()}`
+      : '';
+    const fullUrl = `${target.url}${querySuffix}`;
+    win.loadURL(fullUrl).catch((err) => {
+      const errorMsg = String(err);
+      appendDesktopLogSync('WINDOW_LOAD_URL_FAILED', { name, url: fullUrl, error: errorMsg });
+      options?.onFailure?.('load-url', errorMsg);
+      if (options?.critical) {
+        dialog.showErrorBox(
+          'ProScreen Renderer Error',
+          `Failed to load ProScreen interface (${fullUrl}).\n\n${errorMsg}`
+        );
+      }
+    });
+    return;
+  }
+
+  if (!fs.existsSync(target.filePath)) {
+    const missingErr = `Bundled HTML entry not found: ${target.filePath}`;
+    appendDesktopLogSync('WINDOW_HTML_MISSING', { name, filePath: target.filePath });
+    options?.onFailure?.('html-missing', missingErr);
+    if (options?.critical) {
+      dialog.showErrorBox(
+        'ProScreen Packaging Error',
+        `Required desktop interface file is missing from the installation:\n${target.filePath}\n\nPlease reinstall ProScreen.`
+      );
+    }
+    throw new Error(missingErr);
+  }
+
+  win.loadFile(target.filePath, options?.query ? { query: options.query } : undefined).catch((err) => {
+    const errorMsg = String(err);
+    appendDesktopLogSync('WINDOW_LOAD_FILE_FAILED', {
+      name,
+      filePath: target.filePath,
+      error: errorMsg,
+    });
+    options?.onFailure?.('load-file', errorMsg);
+    if (options?.critical) {
+      dialog.showErrorBox(
+        'ProScreen Renderer Error',
+        `Failed to load bundled interface (${target.filePath}).\n\n${errorMsg}`
+      );
+    }
+  });
 }
 
 function instrumentWindow(win: BrowserWindow, name: string) {
@@ -427,14 +611,16 @@ function instrumentWindow(win: BrowserWindow, name: string) {
   });
 
   win.webContents.on('console-message', (_ev, level, message, line, sourceId) => {
-    logDesktopEvent('RENDERER_CONSOLE', {
-      name,
-      id: win.id,
-      level,
-      message,
-      line,
-      sourceId,
-    });
+    if (level >= 2) {
+      logDesktopEvent('RENDERER_CONSOLE', {
+        name,
+        id: win.id,
+        level,
+        message,
+        line,
+        sourceId,
+      });
+    }
   });
 }
 
@@ -499,15 +685,19 @@ function createOverlayWindow(): BrowserWindow {
   // Initial pass-through in POINTER mode with pure Win32 WS_EX_TRANSPARENT (no low-level mouse hook)
   win.setIgnoreMouseEvents(true);
 
-  if (isDev && devServerUrl) {
-    win.loadURL(`${devServerUrl}/desktop-overlay.html`);
-  } else {
-    win.loadFile(path.join(__dirname, '../dist/desktop-overlay.html'));
-  }
+  const overlayTarget = resolveDesktopHtmlTarget(__dirname, 'overlay', isDev ? devServerUrl : undefined);
+  loadWindowContent(win, 'overlay', overlayTarget);
 
   win.on('show', () => {
     if (!win.isDestroyed()) {
-      win.setAlwaysOnTop(true, 'screen-saver');
+      applyDesktopWindowZOrder({ ensureOverlayTopmost: true });
+    }
+  });
+
+  win.on('focus', () => {
+    if (!win.isDestroyed()) {
+      closePopoutWindow();
+      applyDesktopWindowZOrder({ ensureOverlayTopmost: true });
     }
   });
 
@@ -553,7 +743,7 @@ function createToolbarWindow(): BrowserWindow {
     hasShadow: false,
     resizable: false,
     focusable: true,
-    show: true,
+    show: false,
     webPreferences: {
       preload: preloadPath,
       contextIsolation: true,
@@ -576,22 +766,19 @@ function createToolbarWindow(): BrowserWindow {
 
   win.on('blur', () => {
     if (!win.isDestroyed()) {
-      win.setAlwaysOnTop(true, 'screen-saver');
-      win.moveTop();
+      applyDesktopWindowZOrder();
     }
   });
 
   win.on('show', () => {
     if (!win.isDestroyed()) {
-      win.setAlwaysOnTop(true, 'screen-saver');
-      win.moveTop();
+      applyDesktopWindowZOrder();
     }
   });
 
   win.on('restore', () => {
     if (!win.isDestroyed()) {
-      win.setAlwaysOnTop(true, 'screen-saver');
-      win.moveTop();
+      applyDesktopWindowZOrder();
     }
   });
 
@@ -646,11 +833,8 @@ function createToolbarWindow(): BrowserWindow {
     win.setContentProtection(true);
   } catch {}
 
-  if (isDev && devServerUrl) {
-    win.loadURL(`${devServerUrl}/desktop-toolbar.html`);
-  } else {
-    win.loadFile(path.join(__dirname, '../dist/desktop-toolbar.html'));
-  }
+  const toolbarTarget = resolveDesktopHtmlTarget(__dirname, 'toolbar', isDev ? devServerUrl : undefined);
+  loadWindowContent(win, 'toolbar', toolbarTarget);
 
   win.on('closed', () => {
     if (moveBroadcastTimer) {
@@ -666,6 +850,10 @@ function createToolbarWindow(): BrowserWindow {
   });
 
   instrumentWindow(win, 'toolbar');
+
+  if (sharedState.toolbarVisible !== false) {
+    win.showInactive();
+  }
 
   return win;
 }
@@ -707,8 +895,7 @@ function createPopoutWindow(): BrowserWindow {
   win.setIgnoreMouseEvents(false);
 
   win.on('blur', () => {
-    // If focus transferred to the toolbar window, do NOT close the popout from blur!
-    // The user clicked on the toolbar window to switch dropdowns or click a tool.
+    // If focus transferred to the toolbar window or remained in popoutWindow, keep popout open.
     setImmediate(() => {
       if (toolbarWindow && !toolbarWindow.isDestroyed() && toolbarWindow.isFocused()) {
         return;
@@ -720,20 +907,24 @@ function createPopoutWindow(): BrowserWindow {
     });
   });
 
-  try {
-    win.setContentProtection(true);
-  } catch {}
+  win.webContents.on('did-finish-load', () => {
+    if (
+      !win.isDestroyed() &&
+      pendingPopoutPayload &&
+      pendingPopoutPayload.popoutId !== null &&
+      pendingPopoutPayload.transitionId === popoutCoordinator.currentSessionId
+    ) {
+      win.webContents.send('desktop:popout-data', pendingPopoutPayload);
+    }
+  });
 
-  if (isDev && devServerUrl) {
-    win.loadURL(`${devServerUrl}/desktop-toolbar.html?mode=dropdown`);
-  } else {
-    win.loadFile(path.join(__dirname, '../dist/desktop-toolbar.html'), {
-      query: { mode: 'dropdown' },
-    });
-  }
+  const popoutTarget = resolveDesktopHtmlTarget(__dirname, 'toolbar', isDev ? devServerUrl : undefined);
+  loadWindowContent(win, 'popout', popoutTarget, { query: { mode: 'dropdown' } });
 
   win.on('closed', () => {
     popoutWindow = null;
+    popoutCoordinator.reset();
+    pendingPopoutPayload = null;
   });
 
   instrumentWindow(win, 'popout');
@@ -741,11 +932,54 @@ function createPopoutWindow(): BrowserWindow {
   return win;
 }
 
+function applyDesktopWindowZOrder(options?: { ensureOverlayTopmost?: boolean }) {
+  const stack = computeFloatingZOrderStack({
+    overlayVisible: Boolean(
+      options?.ensureOverlayTopmost &&
+        overlayWindow &&
+        !overlayWindow.isDestroyed() &&
+        overlayWindow.isVisible()
+    ),
+    recordingBarVisible: Boolean(
+      recordingControlWindow &&
+        !recordingControlWindow.isDestroyed() &&
+        recordingControlWindow.isVisible()
+    ),
+    toolbarVisible: Boolean(
+      toolbarWindow && !toolbarWindow.isDestroyed() && toolbarWindow.isVisible()
+    ),
+    popoutVisible: Boolean(
+      popoutWindow && !popoutWindow.isDestroyed() && popoutWindow.isVisible()
+    ),
+  });
+
+  for (const role of stack) {
+    const win =
+      role === 'overlay'
+        ? overlayWindow
+        : role === 'recordingBar'
+        ? recordingControlWindow
+        : role === 'toolbar'
+        ? toolbarWindow
+        : popoutWindow;
+    if (!win || win.isDestroyed()) continue;
+    win.setAlwaysOnTop(true, 'screen-saver');
+    try {
+      win.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
+    } catch {}
+    if (role !== 'overlay') {
+      win.moveTop();
+    }
+  }
+}
+
 function openPopoutWindow(data: { popoutId: string; anchorOffsetY?: number; transitionId?: number }) {
   if (!toolbarWindow || toolbarWindow.isDestroyed()) return;
-  popoutTransitionId++;
-  const thisTransition = popoutTransitionId;
-  currentPopoutId = data.popoutId;
+  const opened = popoutCoordinator.open(data.popoutId, data.transitionId);
+  if (!opened.accepted) {
+    return;
+  }
+  const thisTransition = opened.transitionId;
 
   const [tbX, tbY] = toolbarWindow.getPosition();
   const display = screen.getDisplayNearestPoint({ x: tbX, y: tbY });
@@ -770,28 +1004,38 @@ function openPopoutWindow(data: { popoutId: string; anchorOffsetY?: number; tran
     height: popoutHeight,
   });
 
-  popoutWindow.webContents.send('desktop:popout-data', {
+  const payload = {
     popoutId: data.popoutId,
-    openSide: openLeft ? 'left' : 'right',
+    openSide: openLeft ? ('left' as const) : ('right' as const),
     anchorOffsetY: data.anchorOffsetY ?? 20,
     transitionId: thisTransition,
-  });
+  };
+  pendingPopoutPayload = payload;
+  if (!popoutWindow.webContents.isLoading()) {
+    popoutWindow.webContents.send('desktop:popout-data', payload);
+  }
 
   popoutWindow.show();
-  popoutWindow.setAlwaysOnTop(true, 'screen-saver');
-  popoutWindow.moveTop();
+  applyDesktopWindowZOrder();
 }
 
 function closePopoutWindow(transitionId?: number) {
-  if (transitionId !== undefined && transitionId !== popoutTransitionId) {
-    return; // Stale close request from older dropdown; ignore!
+  const closed = popoutCoordinator.close(transitionId);
+  if (!closed.shouldClose) {
+    return;
   }
-  currentPopoutId = null;
-  const thisTransition = ++popoutTransitionId;
+  const thisTransition = closed.transitionId;
+  pendingPopoutPayload = null;
 
-  if (popoutWindow && !popoutWindow.isDestroyed() && popoutWindow.isVisible()) {
-    popoutWindow.hide();
-    popoutWindow.webContents.send('desktop:popout-data', { popoutId: null, transitionId: thisTransition });
+  if (popoutWindow && !popoutWindow.isDestroyed()) {
+    if (popoutWindow.isVisible()) {
+      popoutWindow.hide();
+    }
+    popoutWindow.webContents.send('desktop:popout-data', {
+      popoutId: null,
+      openSide: 'right',
+      transitionId: thisTransition,
+    });
   }
   if (toolbarWindow && !toolbarWindow.isDestroyed()) {
     toolbarWindow.webContents.send('desktop:popout-closed', { transitionId: thisTransition });
@@ -839,25 +1083,18 @@ function createRecordingControlWindow(): BrowserWindow {
 
   win.on('blur', () => {
     if (!win.isDestroyed()) {
-      win.setAlwaysOnTop(true, 'screen-saver');
-      win.moveTop();
+      applyDesktopWindowZOrder();
     }
   });
 
   win.on('show', () => {
     if (!win.isDestroyed()) {
-      win.setAlwaysOnTop(true, 'screen-saver');
-      win.moveTop();
+      applyDesktopWindowZOrder();
     }
   });
 
-  if (isDev && devServerUrl) {
-    win.loadURL(`${devServerUrl}/desktop-toolbar.html?mode=recording-bar`);
-  } else {
-    win.loadFile(path.join(__dirname, '../dist/desktop-toolbar.html'), {
-      query: { mode: 'recording-bar' },
-    });
-  }
+  const recordingBarTarget = resolveDesktopHtmlTarget(__dirname, 'toolbar', isDev ? devServerUrl : undefined);
+  loadWindowContent(win, 'recording-bar', recordingBarTarget, { query: { mode: 'recording-bar' } });
 
   win.on('closed', () => {
     recordingControlWindow = null;
@@ -881,8 +1118,7 @@ function showRecordingControlWindow() {
   if (!recordingControlWindow.isVisible()) {
     recordingControlWindow.showInactive();
   }
-  recordingControlWindow.setAlwaysOnTop(true, 'screen-saver');
-  recordingControlWindow.moveTop();
+  applyDesktopWindowZOrder();
 }
 
 function hideRecordingControlWindow() {
@@ -891,48 +1127,238 @@ function hideRecordingControlWindow() {
   }
 }
 
+type StudioLaunchTrigger =
+  | 'startup'
+  | 'tray'
+  | 'toolbar'
+  | 'second-instance'
+  | 'activate'
+  | 'ipc';
+
+function getStudioWindowMeta(win: BrowserWindow): Record<string, unknown> {
+  let hwnd = 0;
+  try {
+    const buf = win.getNativeWindowHandle();
+    hwnd = process.arch === 'x64' ? Number(buf.readBigInt64LE(0)) : buf.readInt32LE(0);
+  } catch {}
+  try {
+    return {
+      id: win.id,
+      hwnd: `0x${hwnd.toString(16)}`,
+      bounds: win.isDestroyed() ? null : win.getBounds(),
+      visible: win.isDestroyed() ? false : win.isVisible(),
+      focused: win.isDestroyed() ? false : win.isFocused(),
+      minimized: win.isDestroyed() ? false : win.isMinimized(),
+      destroyed: win.isDestroyed(),
+      url: win.isDestroyed() ? '' : win.webContents.getURL(),
+      title: win.isDestroyed() ? '' : win.getTitle(),
+    };
+  } catch (err) {
+    return { destroyed: win.isDestroyed(), metaError: String(err) };
+  }
+}
+
 /**
- * Creates or reveals the Settings window.
+ * Creates or reveals the primary ProScreen Studio & Settings desktop window.
  */
-function openSettingsWindow(): BrowserWindow {
+function openSettingsWindow(trigger: StudioLaunchTrigger = 'ipc'): BrowserWindow {
+  const existingAvailable = Boolean(settingsWindow && !settingsWindow.isDestroyed());
+  appendDesktopLogSync('STUDIO_STARTUP_REQUESTED', {
+    trigger,
+    reused: existingAvailable,
+    isDev,
+    isPackaged: app.isPackaged,
+    argv: process.argv.slice(0, 6),
+  });
+
   if (settingsWindow && !settingsWindow.isDestroyed()) {
+    if (settingsWindow.isMinimized()) {
+      settingsWindow.restore();
+    }
     settingsWindow.show();
+    settingsWindow.moveTop();
     settingsWindow.focus();
+    appendDesktopLogSync('STUDIO_WINDOW_SHOWN', {
+      trigger,
+      reused: true,
+      ...getStudioWindowMeta(settingsWindow),
+    });
     return settingsWindow;
   }
 
   const preloadPath = path.join(__dirname, 'preload.cjs');
-  const win = new BrowserWindow({
-    width: 680,
-    height: 620,
-    title: 'ProScreen Settings',
-    center: true,
-    resizable: true,
-    autoHideMenuBar: true,
-    webPreferences: {
-      preload: preloadPath,
-      contextIsolation: true,
-      nodeIntegration: false,
-    },
+  const windowIconPath = pickFirstExistingPath(
+    resolveBundledIconCandidates(__dirname, ['icon.ico', 'icon256.png', 'icon128.png', 'icon32.png'])
+  );
+  const initialBounds = computePrimaryWindowBounds(getDisplaysInfo(), 980, 680);
+
+  let win: BrowserWindow;
+  try {
+    win = new BrowserWindow({
+      x: initialBounds.x,
+      y: initialBounds.y,
+      width: initialBounds.width,
+      height: initialBounds.height,
+      minWidth: 760,
+      minHeight: 540,
+      title: 'ProScreen Studio',
+      icon: windowIconPath || undefined,
+      backgroundColor: '#070B14',
+      transparent: false,
+      frame: true,
+      skipTaskbar: false,
+      resizable: true,
+      autoHideMenuBar: true,
+      show: false,
+      webPreferences: {
+        preload: preloadPath,
+        contextIsolation: true,
+        nodeIntegration: false,
+        sandbox: false,
+      },
+    });
+  } catch (err) {
+    appendDesktopLogSync('STUDIO_STARTUP_FAILED', {
+      trigger,
+      stage: 'create-browser-window',
+      error: err instanceof Error ? err.stack || err.message : String(err),
+      initialBounds,
+    });
+    throw err;
+  }
+
+  settingsWindow = win;
+  instrumentWindow(win, 'settings');
+  appendDesktopLogSync('STUDIO_WINDOW_CREATED', {
+    trigger,
+    ...getStudioWindowMeta(win),
+  });
+
+  let shown = false;
+  let loadFailed = false;
+  let showFallbackTimer: NodeJS.Timeout | null = null;
+
+  const clearFallbackTimer = () => {
+    if (showFallbackTimer) {
+      clearTimeout(showFallbackTimer);
+      showFallbackTimer = null;
+    }
+  };
+
+  const ensureVisible = (reason: string) => {
+    if (shown || loadFailed || win.isDestroyed()) return;
+    shown = true;
+    clearFallbackTimer();
+    if (win.isMinimized()) {
+      win.restore();
+    }
+    win.show();
+    win.moveTop();
+    win.focus();
+    appendDesktopLogSync('STUDIO_WINDOW_SHOWN', {
+      trigger,
+      reason,
+      ...getStudioWindowMeta(win),
+    });
+  };
+
+  win.once('ready-to-show', () => ensureVisible('ready-to-show'));
+  showFallbackTimer = setTimeout(() => ensureVisible('fallback-timer'), 1200);
+
+  win.webContents.once('did-finish-load', () => {
+    if (win.isDestroyed()) return;
+    appendDesktopLogSync('STUDIO_RENDERER_LOADED', {
+      trigger,
+      ...getStudioWindowMeta(win),
+    });
+    void win.webContents
+      .executeJavaScript("Boolean(document.getElementById('options-root'))", true)
+      .then((hasRoot) => {
+        if (!hasRoot) {
+          appendDesktopLogSync('STUDIO_STARTUP_FAILED', {
+            trigger,
+            stage: 'renderer-mount-check',
+            error: 'Studio HTML loaded without #options-root container',
+            ...getStudioWindowMeta(win),
+          });
+        }
+      })
+      .catch(() => {});
+  });
+
+  win.webContents.on('did-fail-load', (_ev, errorCode, errorDesc, validatedURL, isMainFrame) => {
+    if (isMainFrame !== false && errorCode !== -3) {
+      loadFailed = true;
+      clearFallbackTimer();
+    }
+    appendDesktopLogSync('STUDIO_STARTUP_FAILED', {
+      trigger,
+      stage: 'did-fail-load',
+      isMainFrame: isMainFrame !== false,
+      error: `${errorDesc} (${errorCode})`,
+      errorCode,
+      errorDesc,
+      validatedURL,
+      ...getStudioWindowMeta(win),
+    });
+  });
+
+  win.webContents.on('render-process-gone', (_ev, details) => {
+    loadFailed = true;
+    clearFallbackTimer();
+    appendDesktopLogSync('STUDIO_STARTUP_FAILED', {
+      trigger,
+      stage: 'render-process-gone',
+      error: `Renderer exited: ${details.reason} (code ${details.exitCode})`,
+      reason: details.reason,
+      exitCode: details.exitCode,
+      ...getStudioWindowMeta(win),
+    });
+  });
+
+  win.on('closed', () => {
+    clearFallbackTimer();
+    if (settingsWindow === win) {
+      settingsWindow = null;
+    }
+  });
+
+  const optionsTarget = resolveDesktopHtmlTarget(__dirname, 'options', isDev ? devServerUrl : undefined);
+  appendDesktopLogSync('STUDIO_RENDERER_LOADING', {
+    trigger,
+    id: win.id,
+    targetType: optionsTarget.type,
+    target: optionsTarget.type === 'url' ? optionsTarget.url : optionsTarget.filePath,
+    fileExists: optionsTarget.type === 'file' ? fs.existsSync(optionsTarget.filePath) : undefined,
+    ...getStudioWindowMeta(win),
   });
 
   try {
-    win.setContentProtection(true);
-  } catch {}
-
-  if (isDev && devServerUrl) {
-    win.loadURL(`${devServerUrl}/options.html`);
-  } else {
-    win.loadFile(path.join(__dirname, '../dist/options.html'));
+    loadWindowContent(win, 'settings', optionsTarget, {
+      critical: true,
+      onFailure: (stage, error) => {
+        loadFailed = true;
+        clearFallbackTimer();
+        appendDesktopLogSync('STUDIO_STARTUP_FAILED', {
+          trigger,
+          stage,
+          error,
+          ...getStudioWindowMeta(win),
+        });
+      },
+    });
+  } catch (err) {
+    loadFailed = true;
+    clearFallbackTimer();
+    if (settingsWindow === win) {
+      settingsWindow = null;
+    }
+    if (!win.isDestroyed()) {
+      win.destroy();
+    }
+    throw err;
   }
 
-  win.on('closed', () => {
-    settingsWindow = null;
-  });
-
-  instrumentWindow(win, 'settings');
-
-  settingsWindow = win;
   return win;
 }
 
@@ -942,7 +1368,10 @@ function openSettingsWindow(): BrowserWindow {
 function applyInteractionMode(mode: 'pointer' | 'drawing') {
   logDesktopEvent('APPLY_INTERACTION_MODE', { mode, hasOverlay: Boolean(overlayWindow) });
   sharedState.interactionMode = mode;
-  if (!overlayWindow || overlayWindow.isDestroyed()) return;
+  if (!overlayWindow || overlayWindow.isDestroyed()) {
+    broadcastState();
+    return;
+  }
 
   if (mode === 'pointer') {
     // Pure Win32 click-through (WS_EX_TRANSPARENT without WH_MOUSE_LL hook)
@@ -955,16 +1384,12 @@ function applyInteractionMode(mode: 'pointer' | 'drawing') {
       if (overlayWindow.isVisible()) overlayWindow.hide();
     } else {
       if (!overlayWindow.isVisible()) overlayWindow.showInactive();
-      overlayWindow.setAlwaysOnTop(true, 'screen-saver');
       overlayWindow.setIgnoreMouseEvents(true);
+      applyDesktopWindowZOrder({ ensureOverlayTopmost: true });
     }
   } else {
-    // Drawing mode: Canvas captures clicks without stealing OS activation
+    // Drawing mode: Canvas captures clicks while toolbar/popout stay strictly above overlay
     if (!overlayWindow.isVisible()) overlayWindow.showInactive();
-    overlayWindow.setAlwaysOnTop(true, 'screen-saver');
-    try {
-      overlayWindow.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
-    } catch {}
     overlayWindow.setIgnoreMouseEvents(false);
     try {
       if (!globalShortcut.isRegistered('Escape')) {
@@ -976,14 +1401,7 @@ function applyInteractionMode(mode: 'pointer' | 'drawing') {
       }
     } catch {}
 
-    // CRITICAL: Ensure toolbar is always above the overlay so tools can be switched anytime
-    if (toolbarWindow && !toolbarWindow.isDestroyed()) {
-      toolbarWindow.setAlwaysOnTop(true, 'screen-saver');
-      try {
-        toolbarWindow.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
-      } catch {}
-      toolbarWindow.moveTop();
-    }
+    applyDesktopWindowZOrder({ ensureOverlayTopmost: true });
   }
 
   broadcastState();
@@ -1001,6 +1419,9 @@ function broadcastState() {
   }
   if (recordingControlWindow && !recordingControlWindow.isDestroyed()) {
     recordingControlWindow.webContents.send('desktop:state-changed', sharedState);
+  }
+  if (settingsWindow && !settingsWindow.isDestroyed()) {
+    settingsWindow.webContents.send('desktop:state-changed', sharedState);
   }
   updateTrayMenu();
 }
@@ -1156,15 +1577,23 @@ function toggleEyeState() {
  */
 function createSystemTray() {
   try {
-    const iconData = Buffer.from(
-      'iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAAXNSR0IArs4c6QAAAExJREFUOE9jZKAQMFKon2H4f+p/hkERhxkYGBj+E5Mnk2GkGkCWgYYGkBu0pBkgYQDZgQYGI0Gg/z+yZgYGhn84DCBa/BElT4kNAABx8BwRE/B4twAAAABJRU5ErkJggg==',
-      'base64'
+    const bundledTrayPath = pickFirstExistingPath(
+      resolveBundledIconCandidates(__dirname, ['icon32.png', 'icon16.png', 'icon48.png', 'icon256.png'])
     );
-    const trayIconPath = path.join(app.getPath('userData'), 'proscreen-tray-icon.png');
-    fs.mkdirSync(path.dirname(trayIconPath), { recursive: true });
-    fs.writeFileSync(trayIconPath, iconData);
+    let icon: Electron.NativeImage;
+    if (bundledTrayPath) {
+      icon = nativeImage.createFromPath(bundledTrayPath);
+    } else {
+      const iconData = Buffer.from(
+        'iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAAXNSR0IArs4c6QAAAExJREFUOE9jZKAQMFKon2H4f+p/hkERhxkYGBj+E5Mnk2GkGkCWgYYGkBu0pBkgYQDZgQYGI0Gg/z+yZgYGhn84DCBa/BElT4kNAABx8BwRE/B4twAAAABJRU5ErkJggg==',
+        'base64'
+      );
+      const trayIconPath = path.join(app.getPath('userData'), 'proscreen-tray-icon.png');
+      fs.mkdirSync(path.dirname(trayIconPath), { recursive: true });
+      fs.writeFileSync(trayIconPath, iconData);
+      icon = nativeImage.createFromPath(trayIconPath);
+    }
 
-    const icon = nativeImage.createFromPath(trayIconPath);
     tray = new Tray(icon);
     tray.setToolTip('ProScreen — Desktop Annotation Studio');
     tray.on('double-click', () => {
@@ -1184,7 +1613,13 @@ function updateTrayMenu() {
 
   const contextMenu = Menu.buildFromTemplate([
     {
-      label: isVisible ? 'Hide ProScreen (Eye OFF)' : 'Show ProScreen (Eye ON)',
+      label: 'Open ProScreen Studio',
+      click: () => {
+        openSettingsWindow('tray');
+      },
+    },
+    {
+      label: isVisible ? 'Hide Floating Toolbar (Eye OFF)' : 'Show Floating Toolbar (Eye ON)',
       accelerator: 'Alt+Shift+P',
       click: () => toggleEyeState(),
     },
@@ -1246,14 +1681,14 @@ function updateTrayMenu() {
     {
       label: 'Settings...',
       click: () => {
-        openSettingsWindow();
+        openSettingsWindow('tray');
       },
     },
     { type: 'separator' },
     {
       label: 'Exit ProScreen',
       click: () => {
-        app.quit();
+        requestAppQuit('tray-exit');
       },
     },
   ]);
@@ -1306,7 +1741,7 @@ function registerGlobalShortcuts() {
         try { if (settingsWindow && !settingsWindow.isDestroyed()) settingsWindow.destroy(); } catch {}
         try { if (tray && !tray.isDestroyed()) tray.destroy(); } catch {}
         try { globalShortcut.unregisterAll(); } catch {}
-        app.quit();
+        requestAppQuit('emergency-shortcut', { key });
         process.exit(0);
       });
       if (!ok) {
@@ -1349,9 +1784,15 @@ function registerGlobalShortcuts() {
  * Sets up IPC communications between Main, Overlay, and Toolbar.
  */
 function setupIpcHandlers() {
+  if (ipcHandlersRegistered) {
+    return;
+  }
+  ipcHandlersRegistered = true;
+
   ipcMain.handle('desktop:get-window-type', (event) => {
     if (overlayWindow && event.sender.id === overlayWindow.webContents.id) return 'overlay';
     if (toolbarWindow && event.sender.id === toolbarWindow.webContents.id) return 'toolbar';
+    if (popoutWindow && event.sender.id === popoutWindow.webContents.id) return 'dropdown';
     if (recordingControlWindow && event.sender.id === recordingControlWindow.webContents.id) return 'recording-bar';
     return 'settings';
   });
@@ -1369,24 +1810,22 @@ function setupIpcHandlers() {
       }
     }
     if (overlayWindow && !overlayWindow.isDestroyed()) {
+      const wasVisible = overlayWindow.isVisible();
       if (sharedState.interactionMode === 'drawing') {
-        if (!overlayWindow.isVisible()) overlayWindow.showInactive();
-        overlayWindow.setAlwaysOnTop(true, 'screen-saver');
-        try {
-          overlayWindow.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
-        } catch {}
+        if (!wasVisible) overlayWindow.showInactive();
         overlayWindow.setIgnoreMouseEvents(false);
+        // Never re-raise overlay alone above toolbar/popout when already visible
+        applyDesktopWindowZOrder({ ensureOverlayTopmost: !wasVisible });
       } else if (!sharedState.annotationsVisible || !sharedState.toolbarVisible) {
-        if (overlayWindow.isVisible()) overlayWindow.hide();
+        if (wasVisible) overlayWindow.hide();
       } else if (sharedState.historyCount === 0 && !sharedState.isRecording) {
-        if (overlayWindow.isVisible()) overlayWindow.hide();
+        if (wasVisible) overlayWindow.hide();
       } else {
-        if (!overlayWindow.isVisible()) overlayWindow.showInactive();
-        overlayWindow.setAlwaysOnTop(true, 'screen-saver');
-        try {
-          overlayWindow.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
-        } catch {}
+        if (!wasVisible) overlayWindow.showInactive();
         overlayWindow.setIgnoreMouseEvents(true);
+        if (!wasVisible) {
+          applyDesktopWindowZOrder({ ensureOverlayTopmost: true });
+        }
       }
     }
     broadcastState();
@@ -1400,27 +1839,19 @@ function setupIpcHandlers() {
   ipcMain.on('desktop:set-overlay-ignore-mouse', (_event, ignore: boolean) => {
     logDesktopEvent('SET_OVERLAY_IGNORE_MOUSE', { ignore });
     if (overlayWindow && !overlayWindow.isDestroyed()) {
+      const wasVisible = overlayWindow.isVisible();
       overlayWindow.setIgnoreMouseEvents(ignore);
       if (!ignore) {
-        if (!overlayWindow.isVisible()) overlayWindow.showInactive();
-        overlayWindow.setAlwaysOnTop(true, 'screen-saver');
-        try {
-          overlayWindow.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
-        } catch {}
-        if (toolbarWindow && !toolbarWindow.isDestroyed()) {
-          toolbarWindow.setAlwaysOnTop(true, 'screen-saver');
-          toolbarWindow.moveTop();
-        }
+        if (!wasVisible) overlayWindow.showInactive();
+        applyDesktopWindowZOrder({ ensureOverlayTopmost: true });
       }
     }
   });
 
   ipcMain.on('desktop:move-toolbar-top', () => {
     logDesktopEvent('MOVE_TOOLBAR_TOP');
-    if (toolbarWindow && !toolbarWindow.isDestroyed()) {
-      toolbarWindow.setAlwaysOnTop(true, 'screen-saver');
-      toolbarWindow.moveTop();
-    }
+    closePopoutWindow();
+    applyDesktopWindowZOrder();
   });
 
   ipcMain.on('desktop:set-toolbar-ignore-mouse', (_event, data) => {
@@ -1474,7 +1905,7 @@ function setupIpcHandlers() {
             width: nextW,
             height: nextH,
           });
-          toolbarWindow.moveTop();
+          applyDesktopWindowZOrder();
           programmaticBoundsTimer = setTimeout(() => {
             isProgrammaticBoundsChange = false;
             programmaticBoundsTimer = null;
@@ -1549,7 +1980,7 @@ function setupIpcHandlers() {
   ipcMain.on('desktop:toggle-eye', () => toggleEyeState());
   ipcMain.on('desktop:set-eye', (_event, visible: boolean) => setEyeState(visible));
 
-  ipcMain.on('desktop:open-settings', () => openSettingsWindow());
+  ipcMain.on('desktop:open-settings', () => openSettingsWindow('toolbar'));
 
   ipcMain.on('desktop:close-window', (event) => {
     const win = BrowserWindow.fromWebContents(event.sender);
@@ -1574,10 +2005,10 @@ function setupIpcHandlers() {
       showRecordingControlWindow();
       if (overlayWindow && !overlayWindow.isDestroyed()) {
         if (!overlayWindow.isVisible()) overlayWindow.showInactive();
-        overlayWindow.setAlwaysOnTop(true, 'screen-saver');
         if (sharedState.interactionMode === 'pointer') {
           overlayWindow.setIgnoreMouseEvents(true);
         }
+        applyDesktopWindowZOrder({ ensureOverlayTopmost: true });
       }
     }
     if (data.action === 'stop-recording' || data.action === 'cancel-recording') {
@@ -1596,15 +2027,8 @@ function setupIpcHandlers() {
         overlayWindow.setIgnoreMouseEvents(false);
         overlayWindow.show();
         overlayWindow.focus();
-        overlayWindow.setAlwaysOnTop(true, 'screen-saver');
-        try {
-          overlayWindow.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
-        } catch {}
       }
-      if (toolbarWindow && !toolbarWindow.isDestroyed()) {
-        toolbarWindow.setAlwaysOnTop(true, 'screen-saver');
-        toolbarWindow.moveTop();
-      }
+      applyDesktopWindowZOrder({ ensureOverlayTopmost: true });
       broadcastState();
     }
     if (data.action === 'close-preview' || data.action === 'clear-recording') {
@@ -1628,16 +2052,9 @@ function setupIpcHandlers() {
       sharedState.interactionMode = 'drawing';
       if (overlayWindow && !overlayWindow.isDestroyed()) {
         if (!overlayWindow.isVisible()) overlayWindow.showInactive();
-        overlayWindow.setAlwaysOnTop(true, 'screen-saver');
-        try {
-          overlayWindow.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
-        } catch {}
         overlayWindow.setIgnoreMouseEvents(false);
       }
-      if (toolbarWindow && !toolbarWindow.isDestroyed()) {
-        toolbarWindow.setAlwaysOnTop(true, 'screen-saver');
-        toolbarWindow.moveTop();
-      }
+      applyDesktopWindowZOrder({ ensureOverlayTopmost: true });
     }
     if (data.action === 'cancel-recording-area') {
       logDesktopEvent('CANCEL_AREA_SELECTION_MODE');
@@ -1767,7 +2184,10 @@ function setupIpcHandlers() {
 
         // Fast path: if source file on disk already exists, copy directly (0ms, 0 RAM overhead)
         if (data.sourcePath && fs.existsSync(data.sourcePath)) {
-          await fs.promises.copyFile(data.sourcePath, targetPath);
+          const sameDestination = path.resolve(data.sourcePath) === path.resolve(targetPath);
+          if (!sameDestination) {
+            await fs.promises.copyFile(data.sourcePath, targetPath);
+          }
           const stat = await fs.promises.stat(targetPath);
           if (stat.size > 0) {
             logDesktopEvent('RECORDING_SAVED_TO_DISK', { path: targetPath, size: stat.size });
@@ -1846,7 +2266,7 @@ function setupIpcHandlers() {
       const filename = path.basename(selectedPath);
       const isMp4 = filename.toLowerCase().endsWith('.mp4');
       const mimeType = isMp4 ? 'video/mp4' : 'video/webm';
-      const mediaUrl = `proscreen-media://local/${selectedPath.replace(/\\/g, '/')}`;
+      const mediaUrl = toProScreenMediaUrl(selectedPath);
 
       const artifact = {
         id: `rec_${Date.now()}`,
@@ -1907,6 +2327,7 @@ function setupIpcHandlers() {
     if (settings.startWithWindows !== undefined) {
       app.setLoginItemSettings({
         openAtLogin: Boolean(settings.startWithWindows),
+        args: ['--background'],
       });
     }
     if (overlayWindow && !overlayWindow.isDestroyed()) {
@@ -1918,16 +2339,19 @@ function setupIpcHandlers() {
     if (popoutWindow && !popoutWindow.isDestroyed()) {
       popoutWindow.webContents.send('desktop:settings-changed', activeSettings);
     }
+    if (settingsWindow && !settingsWindow.isDestroyed()) {
+      settingsWindow.webContents.send('desktop:settings-changed', activeSettings);
+    }
     return ok;
   });
 
   ipcMain.on('desktop:quit-app', () => {
     if (isShutdownCompleted) {
-      app.quit();
+      requestAppQuit('ipc-quit-app-immediate');
       return;
     }
     void gracefulShutdown(1500).finally(() => {
-      app.quit();
+      requestAppQuit('ipc-quit-app-graceful');
     });
   });
 }
@@ -1961,36 +2385,31 @@ function setupDisplayListeners() {
   screen.on('display-metrics-changed', onDisplaysChanged);
 }
 
-// Hardware-accelerated desktop video capture & smooth 60 FPS recording switches
-try {
-  app.commandLine.appendSwitch('enable-gpu-rasterization');
-  app.commandLine.appendSwitch('enable-zero-copy');
-  app.commandLine.appendSwitch('ignore-gpu-blocklist');
-  app.commandLine.appendSwitch('enable-hardware-overlays', 'single-fullscreen,single-on-top,underlay');
-  app.commandLine.appendSwitch('disable-features', 'CalculateNativeWinOcclusion');
-  app.commandLine.appendSwitch('enable-features', 'MediaFoundationVideoEncoder');
-  app.commandLine.appendSwitch('enable-gpu-memory-buffer-video-frames');
-  app.commandLine.appendSwitch('disable-background-timer-throttling');
-  app.commandLine.appendSwitch('disable-renderer-backgrounding');
-} catch {}
-
-app.whenReady().then(() => {
-  updateCachedDisplays();
+// Safe Chromium switches for reliable Windows DWM compositing & background capture
+for (const sw of resolveProductionChromiumSwitches()) {
   try {
-    const p = path.join(app.getPath('userData'), 'proscreen-desktop.log');
-    fs.appendFile(p, `[${new Date().toISOString()}] App ready. Creating windows...\n`, () => {});
+    if (sw.value !== undefined) {
+      app.commandLine.appendSwitch(sw.name, sw.value);
+    } else {
+      app.commandLine.appendSwitch(sw.name);
+    }
   } catch {}
+}
+
+async function startDesktopApp() {
+  updateCachedDisplays();
+  appendDesktopLogSync('APP_READY', {
+    displayCount: cachedDisplays.length,
+    isDev,
+    mainDir: __dirname,
+  });
 
   // Register custom streaming protocol for video recording playback and seeking
   try {
     protocol.handle('proscreen-media', (request) => {
       try {
-        const url = new URL(request.url);
-        let localPath = decodeURIComponent(url.pathname);
-        if (process.platform === 'win32' && localPath.startsWith('/')) {
-          localPath = localPath.slice(1);
-        }
-        if (!fs.existsSync(localPath)) {
+        const localPath = fromProScreenMediaUrl(request.url, process.platform);
+        if (!localPath || !fs.existsSync(localPath)) {
           return new Response('File not found', { status: 404 });
         }
         const stat = fs.statSync(localPath);
@@ -2001,9 +2420,11 @@ app.whenReady().then(() => {
 
         if (rangeHeader) {
           const parts = rangeHeader.replace(/bytes=/, '').split('-');
-          const start = parseInt(parts[0], 10);
-          const end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1;
-          const chunkSize = end - start + 1;
+          const rawStart = parseInt(parts[0], 10);
+          const rawEnd = parts[1] ? parseInt(parts[1], 10) : fileSize - 1;
+          const start = Number.isFinite(rawStart) ? Math.max(0, Math.min(rawStart, Math.max(0, fileSize - 1))) : 0;
+          const end = Number.isFinite(rawEnd) ? Math.max(start, Math.min(rawEnd, Math.max(0, fileSize - 1))) : Math.max(0, fileSize - 1);
+          const chunkSize = Math.max(0, end - start + 1);
           const nodeStream = fs.createReadStream(localPath, { start, end });
           const readable = new ReadableStream({
             start(controller) {
@@ -2051,7 +2472,7 @@ app.whenReady().then(() => {
       }
     });
   } catch (err) {
-    console.error('[PROTOCOL] Failed to register proscreen-media:', err);
+    appendDesktopLogSync('PROTOCOL_REGISTER_ERROR', { error: String(err) });
   }
 
   // Pre-fetch primary screen source for instant (0ms) getDisplayMedia response
@@ -2085,7 +2506,6 @@ app.whenReady().then(() => {
       try {
         let chosenSource: Electron.DesktopCapturerSource | undefined;
 
-        // 1. Explicit target display or source ID specified
         if (targetRecordingDisplayId) {
           const sources = await desktopCapturer.getSources({ types: ['screen', 'window'] });
           chosenSource = sources.find(
@@ -2093,7 +2513,6 @@ app.whenReady().then(() => {
           );
         }
 
-        // 2. Window mode: pick active user application window (not ProScreen's own utility windows)
         if (!chosenSource && targetRecordingMode === 'window') {
           const sources = await desktopCapturer.getSources({ types: ['window'] });
           chosenSource = sources.find(
@@ -2106,7 +2525,6 @@ app.whenReady().then(() => {
           );
         }
 
-        // 3. Tab mode: pick browser window or active application window
         if (!chosenSource && targetRecordingMode === 'tab') {
           const sources = await desktopCapturer.getSources({ types: ['window'] });
           chosenSource =
@@ -2126,7 +2544,6 @@ app.whenReady().then(() => {
             );
         }
 
-        // 4. Default / Screen / Area: primary display (INSTANT 0ms response from cache if available)
         if (!chosenSource) {
           if (cachedPrimaryScreenSource) {
             chosenSource = cachedPrimaryScreenSource;
@@ -2158,70 +2575,134 @@ app.whenReady().then(() => {
     logDesktopEvent('DISPLAY_MEDIA_HANDLER_ERROR', { error: String(err) });
   }
 
-  let isolationMode = process.env.ISOLATION_MODE || '4';
+  let rawIsolationMode = process.env.ISOLATION_MODE || '';
   const modeFilePath = path.join(__dirname, '../isolation_mode.txt');
   if (fs.existsSync(modeFilePath)) {
-    try { isolationMode = fs.readFileSync(modeFilePath, 'utf8').trim(); } catch {}
+    try {
+      rawIsolationMode = fs.readFileSync(modeFilePath, 'utf8').trim();
+    } catch {}
   }
-  logDesktopEvent('STARTUP_ISOLATION_MODE', { isolationMode });
 
-  if (isolationMode === '3' || isolationMode === '4') {
-    overlayWindow = createOverlayWindow();
+  const studioDecision = evaluateStudioStartupDecision(process.argv, rawIsolationMode);
+  const isolationMode = studioDecision.normalizedIsolationMode;
+
+  appendDesktopLogSync('STARTUP_ISOLATION_MODE', {
+    isolationMode,
+    rawIsolationMode: rawIsolationMode || null,
+    shouldLaunchStudio: studioDecision.shouldLaunch,
+    studioDecisionReason: studioDecision.reason,
+  });
+
+  if (studioDecision.shouldLaunch) {
+    try {
+      settingsWindow = openSettingsWindow('startup');
+    } catch (err) {
+      appendDesktopLogSync('STUDIO_STARTUP_FAILED', {
+        trigger: 'startup',
+        stage: 'open-settings-window',
+        error: err instanceof Error ? err.stack || err.message : String(err),
+      });
+      appendDesktopLogSync('MAIN_WINDOW_CREATE_ERROR', { error: String(err) });
+    }
+  } else {
+    appendDesktopLogSync('STUDIO_STARTUP_REQUESTED', {
+      trigger: 'startup',
+      skipped: true,
+      reason: studioDecision.reason,
+      isolationMode,
+      argv: process.argv.slice(0, 6),
+    });
   }
-  if (isolationMode === '2' || isolationMode === '4') {
-    toolbarWindow = createToolbarWindow();
+
+  if (shouldLaunchOverlayWindow(isolationMode)) {
+    try {
+      overlayWindow = createOverlayWindow();
+    } catch (err) {
+      appendDesktopLogSync('OVERLAY_WINDOW_CREATE_ERROR', { error: String(err) });
+    }
   }
+  if (shouldLaunchFloatingToolbar(isolationMode)) {
+    try {
+      toolbarWindow = createToolbarWindow();
+      // Pre-warm hidden popout window so the first hover/click opens immediately with loaded React UI
+      if (!popoutWindow || popoutWindow.isDestroyed()) {
+        popoutWindow = createPopoutWindow();
+      }
+    } catch (err) {
+      appendDesktopLogSync('TOOLBAR_WINDOW_CREATE_ERROR', { error: String(err) });
+    }
+  }
+
+  const health = evaluateStartupWindowHealth({
+    mainWindowCreated: Boolean(settingsWindow && !settingsWindow.isDestroyed()),
+    toolbarWindowCreated: Boolean(toolbarWindow && !toolbarWindow.isDestroyed()),
+    overlayWindowCreated: Boolean(overlayWindow && !overlayWindow.isDestroyed()),
+  });
+
+  if (!health.healthy) {
+    throw new Error(health.reason || 'Startup window creation failed');
+  }
+
   createSystemTray();
   registerGlobalShortcuts();
+  isAppStartupCompleted = true;
 
-
-  try {
-    const p = path.join(app.getPath('userData'), 'proscreen-desktop.log');
-    fs.appendFile(
-      p,
-      `[${new Date().toISOString()}] Windows created. Overlay: ${overlayWindow ? 'OK' : 'NULL'}, Toolbar: ${toolbarWindow ? 'OK' : 'NULL'}\n`,
-      () => {}
-    );
-  } catch {}
+  appendDesktopLogSync('STARTUP_WINDOWS_READY', {
+    mainWindow: Boolean(settingsWindow && !settingsWindow.isDestroyed()),
+    overlay: Boolean(overlayWindow && !overlayWindow.isDestroyed()),
+    toolbar: Boolean(toolbarWindow && !toolbarWindow.isDestroyed()),
+  });
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {
+      settingsWindow = openSettingsWindow('activate');
       overlayWindow = createOverlayWindow();
       toolbarWindow = createToolbarWindow();
     }
   });
 
   app.on('browser-window-blur', () => {
-    if (overlayWindow && !overlayWindow.isDestroyed() && overlayWindow.isVisible()) {
-      overlayWindow.setAlwaysOnTop(true, 'screen-saver');
-    }
-    if (toolbarWindow && !toolbarWindow.isDestroyed()) {
-      toolbarWindow.setAlwaysOnTop(true, 'screen-saver');
-      toolbarWindow.moveTop();
-    }
+    applyDesktopWindowZOrder({ ensureOverlayTopmost: true });
   });
+}
+
+void app.whenReady().then(startDesktopApp).catch((err) => {
+  handleFatalStartupError('whenReady', err);
 });
 
 let isBeforeQuitStarted = false;
 
+function destroyAllDesktopWindows() {
+  if (popoutWindow && !popoutWindow.isDestroyed()) {
+    popoutWindow.destroy();
+    popoutWindow = null;
+  }
+  if (recordingControlWindow && !recordingControlWindow.isDestroyed()) {
+    recordingControlWindow.destroy();
+    recordingControlWindow = null;
+  }
+  if (overlayWindow && !overlayWindow.isDestroyed()) {
+    overlayWindow.destroy();
+    overlayWindow = null;
+  }
+  if (toolbarWindow && !toolbarWindow.isDestroyed()) {
+    toolbarWindow.destroy();
+    toolbarWindow = null;
+  }
+  if (settingsWindow && !settingsWindow.isDestroyed()) {
+    settingsWindow.destroy();
+    settingsWindow = null;
+  }
+  if (tray && !tray.isDestroyed()) {
+    tray.destroy();
+    tray = null;
+  }
+}
+
 app.on('before-quit', (event) => {
+  appendDesktopLogSync('APP_BEFORE_QUIT', { isShutdownCompleted, isBeforeQuitStarted });
   if (isShutdownCompleted) {
-    if (overlayWindow && !overlayWindow.isDestroyed()) {
-      overlayWindow.destroy();
-      overlayWindow = null;
-    }
-    if (toolbarWindow && !toolbarWindow.isDestroyed()) {
-      toolbarWindow.destroy();
-      toolbarWindow = null;
-    }
-    if (settingsWindow && !settingsWindow.isDestroyed()) {
-      settingsWindow.destroy();
-      settingsWindow = null;
-    }
-    if (tray && !tray.isDestroyed()) {
-      tray.destroy();
-      tray = null;
-    }
+    destroyAllDesktopWindows();
     return;
   }
 
@@ -2234,32 +2715,19 @@ app.on('before-quit', (event) => {
   isBeforeQuitStarted = true;
 
   void gracefulShutdown(1500).finally(() => {
-    if (overlayWindow && !overlayWindow.isDestroyed()) {
-      overlayWindow.destroy();
-      overlayWindow = null;
-    }
-    if (toolbarWindow && !toolbarWindow.isDestroyed()) {
-      toolbarWindow.destroy();
-      toolbarWindow = null;
-    }
-    if (settingsWindow && !settingsWindow.isDestroyed()) {
-      settingsWindow.destroy();
-      settingsWindow = null;
-    }
-    if (tray && !tray.isDestroyed()) {
-      tray.destroy();
-      tray = null;
-    }
-    app.quit();
+    destroyAllDesktopWindows();
+    requestAppQuit('before-quit-graceful-complete');
   });
 });
 
 app.on('will-quit', () => {
+  appendDesktopLogSync('APP_WILL_QUIT');
   globalShortcut.unregisterAll();
 });
 
 app.on('window-all-closed', () => {
+  appendDesktopLogSync('WINDOW_ALL_CLOSED', { platform: process.platform });
   if (process.platform !== 'darwin') {
-    app.quit();
+    requestAppQuit('window-all-closed');
   }
 });

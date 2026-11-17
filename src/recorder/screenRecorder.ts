@@ -8,6 +8,7 @@ import {
 import { isExtensionContext } from '../utils/env';
 import { StudioAudioMixer, acquireMicrophoneStream } from './audioEngine';
 import { recDebugLog } from './debugLog';
+import { toProScreenMediaUrl } from '../desktop/mediaUrl';
 
 export type RecordingStatus = 'idle' | 'recording' | 'paused' | 'stopping';
 
@@ -1579,7 +1580,7 @@ export async function downloadRecordingArtifact(
 ): Promise<{ ok: boolean; path?: string; error?: string }> {
   const effectiveUrl =
     artifact.blobUrl ||
-    (artifact.savedPath ? `proscreen-media://local/${artifact.savedPath.replace(/\\/g, '/')}` : '');
+    (artifact.savedPath ? toProScreenMediaUrl(artifact.savedPath) : '');
 
   if (!effectiveUrl && !artifact.downloadUrl && !artifact.fromOffscreen) {
     return { ok: false, error: 'Recording file URL is no longer available.' };

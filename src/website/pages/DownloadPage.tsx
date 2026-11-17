@@ -58,7 +58,7 @@ export const DownloadPage: React.FC = () => {
 
           <h1 className="text-4xl sm:text-6xl font-extrabold text-neutral-900 tracking-tight">
             Download ProScreen{' '}
-            <span className="text-blue-600">v1.0.0</span>
+            <span className="text-blue-600">v1.0.2</span>
           </h1>
 
           <p className="text-base sm:text-lg text-neutral-600 leading-relaxed">
@@ -418,7 +418,7 @@ export const DownloadPage: React.FC = () => {
             <ol className="space-y-3 text-xs sm:text-sm text-slate-300 list-decimal pl-5 leading-relaxed">
               <li>
                 Click <strong className="text-white">Download Installer</strong> to save{' '}
-                <code className="text-blue-300 bg-slate-950 px-1 rounded">ProScreen-Setup-1.0.0.exe</code>.
+                <code className="text-blue-300 bg-slate-950 px-1 rounded">ProScreen-Setup-1.0.2.exe</code>.
               </li>
               <li>Double-click the downloaded executable to start the setup wizard.</li>
               <li>Choose your destination folder (or accept standard AppData default).</li>
@@ -436,7 +436,7 @@ export const DownloadPage: React.FC = () => {
             <ol className="space-y-3 text-xs sm:text-sm text-slate-300 list-decimal pl-5 leading-relaxed">
               <li>
                 Click <strong className="text-white">Download Portable</strong> to save{' '}
-                <code className="text-sky-300 bg-slate-950 px-1 rounded">ProScreen-Portable-1.0.0.exe</code>.
+                <code className="text-sky-300 bg-slate-950 px-1 rounded">ProScreen-Portable-1.0.2.exe</code>.
               </li>
               <li>Copy or move the executable to any preferred folder (e.g. Desktop or USB drive).</li>
               <li>Double-click to run immediately. No administrative prompt or registry writes.</li>
@@ -454,7 +454,7 @@ export const DownloadPage: React.FC = () => {
             <ol className="space-y-3 text-xs sm:text-sm text-slate-300 list-decimal pl-5 leading-relaxed">
               <li>
                 Click <strong className="text-white">Download Extension ZIP</strong> to save{' '}
-                <code className="text-amber-300 bg-slate-950 px-1 rounded">ProScreen-Chrome-Extension-1.0.0.zip</code>.
+                <code className="text-amber-300 bg-slate-950 px-1 rounded">ProScreen-Chrome-Extension-1.0.2.zip</code>.
               </li>
               <li>Extract the ZIP file into any folder on your computer.</li>
               <li>Open <code className="text-amber-300 bg-slate-950 px-1 rounded">chrome://extensions</code> in Chrome or Edge.</li>
@@ -474,7 +474,7 @@ export const DownloadPage: React.FC = () => {
             <span className="text-[11px] text-slate-400">SHA-256</span>
           </div>
           <div className="p-3 bg-slate-900/90 rounded-lg text-slate-300 overflow-x-auto select-all border border-slate-800">
-            Get-FileHash -Path &quot;$HOME\Downloads\ProScreen-Setup-1.0.0.exe&quot; -Algorithm SHA256
+            Get-FileHash -Path &quot;$HOME\Downloads\ProScreen-Setup-1.0.2.exe&quot; -Algorithm SHA256
           </div>
         </div>
 
@@ -576,7 +576,7 @@ export const DownloadPage: React.FC = () => {
                   <strong className="text-white">Verify SHA-256 Hash First:</strong> Before executing, run the PowerShell command above to ensure your downloaded file matches our official published checksum byte-for-byte. If the hash does not match, do not run the file.
                 </li>
                 <li>
-                  <strong className="text-white">Confirm Publisher & File Name:</strong> On the blue SmartScreen dialog, click <strong className="text-white">&quot;More info&quot;</strong> and verify the file name corresponds to <code className="text-blue-300">ProScreen-Setup-1.0.0.exe</code> or <code className="text-sky-300">ProScreen-Portable-1.0.0.exe</code>.
+                  <strong className="text-white">Confirm Publisher & File Name:</strong> On the blue SmartScreen dialog, click <strong className="text-white">&quot;More info&quot;</strong> and verify the file name corresponds to <code className="text-blue-300">ProScreen-Setup-1.0.2.exe</code> or <code className="text-sky-300">ProScreen-Portable-1.0.2.exe</code>.
                 </li>
                 <li>
                   <strong className="text-white">Independent Antivirus Scan:</strong> You can right-click the file to scan with Microsoft Defender or upload to VirusTotal for independent multi-engine verification.

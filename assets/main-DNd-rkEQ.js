@@ -15198,7 +15198,7 @@ var HeroSection = () => {
 						children: [/* @__PURE__ */ (0, import_jsx_runtime.jsxs)("button", {
 							type: "button",
 							onClick: () => navigate("home", "download"),
-							className: "inline-flex items-center justify-center gap-2.5 rounded-2xl bg-sky-500 px-7 py-4 text-base font-semibold text-slate-950 shadow-lg shadow-sky-500/25 transition-colors hover:bg-sky-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-600",
+							className: "inline-flex items-center justify-center gap-2.5 rounded-2xl bg-sky-500 px-7 py-4 text-base font-semibold text-slate-950 shadow-lg shadow-sky-500/25 transition-colors hover:bg-sky-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-500",
 							children: [/* @__PURE__ */ (0, import_jsx_runtime.jsx)(Download, { className: "w-5 h-5" }), /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { children: "Download for Windows" })]
 						}), /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", {
 							type: "button",
@@ -15215,7 +15215,7 @@ var HeroSection = () => {
 					})]
 				})]
 			}), /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", {
-				className: "relative mt-14 lg:mt-16 overflow-hidden rounded-3xl bg-slate-950 p-4 sm:p-6 lg:p-8 shadow-2xl shadow-slate-900/20",
+				className: "site-product-frame relative mt-14 lg:mt-16 overflow-hidden rounded-3xl bg-slate-950 p-4 sm:p-6 lg:p-8 shadow-2xl shadow-slate-900/20",
 				children: [/* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", {
 					"aria-hidden": "true",
 					className: "pointer-events-none absolute -top-32 left-1/3 w-[28rem] h-80 rounded-full bg-sky-500/20 blur-3xl"
@@ -31974,4 +31974,4 @@ function App() {
 // src/main.tsx
 (0, import_client.createRoot)(document.getElementById("root")).render(/* @__PURE__ */ (0, import_jsx_runtime.jsx)(App, {}));
 
-//# sourceMappingURL=main-jO4fA5UW.js.map
+//# sourceMappingURL=main-DNd-rkEQ.js.map

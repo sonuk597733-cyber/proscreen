@@ -16491,7 +16491,7 @@ var shorten = (hash) => hash ? `${hash.slice(0, 10)}…${hash.slice(-10)}` : "No
 var DownloadSection = () => {
 	const [copiedSha, setCopiedSha] = (0, import_react.useState)(null);
 	const { releases } = useLatestReleases();
-	const { installer, portable } = releases;
+	const { installer, portable, extensionZip } = releases;
 	const copyChecksum = async (hash, id) => {
 		if (!hash) return;
 		try {
@@ -16570,41 +16570,62 @@ var DownloadSection = () => {
 						}),
 						/* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", {
 							className: "relative mt-8 grid gap-3 sm:grid-cols-2",
-							children: [/* @__PURE__ */ (0, import_jsx_runtime.jsxs)("a", {
-								href: installer.downloadUrl,
-								download: installer.fileName,
-								className: "group flex items-center justify-between gap-3 rounded-2xl bg-sky-500 hover:bg-sky-400 text-slate-950 px-5 py-4 font-semibold shadow-lg shadow-sky-500/20 transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-300",
-								children: [/* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", {
-									className: "flex items-center gap-3",
-									children: [/* @__PURE__ */ (0, import_jsx_runtime.jsx)(Download, { className: "w-5 h-5" }), /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", {
-										className: "leading-tight",
-										children: ["Download installer", /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", {
-											className: "block text-xs font-medium text-slate-800/80",
-											children: "Recommended"
+							children: [
+								/* @__PURE__ */ (0, import_jsx_runtime.jsxs)("a", {
+									href: installer.downloadUrl,
+									download: installer.fileName,
+									className: "group flex items-center justify-between gap-3 rounded-2xl bg-sky-500 hover:bg-sky-400 text-slate-950 px-5 py-4 font-semibold shadow-lg shadow-sky-500/20 transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-300",
+									children: [/* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", {
+										className: "flex items-center gap-3",
+										children: [/* @__PURE__ */ (0, import_jsx_runtime.jsx)(Download, { className: "w-5 h-5" }), /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", {
+											className: "leading-tight",
+											children: ["Download installer", /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", {
+												className: "block text-xs font-medium text-slate-800/80",
+												children: "Recommended"
+											})]
 										})]
+									}), /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", {
+										className: "font-mono text-xs text-slate-900/80",
+										children: installer.sizeFormatted
 									})]
-								}), /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", {
-									className: "font-mono text-xs text-slate-900/80",
-									children: installer.sizeFormatted
-								})]
-							}), /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("a", {
-								href: portable.downloadUrl,
-								download: portable.fileName,
-								className: "flex items-center justify-between gap-3 rounded-2xl bg-white/5 hover:bg-white/10 ring-1 ring-white/15 px-5 py-4 font-semibold transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-300",
-								children: [/* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", {
-									className: "flex items-center gap-3",
-									children: [/* @__PURE__ */ (0, import_jsx_runtime.jsx)(FileCheck, { className: "w-5 h-5 text-slate-300" }), /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", {
-										className: "leading-tight",
-										children: ["Download portable", /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", {
-											className: "block text-xs font-medium text-slate-400",
-											children: "No install needed"
+								}),
+								/* @__PURE__ */ (0, import_jsx_runtime.jsxs)("a", {
+									href: portable.downloadUrl,
+									download: portable.fileName,
+									className: "flex items-center justify-between gap-3 rounded-2xl bg-white/5 hover:bg-white/10 ring-1 ring-white/15 px-5 py-4 font-semibold transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-300",
+									children: [/* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", {
+										className: "flex items-center gap-3",
+										children: [/* @__PURE__ */ (0, import_jsx_runtime.jsx)(FileCheck, { className: "w-5 h-5 text-slate-300" }), /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", {
+											className: "leading-tight",
+											children: ["Download portable", /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", {
+												className: "block text-xs font-medium text-slate-400",
+												children: "No install needed"
+											})]
 										})]
+									}), /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", {
+										className: "font-mono text-xs text-slate-400",
+										children: portable.sizeFormatted
 									})]
-								}), /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", {
-									className: "font-mono text-xs text-slate-400",
-									children: portable.sizeFormatted
-								})]
-							})]
+								}),
+								/* @__PURE__ */ (0, import_jsx_runtime.jsxs)("a", {
+									href: extensionZip.downloadUrl,
+									download: extensionZip.fileName,
+									className: "flex items-center justify-between gap-3 rounded-2xl bg-white/5 hover:bg-white/10 ring-1 ring-white/15 px-5 py-4 font-semibold transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-300 sm:col-span-2",
+									children: [/* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", {
+										className: "flex items-center gap-3",
+										children: [/* @__PURE__ */ (0, import_jsx_runtime.jsx)(Chromium, { className: "w-5 h-5 text-amber-400" }), /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", {
+											className: "leading-tight text-left",
+											children: ["Download Chrome Extension (ZIP)", /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", {
+												className: "block text-xs font-medium text-slate-400",
+												children: "Manifest V3 • Chrome, Edge, Brave & Opera"
+											})]
+										})]
+									}), /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", {
+										className: "font-mono text-xs text-slate-400",
+										children: extensionZip.sizeFormatted
+									})]
+								})
+							]
 						}),
 						/* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", {
 							className: "relative mt-8 space-y-2",
@@ -16622,6 +16643,11 @@ var DownloadSection = () => {
 									label: "Portable",
 									hash: portable?.sha256,
 									id: "portable"
+								}),
+								/* @__PURE__ */ (0, import_jsx_runtime.jsx)(ChecksumRow, {
+									label: "Extension",
+									hash: extensionZip?.sha256,
+									id: "extension"
 								})
 							]
 						}),
@@ -31948,4 +31974,4 @@ function App() {
 // src/main.tsx
 (0, import_client.createRoot)(document.getElementById("root")).render(/* @__PURE__ */ (0, import_jsx_runtime.jsx)(App, {}));
 
-//# sourceMappingURL=main-UGNi3QpM.js.map
+//# sourceMappingURL=main-BfIHBLp1.js.map

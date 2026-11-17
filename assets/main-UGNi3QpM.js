@@ -11512,7 +11512,7 @@ var ROUTE_TITLES = {
 	download: "Download ProScreen for Windows — Official Installer & Portable Release",
 	"chrome-extension": "ProScreen for Google Chrome — Manifest V3 Screen Annotation Extension",
 	gallery: "Product Gallery & Interface Showcase — ProScreen",
-	changelog: "Changelog & Release Notes — ProScreen v1.0.0",
+	changelog: "Changelog & Release Notes — ProScreen v1.0.2",
 	faq: "Frequently Asked Questions & Knowledge Base — ProScreen",
 	support: "Support & Troubleshooting Center — ProScreen",
 	privacy: "Privacy Policy — 100% Local-First & Zero Telemetry — ProScreen",
@@ -14137,7 +14137,7 @@ var Navbar = () => {
 						}),
 						/* @__PURE__ */ (0, import_jsx_runtime.jsx)("p", {
 							className: "text-center text-xs text-slate-500",
-							children: "Version 1.0.0 for Windows 11 and 10 (64-bit)"
+							children: "Version 1.0.2 for Windows 11 and 10 (64-bit)"
 						})
 					]
 				})]
@@ -14145,200 +14145,15 @@ var Navbar = () => {
 		})]
 	})] });
 };
-// src/website/components/Footer.tsx
-var Footer = () => {
-	const { navigate } = useRouter();
-	return /* @__PURE__ */ (0, import_jsx_runtime.jsx)("footer", {
-		className: "w-full bg-neutral-50 border-t border-neutral-200 text-neutral-600",
-		children: /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", {
-			className: "max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 lg:py-20",
-			children: [/* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", {
-				className: "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-10 lg:gap-12",
-				children: [
-					/* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", {
-						className: "lg:col-span-2 space-y-4",
-						children: [
-							/* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", {
-								className: "flex items-center gap-2.5",
-								children: [
-									/* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", {
-										className: "flex items-center justify-center w-8 h-8 rounded-lg bg-blue-600 text-white shadow-sm",
-										children: /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("svg", {
-											className: "w-4 h-4 text-white",
-											viewBox: "0 0 24 24",
-											fill: "none",
-											stroke: "currentColor",
-											strokeWidth: "2.2",
-											strokeLinecap: "round",
-											strokeLinejoin: "round",
-											children: [
-												/* @__PURE__ */ (0, import_jsx_runtime.jsx)("rect", {
-													x: "2",
-													y: "3",
-													width: "20",
-													height: "14",
-													rx: "2"
-												}),
-												/* @__PURE__ */ (0, import_jsx_runtime.jsx)("path", { d: "M8 21h8" }),
-												/* @__PURE__ */ (0, import_jsx_runtime.jsx)("path", { d: "M12 17v4" }),
-												/* @__PURE__ */ (0, import_jsx_runtime.jsx)("path", { d: "m7 8 3 3-3 3" }),
-												/* @__PURE__ */ (0, import_jsx_runtime.jsx)("line", {
-													x1: "13",
-													y1: "14",
-													x2: "17",
-													y2: "14"
-												})
-											]
-										})
-									}),
-									/* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", {
-										className: "text-xl font-bold tracking-tight text-neutral-900",
-										children: "ProScreen"
-									}),
-									/* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", {
-										className: "px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-blue-50 text-blue-700 border border-blue-200/80",
-										children: "PRO"
-									})
-								]
-							}),
-							/* @__PURE__ */ (0, import_jsx_runtime.jsx)("p", {
-								className: "text-sm text-neutral-600 max-w-sm leading-relaxed",
-								children: "Capture your screen. Make every moment clear. Professional desktop screen recording and on-screen annotation studio for Windows."
-							}),
-							/* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", {
-								className: "pt-2 flex flex-wrap gap-2 text-xs",
-								children: [/* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", {
-									className: "inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white border border-neutral-200 text-neutral-700 font-medium shadow-2xs",
-									children: [/* @__PURE__ */ (0, import_jsx_runtime.jsx)(ShieldCheck, { className: "w-3.5 h-3.5 text-emerald-600" }), "100% Local-First Privacy"]
-								}), /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", {
-									className: "inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white border border-neutral-200 text-neutral-700 font-medium shadow-2xs",
-									children: [/* @__PURE__ */ (0, import_jsx_runtime.jsx)(CircleCheck, { className: "w-3.5 h-3.5 text-blue-600" }), "Zero Telemetry"]
-								})]
-							})
-						]
-					}),
-					/* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", {
-						className: "space-y-3",
-						children: [/* @__PURE__ */ (0, import_jsx_runtime.jsx)("h4", {
-							className: "text-xs font-bold uppercase tracking-wider text-neutral-900",
-							children: "Product"
-						}), /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("ul", {
-							className: "space-y-2.5 text-sm",
-							children: [
-								/* @__PURE__ */ (0, import_jsx_runtime.jsx)("li", { children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", {
-									onClick: () => navigate("home", "features"),
-									className: "hover:text-blue-600 transition-colors",
-									children: "Features & Capabilities"
-								}) }),
-								/* @__PURE__ */ (0, import_jsx_runtime.jsx)("li", { children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", {
-									onClick: () => navigate("home", "how-it-works"),
-									className: "hover:text-blue-600 transition-colors",
-									children: "How It Works"
-								}) }),
-								/* @__PURE__ */ (0, import_jsx_runtime.jsx)("li", { children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", {
-									onClick: () => navigate("home", "use-cases"),
-									className: "hover:text-blue-600 transition-colors",
-									children: "Use Cases"
-								}) }),
-								/* @__PURE__ */ (0, import_jsx_runtime.jsx)("li", { children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", {
-									onClick: () => navigate("home", "pricing"),
-									className: "hover:text-blue-600 transition-colors",
-									children: "Pricing (6 Mo Free)"
-								}) }),
-								/* @__PURE__ */ (0, import_jsx_runtime.jsx)("li", { children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", {
-									onClick: () => navigate("home", "download"),
-									className: "hover:text-blue-600 transition-colors",
-									children: "Download Releases"
-								}) })
-							]
-						})]
-					}),
-					/* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", {
-						className: "space-y-3",
-						children: [/* @__PURE__ */ (0, import_jsx_runtime.jsx)("h4", {
-							className: "text-xs font-bold uppercase tracking-wider text-neutral-900",
-							children: "Platforms"
-						}), /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("ul", {
-							className: "space-y-2.5 text-sm",
-							children: [
-								/* @__PURE__ */ (0, import_jsx_runtime.jsx)("li", { children: /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("a", {
-									href: "./downloads/ProScreen-Setup-1.0.0.exe",
-									download: true,
-									className: "flex items-center gap-1.5 hover:text-blue-600 transition-colors text-neutral-800 font-medium",
-									children: [/* @__PURE__ */ (0, import_jsx_runtime.jsx)(Download, { className: "w-3.5 h-3.5 text-blue-600" }), /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { children: "Windows Installer (.exe)" })]
-								}) }),
-								/* @__PURE__ */ (0, import_jsx_runtime.jsx)("li", { children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)("a", {
-									href: "./downloads/ProScreen-Portable-1.0.0.exe",
-									download: true,
-									className: "hover:text-blue-600 transition-colors",
-									children: "Windows Portable"
-								}) }),
-								/* @__PURE__ */ (0, import_jsx_runtime.jsx)("li", { children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", {
-									className: "text-neutral-400",
-									children: "macOS (Coming Soon)"
-								}) }),
-								/* @__PURE__ */ (0, import_jsx_runtime.jsx)("li", { children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", {
-									className: "text-neutral-400",
-									children: "Linux (Coming Soon)"
-								}) })
-							]
-						})]
-					}),
-					/* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", {
-						className: "space-y-3",
-						children: [/* @__PURE__ */ (0, import_jsx_runtime.jsx)("h4", {
-							className: "text-xs font-bold uppercase tracking-wider text-neutral-900",
-							children: "Resources"
-						}), /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("ul", {
-							className: "space-y-2.5 text-sm",
-							children: [
-								/* @__PURE__ */ (0, import_jsx_runtime.jsx)("li", { children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", {
-									onClick: () => navigate("home", "faq"),
-									className: "hover:text-blue-600 transition-colors",
-									children: "Frequently Asked Questions"
-								}) }),
-								/* @__PURE__ */ (0, import_jsx_runtime.jsx)("li", { children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", {
-									onClick: () => navigate("support"),
-									className: "hover:text-blue-600 transition-colors",
-									children: "Support & Help"
-								}) }),
-								/* @__PURE__ */ (0, import_jsx_runtime.jsx)("li", { children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", {
-									onClick: () => navigate("privacy"),
-									className: "hover:text-blue-600 transition-colors",
-									children: "Privacy Policy"
-								}) }),
-								/* @__PURE__ */ (0, import_jsx_runtime.jsx)("li", { children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", {
-									onClick: () => navigate("terms"),
-									className: "hover:text-blue-600 transition-colors",
-									children: "Terms of Service"
-								}) })
-							]
-						})]
-					})
-				]
-			}), /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", {
-				className: "pt-10 mt-12 border-t border-neutral-200 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-neutral-500",
-				children: [/* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { children: "© 2026 ProScreen Team. All rights reserved." }), /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", {
-					className: "flex items-center gap-4",
-					children: [
-						/* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { children: "Direct3D 11 Pass-Through Architecture" }),
-						/* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { children: "•" }),
-						/* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { children: "Zero Watermarks" })
-					]
-				})]
-			})]
-		})
-	});
-};
 var GITHUB_REPO = `sonuk597733-cyber/proscreen`;
 var OFFICIAL_RELEASES = {
 	installer: {
-		fileName: "ProScreen-Setup-1.0.0.exe",
-		version: "1.0.0",
-		sizeBytes: 139175329,
-		sizeFormatted: "132.7 MB",
-		sha256: "D7DB64EEF56D0313E4E6E5CF6352F6CD6E315628366B3A718963A49AD80A388D",
-		downloadUrl: `https://github.com/${GITHUB_REPO}/releases/download/v1.0.0/ProScreen-Setup-1.0.0.exe`,
+		fileName: "ProScreen-Setup-1.0.2.exe",
+		version: "1.0.2",
+		sizeBytes: 140345406,
+		sizeFormatted: "133.8 MB",
+		sha256: "9C208855EBB06A6BCB90F2ACF7BD6021D56D626345A67A7098C0F75223D82E1A",
+		downloadUrl: `https://github.com/${GITHUB_REPO}/releases/download/v1.0.2/ProScreen-Setup-1.0.2.exe`,
 		releaseDate: "November 2026",
 		targetOS: "Windows 10 / Windows 11 (64-bit)",
 		architecture: "x64 (Intel / AMD)",
@@ -14352,12 +14167,12 @@ var OFFICIAL_RELEASES = {
 		]
 	},
 	portable: {
-		fileName: "ProScreen-Portable-1.0.0.exe",
-		version: "1.0.0",
-		sizeBytes: 124183853,
-		sizeFormatted: "118.4 MB",
-		sha256: "A933048460EBCB7D5C76C421D170F8F0A914EB7B6B320D88665A6056EE9B58D2",
-		downloadUrl: `https://github.com/${GITHUB_REPO}/releases/download/v1.0.0/ProScreen-Portable-1.0.0.exe`,
+		fileName: "ProScreen-Portable-1.0.2.exe",
+		version: "1.0.2",
+		sizeBytes: 125310194,
+		sizeFormatted: "119.5 MB",
+		sha256: "D1F1D4F4D8A00BDCA5B9F29D777CB12010599372477695B4705BA2BB9944E78B",
+		downloadUrl: `https://github.com/${GITHUB_REPO}/releases/download/v1.0.2/ProScreen-Portable-1.0.2.exe`,
 		releaseDate: "November 2026",
 		targetOS: "Windows 10 / Windows 11 (64-bit)",
 		architecture: "x64 (Intel / AMD)",
@@ -14371,12 +14186,12 @@ var OFFICIAL_RELEASES = {
 		]
 	},
 	extensionZip: {
-		fileName: "ProScreen-Chrome-Extension-1.0.0.zip",
-		version: "1.0.0",
-		sizeBytes: 798637,
-		sizeFormatted: "779.9 KB",
-		sha256: "40B58190175316611860DAC801D91E12DA3E4821E2637313C49B520F647E6D7A",
-		downloadUrl: `https://github.com/${GITHUB_REPO}/releases/download/v1.0.0/ProScreen-Chrome-Extension-1.0.0.zip`,
+		fileName: "ProScreen-Chrome-Extension-1.0.2.zip",
+		version: "1.0.2",
+		sizeBytes: 2185662,
+		sizeFormatted: "2.1 MB",
+		sha256: "2A96BF8A2A956ED1FF0B835DF1EAB67EE93DECB31580D079E340C5B8FEE2A551",
+		downloadUrl: `https://github.com/${GITHUB_REPO}/releases/download/v1.0.2/ProScreen-Chrome-Extension-1.0.2.zip`,
 		releaseDate: "November 2026",
 		targetOS: "Chromium Browsers (Chrome, Edge, Brave, Opera, Vivaldi)",
 		architecture: "Universal Manifest V3",
@@ -14568,6 +14383,48 @@ var SYSTEM_REQUIREMENTS = {
 	display: "1280x720 minimum (1080p, 1440p, 4K and Ultrawide fully supported)"
 };
 var CHANGELOG = [{
+	version: "1.0.2",
+	date: "November 17, 2026",
+	tagline: "Production Release — Epic Pen Pro Redesign, Zero-Stutter 60 FPS Engine & Preview Modal Repair",
+	status: "stable",
+	highlights: [
+		"Official Production Release v1.0.2 with complete Windows NSIS Installer, Portable EXE, and Chrome Extension ZIP",
+		"Epic Pen Pro-inspired pure white mode website redesign with alternating visual storytelling rows",
+		"Zero-avoidable-stutter 60 FPS recording engine with Direct3D/DXGI GPU acceleration and duration metadata injection",
+		"Full Recording Preview Modal functionality: timeline seeking, replay, 0.5x–2x playback speed, volume/mute, fullscreen, and direct file access",
+		"Hardened Electron startup and multi-monitor lifecycle with robust window Z-order and DPI scaling",
+		"Dynamic GitHub release distribution with live SHA-256 verification and automatic asset hydration"
+	],
+	sections: [
+		{
+			category: "Recording & Playback Engine",
+			items: [
+				"DXGI Desktop Duplication 60 FPS screen capture pipeline with zero dropped frames on Windows 10/11",
+				"Restored and verified all 14 Preview Modal controls including frame seeking, speed multiplier, and audio volume",
+				"Injected duration metadata into WebM/MP4 recordings for smooth continuous timeline scrubbing without freezing",
+				"Custom media protocol (proscreen-media://) for high-performance zero-copy local video streaming",
+				"Dual-channel studio audio mixer with 48 kHz sampling, voice gain staging, and brickwall peak limiting"
+			]
+		},
+		{
+			category: "UI & User Experience",
+			items: [
+				"Pure white mode theme architecture following Epic Pen Pro design benchmarks",
+				"Alternating 2-column feature showcase with authentic application window mockups",
+				"Transparent pricing presentation: First 6 Months Free ($0), then $1/month with zero upfront billing",
+				"Direct download buttons with real file sizes (133.8 MB installer, 119.5 MB portable) and one-click SHA-256 copy"
+			]
+		},
+		{
+			category: "Windows Desktop Architecture",
+			items: [
+				"Refactored startup lifecycle into isolated, unit-tested modules (startupLifecycle, interactionLifecycle, electronPaths, mediaUrl)",
+				"Eliminated popout-to-toolbar bounds oscillation and coordinate flutter during right-edge docking",
+				"Enhanced Windows AppUserModelID registration for smooth taskbar and notification handling"
+			]
+		}
+	]
+}, {
 	version: "1.0.0",
 	date: "November 14, 2026",
 	tagline: "Initial Public Release — Windows Desktop & Chrome Extension",
@@ -14835,6 +14692,191 @@ var KEYBOARD_SHORTCUTS = [
 		scope: "Studio / Active Overlay"
 	}
 ];
+// src/website/components/Footer.tsx
+var Footer = () => {
+	const { navigate } = useRouter();
+	return /* @__PURE__ */ (0, import_jsx_runtime.jsx)("footer", {
+		className: "w-full bg-neutral-50 border-t border-neutral-200 text-neutral-600",
+		children: /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", {
+			className: "max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 lg:py-20",
+			children: [/* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", {
+				className: "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-10 lg:gap-12",
+				children: [
+					/* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", {
+						className: "lg:col-span-2 space-y-4",
+						children: [
+							/* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", {
+								className: "flex items-center gap-2.5",
+								children: [
+									/* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", {
+										className: "flex items-center justify-center w-8 h-8 rounded-lg bg-blue-600 text-white shadow-sm",
+										children: /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("svg", {
+											className: "w-4 h-4 text-white",
+											viewBox: "0 0 24 24",
+											fill: "none",
+											stroke: "currentColor",
+											strokeWidth: "2.2",
+											strokeLinecap: "round",
+											strokeLinejoin: "round",
+											children: [
+												/* @__PURE__ */ (0, import_jsx_runtime.jsx)("rect", {
+													x: "2",
+													y: "3",
+													width: "20",
+													height: "14",
+													rx: "2"
+												}),
+												/* @__PURE__ */ (0, import_jsx_runtime.jsx)("path", { d: "M8 21h8" }),
+												/* @__PURE__ */ (0, import_jsx_runtime.jsx)("path", { d: "M12 17v4" }),
+												/* @__PURE__ */ (0, import_jsx_runtime.jsx)("path", { d: "m7 8 3 3-3 3" }),
+												/* @__PURE__ */ (0, import_jsx_runtime.jsx)("line", {
+													x1: "13",
+													y1: "14",
+													x2: "17",
+													y2: "14"
+												})
+											]
+										})
+									}),
+									/* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", {
+										className: "text-xl font-bold tracking-tight text-neutral-900",
+										children: "ProScreen"
+									}),
+									/* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", {
+										className: "px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-blue-50 text-blue-700 border border-blue-200/80",
+										children: "PRO"
+									})
+								]
+							}),
+							/* @__PURE__ */ (0, import_jsx_runtime.jsx)("p", {
+								className: "text-sm text-neutral-600 max-w-sm leading-relaxed",
+								children: "Capture your screen. Make every moment clear. Professional desktop screen recording and on-screen annotation studio for Windows."
+							}),
+							/* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", {
+								className: "pt-2 flex flex-wrap gap-2 text-xs",
+								children: [/* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", {
+									className: "inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white border border-neutral-200 text-neutral-700 font-medium shadow-2xs",
+									children: [/* @__PURE__ */ (0, import_jsx_runtime.jsx)(ShieldCheck, { className: "w-3.5 h-3.5 text-emerald-600" }), "100% Local-First Privacy"]
+								}), /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", {
+									className: "inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white border border-neutral-200 text-neutral-700 font-medium shadow-2xs",
+									children: [/* @__PURE__ */ (0, import_jsx_runtime.jsx)(CircleCheck, { className: "w-3.5 h-3.5 text-blue-600" }), "Zero Telemetry"]
+								})]
+							})
+						]
+					}),
+					/* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", {
+						className: "space-y-3",
+						children: [/* @__PURE__ */ (0, import_jsx_runtime.jsx)("h4", {
+							className: "text-xs font-bold uppercase tracking-wider text-neutral-900",
+							children: "Product"
+						}), /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("ul", {
+							className: "space-y-2.5 text-sm",
+							children: [
+								/* @__PURE__ */ (0, import_jsx_runtime.jsx)("li", { children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", {
+									onClick: () => navigate("home", "features"),
+									className: "hover:text-blue-600 transition-colors",
+									children: "Features & Capabilities"
+								}) }),
+								/* @__PURE__ */ (0, import_jsx_runtime.jsx)("li", { children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", {
+									onClick: () => navigate("home", "how-it-works"),
+									className: "hover:text-blue-600 transition-colors",
+									children: "How It Works"
+								}) }),
+								/* @__PURE__ */ (0, import_jsx_runtime.jsx)("li", { children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", {
+									onClick: () => navigate("home", "use-cases"),
+									className: "hover:text-blue-600 transition-colors",
+									children: "Use Cases"
+								}) }),
+								/* @__PURE__ */ (0, import_jsx_runtime.jsx)("li", { children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", {
+									onClick: () => navigate("home", "pricing"),
+									className: "hover:text-blue-600 transition-colors",
+									children: "Pricing (6 Mo Free)"
+								}) }),
+								/* @__PURE__ */ (0, import_jsx_runtime.jsx)("li", { children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", {
+									onClick: () => navigate("home", "download"),
+									className: "hover:text-blue-600 transition-colors",
+									children: "Download Releases"
+								}) })
+							]
+						})]
+					}),
+					/* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", {
+						className: "space-y-3",
+						children: [/* @__PURE__ */ (0, import_jsx_runtime.jsx)("h4", {
+							className: "text-xs font-bold uppercase tracking-wider text-neutral-900",
+							children: "Platforms"
+						}), /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("ul", {
+							className: "space-y-2.5 text-sm",
+							children: [
+								/* @__PURE__ */ (0, import_jsx_runtime.jsx)("li", { children: /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("a", {
+									href: OFFICIAL_RELEASES.installer.downloadUrl,
+									download: OFFICIAL_RELEASES.installer.fileName,
+									className: "flex items-center gap-1.5 hover:text-blue-600 transition-colors text-neutral-800 font-medium",
+									children: [/* @__PURE__ */ (0, import_jsx_runtime.jsx)(Download, { className: "w-3.5 h-3.5 text-blue-600" }), /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { children: "Windows Installer (.exe)" })]
+								}) }),
+								/* @__PURE__ */ (0, import_jsx_runtime.jsx)("li", { children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)("a", {
+									href: OFFICIAL_RELEASES.portable.downloadUrl,
+									download: OFFICIAL_RELEASES.portable.fileName,
+									className: "hover:text-blue-600 transition-colors",
+									children: "Windows Portable"
+								}) }),
+								/* @__PURE__ */ (0, import_jsx_runtime.jsx)("li", { children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", {
+									className: "text-neutral-400",
+									children: "macOS (Coming Soon)"
+								}) }),
+								/* @__PURE__ */ (0, import_jsx_runtime.jsx)("li", { children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", {
+									className: "text-neutral-400",
+									children: "Linux (Coming Soon)"
+								}) })
+							]
+						})]
+					}),
+					/* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", {
+						className: "space-y-3",
+						children: [/* @__PURE__ */ (0, import_jsx_runtime.jsx)("h4", {
+							className: "text-xs font-bold uppercase tracking-wider text-neutral-900",
+							children: "Resources"
+						}), /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("ul", {
+							className: "space-y-2.5 text-sm",
+							children: [
+								/* @__PURE__ */ (0, import_jsx_runtime.jsx)("li", { children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", {
+									onClick: () => navigate("home", "faq"),
+									className: "hover:text-blue-600 transition-colors",
+									children: "Frequently Asked Questions"
+								}) }),
+								/* @__PURE__ */ (0, import_jsx_runtime.jsx)("li", { children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", {
+									onClick: () => navigate("support"),
+									className: "hover:text-blue-600 transition-colors",
+									children: "Support & Help"
+								}) }),
+								/* @__PURE__ */ (0, import_jsx_runtime.jsx)("li", { children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", {
+									onClick: () => navigate("privacy"),
+									className: "hover:text-blue-600 transition-colors",
+									children: "Privacy Policy"
+								}) }),
+								/* @__PURE__ */ (0, import_jsx_runtime.jsx)("li", { children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", {
+									onClick: () => navigate("terms"),
+									className: "hover:text-blue-600 transition-colors",
+									children: "Terms of Service"
+								}) })
+							]
+						})]
+					})
+				]
+			}), /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", {
+				className: "pt-10 mt-12 border-t border-neutral-200 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-neutral-500",
+				children: [/* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { children: "© 2026 ProScreen Team. All rights reserved." }), /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", {
+					className: "flex items-center gap-4",
+					children: [
+						/* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { children: "Direct3D 11 Pass-Through Architecture" }),
+						/* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { children: "•" }),
+						/* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { children: "Zero Watermarks" })
+					]
+				})]
+			})]
+		})
+	});
+};
 // src/website/components/CommandPalette.tsx
 var CommandPalette = () => {
 	const { isSearchOpen, closeSearch, navigate } = useRouter();
@@ -14880,7 +14922,7 @@ var CommandPalette = () => {
 		{
 			id: "p-down",
 			title: "Download for Windows",
-			subtitle: "Installer & Portable executables (v1.0.0)",
+			subtitle: "Installer & Portable executables (v1.0.2)",
 			route: "download",
 			icon: Download,
 			cat: "Downloads"
@@ -14911,7 +14953,7 @@ var CommandPalette = () => {
 		},
 		{
 			id: "p-chg",
-			title: "Changelog v1.0.0",
+			title: "Changelog v1.0.2",
 			subtitle: "Release history and architecture updates",
 			route: "changelog",
 			icon: FileText,
@@ -16329,6 +16371,108 @@ var PricingSection = () => {
 		})
 	});
 };
+// src/website/releaseHelpers.ts
+function isOfficialGithubReleaseUrl(url, githubRepo) {
+	try {
+		const parsed = new URL(url);
+		const cleanRepo = githubRepo.replace(/^\/+|\/+$/g, "");
+		return parsed.protocol === "https:" && parsed.hostname === "github.com" && parsed.pathname.startsWith(`/${cleanRepo}/releases/download/`) && (parsed.pathname.endsWith(".exe") || parsed.pathname.endsWith(".zip"));
+	} catch {
+		return false;
+	}
+}
+function formatAssetBytes(bytes) {
+	if (!Number.isFinite(bytes) || bytes <= 0) return "0 B";
+	if (bytes >= 1048576) return `${(bytes / 1048576).toFixed(1)} MB`;
+	if (bytes >= 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+	return `${bytes} B`;
+}
+function extractSha256MapFromReleaseBody(body) {
+	const result = {};
+	if (!body || typeof body !== "string") return result;
+	const lines = body.split(/\r?\n/);
+	for (const line of lines) {
+		const fileMatch = line.match(/ProScreen-[A-Za-z0-9._-]+\.(?:exe|zip)/);
+		const hashMatch = line.match(/\b([A-Fa-f0-9]{64})\b/);
+		if (fileMatch && hashMatch) result[fileMatch[0]] = hashMatch[1].toUpperCase();
+	}
+	return result;
+}
+function formatReleaseMonthYear(isoDate, fallback) {
+	if (!isoDate) return fallback;
+	const parsed = new Date(isoDate);
+	if (Number.isNaN(parsed.getTime())) return fallback;
+	return parsed.toLocaleDateString("en-US", {
+		month: "long",
+		year: "numeric",
+		timeZone: "UTC"
+	});
+}
+function parseGitHubReleasePayload(payload, fallback, githubRepo) {
+	if (!payload || typeof payload !== "object") return fallback;
+	const release = payload;
+	const rawTag = typeof release.tag_name === "string" ? release.tag_name.trim() : "";
+	const version = rawTag ? rawTag.replace(/^v/i, "") : fallback.installer.version;
+	const assets = Array.isArray(release.assets) ? release.assets : [];
+	const shaMap = extractSha256MapFromReleaseBody(release.body);
+	const releaseDate = formatReleaseMonthYear(release.published_at, fallback.installer.releaseDate);
+	const findMatchedAsset = (pattern, base) => {
+		const match = assets.find((a) => typeof a?.name === "string" && pattern.test(a.name) && typeof a.browser_download_url === "string" && isOfficialGithubReleaseUrl(a.browser_download_url, githubRepo) && typeof a.size === "number" && a.size > 0);
+		if (!match || !match.name || !match.browser_download_url || typeof match.size !== "number") return base;
+		const parsedSha = shaMap[match.name];
+		return {
+			...base,
+			fileName: match.name,
+			version,
+			sizeBytes: match.size,
+			sizeFormatted: formatAssetBytes(match.size),
+			downloadUrl: match.browser_download_url,
+			sha256: parsedSha || (match.name === base.fileName ? base.sha256 : "See Release Checksum"),
+			releaseDate
+		};
+	};
+	return {
+		installer: findMatchedAsset(/^ProScreen-Setup-.*\.exe$/i, fallback.installer),
+		portable: findMatchedAsset(/^ProScreen-Portable-.*\.exe$/i, fallback.portable),
+		extensionZip: findMatchedAsset(/^ProScreen-Chrome-Extension-.*\.zip$/i, fallback.extensionZip)
+	};
+}
+// src/website/useLatestReleases.ts
+var cachedBundle = null;
+var inflightRequest = null;
+async function fetchLatestReleaseBundle() {
+	if (cachedBundle) return cachedBundle;
+	if (inflightRequest) return inflightRequest;
+	const fallback = OFFICIAL_RELEASES;
+	inflightRequest = fetch(`https://api.github.com/repos/${GITHUB_REPO}/releases/latest`, { headers: { Accept: "application/vnd.github+json" } }).then(async (res) => {
+		if (!res.ok) return fallback;
+		const parsed = parseGitHubReleasePayload(await res.json(), fallback, GITHUB_REPO);
+		cachedBundle = parsed;
+		return parsed;
+	}).catch(() => fallback).finally(() => {
+		inflightRequest = null;
+	});
+	return inflightRequest;
+}
+function useLatestReleases() {
+	const [releases, setReleases] = (0, import_react.useState)(() => cachedBundle ?? OFFICIAL_RELEASES);
+	const [isLiveSynced, setIsLiveSynced] = (0, import_react.useState)(() => cachedBundle !== null);
+	(0, import_react.useEffect)(() => {
+		let active = true;
+		fetchLatestReleaseBundle().then((bundle) => {
+			if (!active) return;
+			setReleases(bundle);
+			setIsLiveSynced(cachedBundle !== null);
+		});
+		return () => {
+			active = false;
+		};
+	}, []);
+	return {
+		releases,
+		isLiveSynced
+	};
+}
 // src/website/components/DownloadSection.tsx
 var UPCOMING = [{
 	name: "macOS",
@@ -16346,7 +16490,8 @@ var UPCOMING = [{
 var shorten = (hash) => hash ? `${hash.slice(0, 10)}…${hash.slice(-10)}` : "Not available";
 var DownloadSection = () => {
 	const [copiedSha, setCopiedSha] = (0, import_react.useState)(null);
-	const { installer, portable } = OFFICIAL_RELEASES;
+	const { releases } = useLatestReleases();
+	const { installer, portable } = releases;
 	const copyChecksum = async (hash, id) => {
 		if (!hash) return;
 		try {
@@ -16414,9 +16559,9 @@ var DownloadSection = () => {
 									className: "text-sm text-emerald-400 font-medium flex items-center gap-1.5",
 									children: [/* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "w-1.5 h-1.5 rounded-full bg-emerald-400" }), "Available now"]
 								})] })]
-							}), /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", {
+							}), /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", {
 								className: "rounded-full bg-white/10 px-3 py-1 text-xs font-semibold text-slate-200 ring-1 ring-white/10",
-								children: "Version 1.0.0"
+								children: ["Version ", installer.version]
 							})]
 						}),
 						/* @__PURE__ */ (0, import_jsx_runtime.jsx)("p", {
@@ -16426,8 +16571,8 @@ var DownloadSection = () => {
 						/* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", {
 							className: "relative mt-8 grid gap-3 sm:grid-cols-2",
 							children: [/* @__PURE__ */ (0, import_jsx_runtime.jsxs)("a", {
-								href: "./downloads/ProScreen-Setup-1.0.0.exe",
-								download: true,
+								href: installer.downloadUrl,
+								download: installer.fileName,
 								className: "group flex items-center justify-between gap-3 rounded-2xl bg-sky-500 hover:bg-sky-400 text-slate-950 px-5 py-4 font-semibold shadow-lg shadow-sky-500/20 transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-300",
 								children: [/* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", {
 									className: "flex items-center gap-3",
@@ -16440,11 +16585,11 @@ var DownloadSection = () => {
 									})]
 								}), /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", {
 									className: "font-mono text-xs text-slate-900/80",
-									children: "132.7 MB"
+									children: installer.sizeFormatted
 								})]
 							}), /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("a", {
-								href: "./downloads/ProScreen-Portable-1.0.0.exe",
-								download: true,
+								href: portable.downloadUrl,
+								download: portable.fileName,
 								className: "flex items-center justify-between gap-3 rounded-2xl bg-white/5 hover:bg-white/10 ring-1 ring-white/15 px-5 py-4 font-semibold transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-300",
 								children: [/* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", {
 									className: "flex items-center gap-3",
@@ -16457,7 +16602,7 @@ var DownloadSection = () => {
 									})]
 								}), /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", {
 									className: "font-mono text-xs text-slate-400",
-									children: "118.4 MB"
+									children: portable.sizeFormatted
 								})]
 							})]
 						}),
@@ -16658,7 +16803,11 @@ var HomePage = () => {
 							children: /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("button", {
 								onClick: () => navigate("home", "download"),
 								className: "flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl bg-white text-blue-900 font-bold text-sm shadow-md hover:bg-neutral-100 transition-all",
-								children: [/* @__PURE__ */ (0, import_jsx_runtime.jsx)(Download, { className: "w-4 h-4" }), /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { children: "Download for Windows (132 MB)" })]
+								children: [/* @__PURE__ */ (0, import_jsx_runtime.jsx)(Download, { className: "w-4 h-4" }), /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { children: [
+									"Download for Windows (",
+									OFFICIAL_RELEASES.installer.sizeFormatted,
+									")"
+								] })]
 							})
 						})]
 					})
@@ -16868,7 +17017,7 @@ var FeaturesPage = () => {
 					children: /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("button", {
 						onClick: () => navigate("download"),
 						className: "inline-flex items-center gap-3 px-8 py-4 rounded-xl text-base font-bold text-white bg-gradient-to-r from-blue-600 to-sky-500 hover:from-blue-500 hover:to-sky-400 shadow-xl shadow-blue-500/30 transition-all hover:scale-105 active:scale-100",
-						children: [/* @__PURE__ */ (0, import_jsx_runtime.jsx)(Download, { className: "w-5 h-5" }), /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { children: "Download ProScreen for Windows (v1.0.0)" })]
+						children: [/* @__PURE__ */ (0, import_jsx_runtime.jsx)(Download, { className: "w-5 h-5" }), /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { children: "Download ProScreen for Windows (v1.0.2)" })]
 					})
 				})
 			]
@@ -16908,7 +17057,7 @@ var DownloadPage = () => {
 								" ",
 								/* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", {
 									className: "text-blue-600",
-									children: "v1.0.0"
+									children: "v1.0.2"
 								})
 							]
 						}),
@@ -17344,7 +17493,7 @@ var DownloadPage = () => {
 										" ",
 										/* @__PURE__ */ (0, import_jsx_runtime.jsx)("code", {
 											className: "text-blue-300 bg-slate-950 px-1 rounded",
-											children: "ProScreen-Setup-1.0.0.exe"
+											children: "ProScreen-Setup-1.0.2.exe"
 										}),
 										"."
 									] }),
@@ -17384,7 +17533,7 @@ var DownloadPage = () => {
 										" ",
 										/* @__PURE__ */ (0, import_jsx_runtime.jsx)("code", {
 											className: "text-sky-300 bg-slate-950 px-1 rounded",
-											children: "ProScreen-Portable-1.0.0.exe"
+											children: "ProScreen-Portable-1.0.2.exe"
 										}),
 										"."
 									] }),
@@ -17413,7 +17562,7 @@ var DownloadPage = () => {
 										" ",
 										/* @__PURE__ */ (0, import_jsx_runtime.jsx)("code", {
 											className: "text-amber-300 bg-slate-950 px-1 rounded",
-											children: "ProScreen-Chrome-Extension-1.0.0.zip"
+											children: "ProScreen-Chrome-Extension-1.0.2.zip"
 										}),
 										"."
 									] }),
@@ -17454,7 +17603,7 @@ var DownloadPage = () => {
 						})]
 					}), /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", {
 						className: "p-3 bg-slate-900/90 rounded-lg text-slate-300 overflow-x-auto select-all border border-slate-800",
-						children: "Get-FileHash -Path \"$HOME\\Downloads\\ProScreen-Setup-1.0.0.exe\" -Algorithm SHA256"
+						children: "Get-FileHash -Path \"$HOME\\Downloads\\ProScreen-Setup-1.0.2.exe\" -Algorithm SHA256"
 					})]
 				}),
 				/* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", {
@@ -17621,12 +17770,12 @@ var DownloadPage = () => {
 										" and verify the file name corresponds to ",
 										/* @__PURE__ */ (0, import_jsx_runtime.jsx)("code", {
 											className: "text-blue-300",
-											children: "ProScreen-Setup-1.0.0.exe"
+											children: "ProScreen-Setup-1.0.2.exe"
 										}),
 										" or ",
 										/* @__PURE__ */ (0, import_jsx_runtime.jsx)("code", {
 											className: "text-sky-300",
-											children: "ProScreen-Portable-1.0.0.exe"
+											children: "ProScreen-Portable-1.0.2.exe"
 										}),
 										"."
 									] }),
@@ -20400,6 +20549,8 @@ var AnnotationCanvas = ({ activeTool, boardMode, items, settings, selectedItemId
 	const canvasRef = (0, import_react.useRef)(null);
 	const isPointerDownRef = (0, import_react.useRef)(false);
 	const rafRef = (0, import_react.useRef)(null);
+	const onEndRef = (0, import_react.useRef)(onEnd);
+	onEndRef.current = onEnd;
 	const isCursorPassThrough = interactionMode === "pointer" || toolbarVisible === false || annotationsVisible === false || activeTool === "pointer" || activeTool === "cursor";
 	const spotlightActive = settings.creator.cursorSpotlightEnabled;
 	const cursorHighlightActive = settings.creator.cursorHighlightEnabled;
@@ -20502,19 +20653,34 @@ var AnnotationCanvas = ({ activeTool, boardMode, items, settings, selectedItemId
 			drawFrame.current();
 			kickLoop();
 		};
+		const finishIfInterrupted = () => {
+			if (!isPointerDownRef.current) return;
+			isPointerDownRef.current = false;
+			onEndRef.current();
+			kickLoop();
+		};
 		window.addEventListener("resize", onResizeOrScroll);
 		window.addEventListener("scroll", onResizeOrScroll, { passive: true });
 		window.addEventListener("focus", onResizeOrScroll);
+		window.addEventListener("blur", finishIfInterrupted);
 		document.addEventListener("visibilitychange", onResizeOrScroll);
 		window.visualViewport?.addEventListener("resize", onResizeOrScroll);
 		return () => {
 			window.removeEventListener("resize", onResizeOrScroll);
 			window.removeEventListener("scroll", onResizeOrScroll);
 			window.removeEventListener("focus", onResizeOrScroll);
+			window.removeEventListener("blur", finishIfInterrupted);
 			document.removeEventListener("visibilitychange", onResizeOrScroll);
 			window.visualViewport?.removeEventListener("resize", onResizeOrScroll);
 		};
 	}, []);
+	(0, import_react.useEffect)(() => {
+		if (isCursorPassThrough && isPointerDownRef.current) {
+			isPointerDownRef.current = false;
+			onEndRef.current();
+			kickLoop();
+		}
+	}, [isCursorPassThrough]);
 	(0, import_react.useEffect)(() => {
 		if (!spotlightActive && !cursorHighlightActive) return;
 		const onWindowMove = (e) => {
@@ -20578,7 +20744,7 @@ var AnnotationCanvas = ({ activeTool, boardMode, items, settings, selectedItemId
 		if (!isPointerDownRef.current) return;
 		isPointerDownRef.current = false;
 		try {
-			e.currentTarget.releasePointerCapture(e.pointerId);
+			if (e.currentTarget.hasPointerCapture(e.pointerId)) e.currentTarget.releasePointerCapture(e.pointerId);
 		} catch {}
 		onEnd();
 		kickLoop();
@@ -20596,6 +20762,7 @@ var AnnotationCanvas = ({ activeTool, boardMode, items, settings, selectedItemId
 		onPointerMove: handlePointerMove,
 		onPointerUp: handlePointerUp,
 		onPointerCancel: handlePointerUp,
+		onLostPointerCapture: handlePointerUp,
 		style: {
 			cursor: getCursorStyle(),
 			touchAction: isCursorPassThrough ? "auto" : "none",
@@ -21379,6 +21546,17 @@ function recDebugLog(stage, details) {
 	if (!isRecorderDebugEnabled()) return;
 	if (details) console.debug(`[ProScreen:Recorder] ${stage}`, details);
 	else console.debug(`[ProScreen:Recorder] ${stage}`);
+}
+// src/desktop/mediaUrl.ts
+/**
+* Safe encoding & decoding helpers for the custom `proscreen-media://` Electron protocol.
+* Ensures Windows paths with spaces, `#`, `?`, `%`, or Unicode characters round-trip reliably.
+*/
+function toProScreenMediaUrl(filePath) {
+	return `proscreen-media://local/${filePath.replace(/\\/g, "/").replace(/^\/+/, "").split("/").filter((seg, idx) => seg.length > 0 || idx === 0).map((seg, idx) => {
+		if (idx === 0 && /^[A-Za-z]:$/.test(seg)) return seg;
+		return encodeURIComponent(seg);
+	}).join("/")}`;
 }
 // src/recorder/screenRecorder.ts
 var MAX_DATA_URL_DOWNLOAD_BYTES = 36700160;
@@ -22409,7 +22587,7 @@ var ProScreenRecorder = class {
 	}
 };
 async function downloadRecordingArtifact(artifact, saveAs = false) {
-	const effectiveUrl = artifact.blobUrl || (artifact.savedPath ? `proscreen-media://local/${artifact.savedPath.replace(/\\/g, "/")}` : "");
+	const effectiveUrl = artifact.blobUrl || (artifact.savedPath ? toProScreenMediaUrl(artifact.savedPath) : "");
 	if (!effectiveUrl && !artifact.downloadUrl && !artifact.fromOffscreen) return {
 		ok: false,
 		error: "Recording file URL is no longer available."
@@ -22597,7 +22775,7 @@ var ColorBrushPopover = ({ open, activeTool, settings, resolvedTheme, onSelectTo
 		"data-testid": "color-brush-popover",
 		role: "dialog",
 		"aria-label": "Color and brush studio",
-		className: `pointer-events-auto w-[324px] min-w-[324px] max-w-[calc(100vw-32px)] max-h-[min(520px,calc(100vh-16px))] overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden rounded-lg border p-3 shadow-[0_14px_34px_-6px_rgba(0,0,0,0.28)] backdrop-blur-xl transition-colors ${isDark ? "bg-[#1B1D24]/98 border-[#2E323E] text-[#E4E7EF]" : "bg-[#FBFBFD]/98 border-[#CBD2E1] text-[#111827]"}`,
+		className: `pointer-events-auto w-[min(324px,calc(100vw-18px))] max-w-[calc(100vw-18px)] max-h-[min(520px,calc(100vh-16px))] overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden rounded-lg border p-3 shadow-[0_14px_34px_-6px_rgba(0,0,0,0.28)] backdrop-blur-xl transition-colors ${isDark ? "bg-[#1B1D24]/98 border-[#2E323E] text-[#E4E7EF]" : "bg-[#FBFBFD]/98 border-[#CBD2E1] text-[#111827]"}`,
 		children: [
 			/* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", {
 				className: `flex items-center justify-between gap-2 pb-2 border-b ${isDark ? "border-[#2D313D]" : "border-[#E5E8F0]"}`,
@@ -22832,7 +23010,6 @@ var ColorBrushPopover = ({ open, activeTool, settings, resolvedTheme, onSelectTo
 										onClose();
 									}
 								},
-								onBlur: onClose,
 								className: `w-full px-2 py-1 text-xs font-mono rounded border ${isDark ? "bg-[#14161C] border-[#313644] text-[#E4E7EF]" : "bg-[#F6F8FB] border-[#CBD2E1] text-[#181B22]"}`
 							})]
 						})
@@ -24892,7 +25069,22 @@ var FloatingToolbar = ({ activeTool, boardMode, boardPageIndex, boardPageCount, 
 		isDesktopToolbarWindow
 	]);
 	(0, import_react.useEffect)(() => {
+		const clearHoverState = () => {
+			if (hoverOpenTimerRef.current) {
+				window.clearTimeout(hoverOpenTimerRef.current);
+				hoverOpenTimerRef.current = null;
+			}
+			if (hoverCloseTimerRef.current) {
+				window.clearTimeout(hoverCloseTimerRef.current);
+				hoverCloseTimerRef.current = null;
+			}
+			setTooltip(null);
+		};
+		window.addEventListener("blur", clearHoverState);
+		document.addEventListener("mouseleave", clearHoverState);
 		return () => {
+			window.removeEventListener("blur", clearHoverState);
+			document.removeEventListener("mouseleave", clearHoverState);
 			if (activeDragRef.current) activeDragRef.current.cleanup();
 			if (hoverOpenTimerRef.current) window.clearTimeout(hoverOpenTimerRef.current);
 			if (hoverCloseTimerRef.current) window.clearTimeout(hoverCloseTimerRef.current);
@@ -24969,14 +25161,18 @@ var FloatingToolbar = ({ activeTool, boardMode, boardPageIndex, boardPageCount, 
 			...openLeft ? { right: Math.max(8, vw - tbLeft + 6) } : { left: isDesktopToolbarWindow ? 42 : Math.max(8, tbRight + 6) }
 		});
 	};
-	const hideTooltip = () => {
-		setTooltip(null);
-	};
-	const openPopoutFor = (id, el, isClick = true) => {
+	const cancelHoverOpenTimer = () => {
 		if (hoverOpenTimerRef.current) {
 			window.clearTimeout(hoverOpenTimerRef.current);
 			hoverOpenTimerRef.current = null;
 		}
+	};
+	const hideTooltip = () => {
+		cancelHoverOpenTimer();
+		setTooltip(null);
+	};
+	const openPopoutFor = (id, el, isClick = true) => {
+		cancelHoverOpenTimer();
 		if (hoverCloseTimerRef.current) {
 			window.clearTimeout(hoverCloseTimerRef.current);
 			hoverCloseTimerRef.current = null;
@@ -24993,6 +25189,7 @@ var FloatingToolbar = ({ activeTool, boardMode, boardPageIndex, boardPageCount, 
 			window.clearTimeout(hoverCloseTimerRef.current);
 			hoverCloseTimerRef.current = null;
 		}
+		cancelHoverOpenTimer();
 		if (!id) {
 			showTooltipFor(el, label, shortcut);
 			return;
@@ -25492,7 +25689,10 @@ var FloatingToolbar = ({ activeTool, boardMode, boardPageIndex, boardPageCount, 
 								onPointerDown: (e) => e.stopPropagation(),
 								onMouseEnter: (e) => scheduleHoverOpen("undo", e.currentTarget, "Undo", shortcutFor("undo")),
 								onMouseLeave: scheduleHoverClose,
-								onClick: () => onUndo("all"),
+								onClick: () => {
+									hideTooltip();
+									onUndo("all");
+								},
 								className: iconBtnClass(false, !canUndoAll),
 								children: [/* @__PURE__ */ (0, import_jsx_runtime.jsx)(Undo2, {
 									className: iconDim,
@@ -25511,7 +25711,10 @@ var FloatingToolbar = ({ activeTool, boardMode, boardPageIndex, boardPageCount, 
 								onPointerDown: (e) => e.stopPropagation(),
 								onMouseEnter: (e) => scheduleHoverOpen(null, e.currentTarget, "Redo", shortcutFor("redo")),
 								onMouseLeave: hideTooltip,
-								onClick: () => onRedo("all"),
+								onClick: () => {
+									hideTooltip();
+									onRedo("all");
+								},
 								className: iconBtnClass(false, !canRedoAll),
 								children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Redo2, {
 									className: iconDim,
@@ -25530,7 +25733,10 @@ var FloatingToolbar = ({ activeTool, boardMode, boardPageIndex, boardPageCount, 
 								onPointerDown: (e) => e.stopPropagation(),
 								onMouseEnter: (e) => scheduleHoverOpen(null, e.currentTarget, "Clear All", shortcutFor("clear")),
 								onMouseLeave: hideTooltip,
-								onClick: onClearScreen,
+								onClick: () => {
+									hideTooltip();
+									onClearScreen();
+								},
 								className: iconBtnClass(false, annotationCount === 0),
 								children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Trash2, {
 									className: iconDim,
@@ -26935,6 +27141,7 @@ var SettingsDashboard = ({ open, isStandalonePage = false, settings, resolvedThe
 	if (!open && !isStandalonePage) return null;
 	const effectiveTheme = resolvedTheme ?? resolveThemeMode(settings.theme);
 	const isDark = effectiveTheme === "dark";
+	const isDesktopApp = typeof window !== "undefined" && Boolean(window.proscreenDesktop?.isDesktop);
 	const conflicts = detectShortcutConflicts(settings.shortcuts);
 	const formatOptions = supportedRecordingFormats ?? getSupportedRecordingFormats();
 	const accentColor = settings.accentColor || "#2563EB";
@@ -26974,7 +27181,7 @@ var SettingsDashboard = ({ open, isStandalonePage = false, settings, resolvedThe
 	const inputClass = isDark ? "bg-slate-950 border-slate-700 text-slate-100" : "bg-white border-slate-300 text-slate-900";
 	const content = /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", {
 		"data-testid": "settings-dashboard",
-		className: `w-full max-w-4xl rounded-xl border overflow-hidden shadow-2xl flex flex-col md:flex-row ${isStandalonePage ? "min-h-[640px] mx-auto my-6" : "max-h-[86vh]"} ${isDark ? "bg-[#0B1120] border-slate-700 text-slate-100" : "bg-white border-slate-200 text-slate-900"}`,
+		className: `w-full max-w-4xl rounded-xl border overflow-hidden shadow-2xl flex flex-col md:flex-row ${isStandalonePage ? "min-h-[540px] mx-auto my-0" : "max-h-[86vh]"} ${isDark ? "bg-[#0B1120] border-slate-700 text-slate-100" : "bg-white border-slate-200 text-slate-900"}`,
 		children: [/* @__PURE__ */ (0, import_jsx_runtime.jsxs)("aside", {
 			className: `w-full md:w-56 shrink-0 border-b md:border-b-0 md:border-r p-4 flex flex-col justify-between ${isDark ? "bg-slate-950/70 border-slate-800" : "bg-slate-50 border-slate-200"}`,
 			children: [/* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { children: [/* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", {
@@ -26984,7 +27191,7 @@ var SettingsDashboard = ({ open, isStandalonePage = false, settings, resolvedThe
 					children: "ProScreen Settings"
 				}), /* @__PURE__ */ (0, import_jsx_runtime.jsx)("p", {
 					className: "text-xs text-slate-400 mt-0.5",
-					children: "Extension & Studio Preferences"
+					children: isDesktopApp ? "Windows Desktop Studio Preferences" : "Extension & Studio Preferences"
 				})]
 			}), /* @__PURE__ */ (0, import_jsx_runtime.jsx)("nav", {
 				className: "mt-3 space-y-1",
@@ -27003,7 +27210,7 @@ var SettingsDashboard = ({ open, isStandalonePage = false, settings, resolvedThe
 				className: "hidden md:block pt-4 border-t border-slate-500/20 text-[11px] text-slate-400 px-2",
 				children: [/* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { children: "ProScreen v1.0.0" }), /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", {
 					className: "mt-0.5",
-					children: "Manifest V3 · Local Storage"
+					children: isDesktopApp ? "Windows Desktop · Local Storage" : "Manifest V3 · Local Storage"
 				})]
 			})]
 		}), /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", {
@@ -28035,27 +28242,40 @@ var SettingsDashboard = ({ open, isStandalonePage = false, settings, resolvedThe
 							children: [
 								/* @__PURE__ */ (0, import_jsx_runtime.jsx)("h4", {
 									className: "font-semibold text-sm",
-									children: "ProScreen v1.0.0"
+									children: isDesktopApp ? "ProScreen Desktop v1.0.0" : "ProScreen v1.0.0"
 								}),
 								/* @__PURE__ */ (0, import_jsx_runtime.jsx)("p", {
 									className: "text-slate-400",
-									children: "A Manifest V3 Chrome Extension and interactive studio built for teachers, software engineers, online presenters, and tutorial creators."
+									children: isDesktopApp ? "A native Windows screen recording and on-screen annotation studio built for teachers, software engineers, online presenters, and video creators." : "A Manifest V3 Chrome Extension and interactive studio built for teachers, software engineers, online presenters, and tutorial creators."
 								}),
 								/* @__PURE__ */ (0, import_jsx_runtime.jsxs)("p", {
 									className: "text-slate-400",
-									children: [
-										/* @__PURE__ */ (0, import_jsx_runtime.jsx)("strong", { children: "Privacy:" }),
-										" All drawings, color presets, shortcuts, screenshots, video recordings, and session snapshots remain strictly on your device using",
-										" ",
-										/* @__PURE__ */ (0, import_jsx_runtime.jsx)("code", {
-											className: "font-mono",
-											children: "chrome.storage.local"
-										}),
-										" and local memory. ProScreen makes zero external analytics or telemetry requests."
-									]
+									children: [/* @__PURE__ */ (0, import_jsx_runtime.jsx)("strong", { children: "Privacy:" }), " All drawings, color presets, shortcuts, screenshots, video recordings, and session data remain strictly on your local machine. ProScreen makes zero external analytics or telemetry requests."]
 								})
 							]
-						}), /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", {
+						}), isDesktopApp ? /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", {
+							className: `p-4 rounded-xl border space-y-2 ${cardClass}`,
+							children: [/* @__PURE__ */ (0, import_jsx_runtime.jsx)("h4", {
+								className: "font-semibold text-sm",
+								children: "Windows Desktop Tips"
+							}), /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("ul", {
+								className: "list-disc pl-5 space-y-1.5 text-slate-400",
+								children: [/* @__PURE__ */ (0, import_jsx_runtime.jsxs)("li", { children: [/* @__PURE__ */ (0, import_jsx_runtime.jsx)("strong", { children: "Recordings Folder:" }), " Saved recordings are written to your Windows Videos folder (or custom Save As path) and are preserved across app updates or uninstall."] }), /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("li", { children: [
+									/* @__PURE__ */ (0, import_jsx_runtime.jsx)("strong", { children: "Global Hotkeys:" }),
+									" Press ",
+									/* @__PURE__ */ (0, import_jsx_runtime.jsx)("code", {
+										className: "font-mono",
+										children: "Alt+Shift+P"
+									}),
+									" to toggle the floating toolbar or ",
+									/* @__PURE__ */ (0, import_jsx_runtime.jsx)("code", {
+										className: "font-mono",
+										children: "Alt+V"
+									}),
+									" to return to click-through Pointer mode."
+								] })]
+							})]
+						}) : /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", {
 							className: `p-4 rounded-xl border space-y-2 ${cardClass}`,
 							children: [/* @__PURE__ */ (0, import_jsx_runtime.jsx)("h4", {
 								className: "font-semibold text-sm",
@@ -28082,16 +28302,7 @@ var SettingsDashboard = ({ open, isStandalonePage = false, settings, resolvedThe
 										children: "chrome://"
 									}),
 									" and Chrome Web Store pages."
-								] }), /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("li", { children: [
-									/* @__PURE__ */ (0, import_jsx_runtime.jsx)("strong", { children: "Global Desktop Overlay Alternative:" }),
-									" Cross-application Windows ink requires a separate Native Windows Companion (for example, a lightweight WinUI/Electron transparent click-through",
-									" ",
-									/* @__PURE__ */ (0, import_jsx_runtime.jsx)("code", {
-										className: "font-mono",
-										children: "WS_EX_LAYERED"
-									}),
-									" window synced with ProScreen via Chrome Native Messaging)."
-								] })]
+								] }), /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("li", { children: [/* @__PURE__ */ (0, import_jsx_runtime.jsx)("strong", { children: "Global Desktop Overlay Alternative:" }), " Cross-application Windows ink requires the ProScreen Windows Desktop application."] })]
 							})]
 						})]
 					})
@@ -28143,16 +28354,11 @@ var RecordingPreviewModal = ({ artifact, open, theme, accentColor = "#0EA5E9", o
 			setShowDiscardConfirm(false);
 			setActionFeedback(null);
 			if (artifact.blobUrl) setActiveSrc(artifact.blobUrl);
-			else if (artifact.savedPath) {
-				const sanitized = artifact.savedPath.replace(/\\/g, "/");
-				setActiveSrc(`proscreen-media://local/${sanitized}`);
-			} else setActiveSrc("");
+			else if (artifact.savedPath) setActiveSrc(toProScreenMediaUrl(artifact.savedPath));
+			else setActiveSrc("");
 		} else if (!activeSrc) {
 			if (artifact.blobUrl) setActiveSrc(artifact.blobUrl);
-			else if (artifact.savedPath) {
-				const sanitized = artifact.savedPath.replace(/\\/g, "/");
-				setActiveSrc(`proscreen-media://local/${sanitized}`);
-			}
+			else if (artifact.savedPath) setActiveSrc(toProScreenMediaUrl(artifact.savedPath));
 		}
 	}, [
 		artifact?.id,
@@ -28358,8 +28564,7 @@ var RecordingPreviewModal = ({ artifact, open, theme, accentColor = "#0EA5E9", o
 	const handleVideoError = () => {
 		if (!attemptedFallback && artifact.savedPath) {
 			setAttemptedFallback(true);
-			const sanitized = artifact.savedPath.replace(/\\/g, "/");
-			setActiveSrc(`proscreen-media://local/${sanitized}`);
+			setActiveSrc(toProScreenMediaUrl(artifact.savedPath));
 			return;
 		}
 		setPlaybackError("In-page video decoding failed. You can download and open this recording in an external player.");
@@ -31743,4 +31948,4 @@ function App() {
 // src/main.tsx
 (0, import_client.createRoot)(document.getElementById("root")).render(/* @__PURE__ */ (0, import_jsx_runtime.jsx)(App, {}));
 
-//# sourceMappingURL=main-04AU2j9a.js.map
+//# sourceMappingURL=main-UGNi3QpM.js.map

@@ -18,7 +18,6 @@
     font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
   }
 
-  /* Custom dark scrollbar */
   ::-webkit-scrollbar {
     width: 8px;
     height: 8px;
@@ -38,18 +37,128 @@
   }
 }
 
+/* The public marketing site uses a deliberately light palette. Keep these
+   overrides inside its shell so the annotation studio and desktop UI retain
+   their own dark surfaces and theme behavior. */
+.site-shell:not(.site-shell--playground) {
+  min-width: 0;
+  background: #f8fafc;
+  color: #0f172a;
+  color-scheme: light;
+}
+
+.site-shell:not(.site-shell--playground) :is(button, a, input, textarea, select, summary) {
+  -webkit-tap-highlight-color: transparent;
+}
+
+.site-shell:not(.site-shell--playground) :is(button, a, input, textarea, select):focus-visible,
+.site-shell:not(.site-shell--playground) summary:focus-visible {
+  outline: 3px solid rgb(37 99 235 / 42%);
+  outline-offset: 3px;
+}
+
+.site-shell:not(.site-shell--playground) :is(button, a) {
+  transition-property: color, background-color, border-color, box-shadow, transform, opacity;
+  transition-duration: 180ms;
+  transition-timing-function: ease;
+}
+
+/* Normalize the legacy dark-page utility palette across all marketing routes. */
+.site-shell:not(.site-shell--playground) :is(
+  [class~="bg-slate-950"], [class~="bg-slate-950/60"], [class~="bg-slate-950/90"],
+  [class~="bg-slate-900"], [class~="bg-slate-900/90"], [class~="bg-slate-900/80"],
+  [class~="bg-slate-900/60"], [class~="bg-slate-900/40"], [class~="bg-slate-800"],
+  [class~="bg-slate-800/80"], [class~="bg-neutral-950"]
+) {
+  background-color: #fff;
+}
+
+.site-shell:not(.site-shell--playground) :is(
+  [class~="text-white"], [class~="text-slate-100"], [class~="text-slate-200"],
+  [class~="text-slate-300"], [class~="text-slate-400"]
+) {
+  color: #475569;
+}
+
+.site-shell:not(.site-shell--playground) :is(
+  [class~="border-slate-800"], [class~="border-slate-800/60"],
+  [class~="border-slate-800/80"], [class~="border-slate-700"],
+  [class~="border-white/10"], [class~="border-white/15"]
+) {
+  border-color: #e2e8f0;
+}
+
+.site-shell:not(.site-shell--playground) :is(
+  [class~="divide-slate-800/60"] > *, [class~="divide-slate-800"] > *
+) {
+  border-color: #e2e8f0;
+}
+
+.site-shell:not(.site-shell--playground) :is(
+  [class~="placeholder-slate-400"]::placeholder, [class~="placeholder-slate-500"]::placeholder
+) {
+  color: #64748b;
+  opacity: 1;
+}
+
+.site-shell:not(.site-shell--playground) :is(input, textarea, select) {
+  color: #0f172a;
+  background-color: #fff;
+  border-color: #cbd5e1;
+}
+
+.site-shell:not(.site-shell--playground) :is(input, textarea, select):focus {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgb(37 99 235 / 12%);
+}
+
+.site-shell:not(.site-shell--playground) [class~="text-white"].bg-blue-600,
+.site-shell:not(.site-shell--playground) [class~="text-white"][class~="bg-blue-600"],
+.site-shell:not(.site-shell--playground) [class~="text-white"][class~="bg-blue-500"],
+.site-shell:not(.site-shell--playground) [class~="text-white"][class~="bg-gradient-to-r"] {
+  color: #fff;
+}
+
+.site-shell:not(.site-shell--playground) [class~="hover:bg-slate-800"]:hover,
+.site-shell:not(.site-shell--playground) [class~="hover:bg-slate-900"]:hover,
+.site-shell:not(.site-shell--playground) [class~="hover:bg-slate-900/40"]:hover {
+  background-color: #f1f5f9;
+}
+
+.site-shell:not(.site-shell--playground) [class~="hover:text-white"]:hover,
+.site-shell:not(.site-shell--playground) [class~="group-hover:text-white"]:hover {
+  color: #1d4ed8;
+}
+
+.site-shell:not(.site-shell--playground) ::-webkit-scrollbar-track {
+  background: #f1f5f9;
+}
+
+.site-shell:not(.site-shell--playground) ::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
+}
+
+.site-shell:not(.site-shell--playground) ::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .site-shell:not(.site-shell--playground) *,
+  .site-shell:not(.site-shell--playground) *::before,
+  .site-shell:not(.site-shell--playground) *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
 @keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(4px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 .animate-fadeIn {
   animation: fadeIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
-

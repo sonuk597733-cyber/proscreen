@@ -50,7 +50,7 @@ const AppContent: React.FC = () => {
   const isPlayground = currentRoute === 'playground';
 
   return (
-    <div className="min-h-screen bg-white text-slate-900 flex flex-col selection:bg-blue-600 selection:text-white relative">
+    <div className={`site-shell min-h-screen flex flex-col selection:bg-blue-600 selection:text-white relative${isPlayground ? ' site-shell--playground' : ''}`}>
       <Navbar />
 
       <main className="flex-1 flex flex-col">

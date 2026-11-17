@@ -47,23 +47,26 @@
 
 ---
 
-## 3. Cryptographic Asset Verification
+## 3. Cryptographic Asset Verification (Official GitHub Release Assets)
 
 ```powershell
 Get-FileHash -Path release\ProScreen-Setup-1.0.2.exe, release\ProScreen-Portable-1.0.2.exe, release\ProScreen-Chrome-Extension-1.0.2.zip -Algorithm SHA256 | Format-List Path, Hash
 ```
 
 - **Installer (`ProScreen-Setup-1.0.2.exe`):**  
-  Size: 140,345,406 bytes  
-  SHA-256: `9C208855EBB06A6BCB90F2ACF7BD6021D56D626345A67A7098C0F75223D82E1A`
+  Size: 140,351,351 bytes  
+  SHA-256: `A4A965C9E486B3A91259B0D46891C20A9A941143E1D0DABC0A41177B5005B2F2`
 
 - **Portable (`ProScreen-Portable-1.0.2.exe`):**  
-  Size: 125,310,194 bytes  
-  SHA-256: `D1F1D4F4D8A00BDCA5B9F29D777CB12010599372477695B4705BA2BB9944E78B`
+  Size: 125,316,228 bytes  
+  SHA-256: `6A610B473B5D711EE4F6319BE46F0877167C8A01AEC1785635F5A929EACD5F64`
 
 - **Extension ZIP (`ProScreen-Chrome-Extension-1.0.2.zip`):**  
-  Size: 2,185,662 bytes  
-  SHA-256: `2A96BF8A2A956ED1FF0B835DF1EAB67EE93DECB31580D079E340C5B8FEE2A551`
+  Size: 2,194,945 bytes  
+  SHA-256: `2CBC16A2D37DCAB6667290BDB2F48A1F688FC030DE9782C16B5DEA609EFB33FF`
+
+- **Release Manifest (`release-manifest.json`):**  
+  Size: 758 bytes
 
 ---
 

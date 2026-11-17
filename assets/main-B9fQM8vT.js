@@ -14150,9 +14150,9 @@ var OFFICIAL_RELEASES = {
 	installer: {
 		fileName: "ProScreen-Setup-1.0.2.exe",
 		version: "1.0.2",
-		sizeBytes: 140345406,
+		sizeBytes: 140351351,
 		sizeFormatted: "133.8 MB",
-		sha256: "9C208855EBB06A6BCB90F2ACF7BD6021D56D626345A67A7098C0F75223D82E1A",
+		sha256: "A4A965C9E486B3A91259B0D46891C20A9A941143E1D0DABC0A41177B5005B2F2",
 		downloadUrl: `https://github.com/${GITHUB_REPO}/releases/download/v1.0.2/ProScreen-Setup-1.0.2.exe`,
 		releaseDate: "November 2026",
 		targetOS: "Windows 10 / Windows 11 (64-bit)",
@@ -14169,9 +14169,9 @@ var OFFICIAL_RELEASES = {
 	portable: {
 		fileName: "ProScreen-Portable-1.0.2.exe",
 		version: "1.0.2",
-		sizeBytes: 125310194,
+		sizeBytes: 125316228,
 		sizeFormatted: "119.5 MB",
-		sha256: "D1F1D4F4D8A00BDCA5B9F29D777CB12010599372477695B4705BA2BB9944E78B",
+		sha256: "6A610B473B5D711EE4F6319BE46F0877167C8A01AEC1785635F5A929EACD5F64",
 		downloadUrl: `https://github.com/${GITHUB_REPO}/releases/download/v1.0.2/ProScreen-Portable-1.0.2.exe`,
 		releaseDate: "November 2026",
 		targetOS: "Windows 10 / Windows 11 (64-bit)",
@@ -14188,9 +14188,9 @@ var OFFICIAL_RELEASES = {
 	extensionZip: {
 		fileName: "ProScreen-Chrome-Extension-1.0.2.zip",
 		version: "1.0.2",
-		sizeBytes: 2185662,
+		sizeBytes: 2194945,
 		sizeFormatted: "2.1 MB",
-		sha256: "2A96BF8A2A956ED1FF0B835DF1EAB67EE93DECB31580D079E340C5B8FEE2A551",
+		sha256: "2CBC16A2D37DCAB6667290BDB2F48A1F688FC030DE9782C16B5DEA609EFB33FF",
 		downloadUrl: `https://github.com/${GITHUB_REPO}/releases/download/v1.0.2/ProScreen-Chrome-Extension-1.0.2.zip`,
 		releaseDate: "November 2026",
 		targetOS: "Chromium Browsers (Chrome, Edge, Brave, Opera, Vivaldi)",
@@ -31974,4 +31974,4 @@ function App() {
 // src/main.tsx
 (0, import_client.createRoot)(document.getElementById("root")).render(/* @__PURE__ */ (0, import_jsx_runtime.jsx)(App, {}));
 
-//# sourceMappingURL=main-BfIHBLp1.js.map
+//# sourceMappingURL=main-B9fQM8vT.js.map

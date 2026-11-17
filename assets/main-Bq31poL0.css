@@ -6255,6 +6255,90 @@
   }
 }
 
+.site-shell:not(.site-shell--playground) {
+  color: #0f172a;
+  color-scheme: light;
+  background: #f8fafc;
+  min-width: 0;
+}
+
+.site-shell:not(.site-shell--playground) :is(button, a, input, textarea, select, summary) {
+  -webkit-tap-highlight-color: transparent;
+}
+
+.site-shell:not(.site-shell--playground) :is(button, a, input, textarea, select):focus-visible, .site-shell:not(.site-shell--playground) summary:focus-visible {
+  outline-offset: 3px;
+  outline: 3px solid #2563eb6b;
+}
+
+.site-shell:not(.site-shell--playground) :is(button, a) {
+  transition-property: color, background-color, border-color, box-shadow, transform, opacity;
+  transition-duration: .18s;
+  transition-timing-function: ease;
+}
+
+.site-shell:not(.site-shell--playground) :is([class~="bg-slate-950"], [class~="bg-slate-950/60"], [class~="bg-slate-950/90"], [class~="bg-slate-900"], [class~="bg-slate-900/90"], [class~="bg-slate-900/80"], [class~="bg-slate-900/60"], [class~="bg-slate-900/40"], [class~="bg-slate-800"], [class~="bg-slate-800/80"], [class~="bg-neutral-950"]) {
+  background-color: #fff;
+}
+
+.site-shell:not(.site-shell--playground) :is([class~="text-white"], [class~="text-slate-100"], [class~="text-slate-200"], [class~="text-slate-300"], [class~="text-slate-400"]) {
+  color: #475569;
+}
+
+.site-shell:not(.site-shell--playground) :is([class~="border-slate-800"], [class~="border-slate-800/60"], [class~="border-slate-800/80"], [class~="border-slate-700"], [class~="border-white/10"], [class~="border-white/15"]), .site-shell:not(.site-shell--playground) :is([class~="divide-slate-800/60"] > *, [class~="divide-slate-800"] > *) {
+  border-color: #e2e8f0;
+}
+
+.site-shell:not(.site-shell--playground) :is() {
+  color: #64748b;
+  opacity: 1;
+}
+
+.site-shell:not(.site-shell--playground) :is(input, textarea, select) {
+  color: #0f172a;
+  background-color: #fff;
+  border-color: #cbd5e1;
+}
+
+.site-shell:not(.site-shell--playground) :is(input, textarea, select):focus {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px #2563eb1f;
+}
+
+.site-shell:not(.site-shell--playground) [class~="text-white"].bg-blue-600, .site-shell:not(.site-shell--playground) [class~="text-white"][class~="bg-blue-600"], .site-shell:not(.site-shell--playground) [class~="text-white"][class~="bg-blue-500"], .site-shell:not(.site-shell--playground) [class~="text-white"][class~="bg-gradient-to-r"] {
+  color: #fff;
+}
+
+.site-shell:not(.site-shell--playground) [class~="hover:bg-slate-800"]:hover, .site-shell:not(.site-shell--playground) [class~="hover:bg-slate-900"]:hover, .site-shell:not(.site-shell--playground) [class~="hover:bg-slate-900/40"]:hover {
+  background-color: #f1f5f9;
+}
+
+.site-shell:not(.site-shell--playground) [class~="hover:text-white"]:hover, .site-shell:not(.site-shell--playground) [class~="group-hover:text-white"]:hover {
+  color: #1d4ed8;
+}
+
+.site-shell:not(.site-shell--playground) ::-webkit-scrollbar-track {
+  background: #f1f5f9;
+}
+
+.site-shell:not(.site-shell--playground) ::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
+}
+
+.site-shell:not(.site-shell--playground) ::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .site-shell:not(.site-shell--playground) *, .site-shell:not(.site-shell--playground) :before, .site-shell:not(.site-shell--playground) :after {
+    scroll-behavior: auto !important;
+    transition-duration: .01ms !important;
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}
+
 @keyframes fadeIn {
   from {
     opacity: 0;

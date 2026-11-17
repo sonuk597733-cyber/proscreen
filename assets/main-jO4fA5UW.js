@@ -31956,7 +31956,7 @@ var AppContent = () => {
 	};
 	const isPlayground = currentRoute === "playground";
 	return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", {
-		className: "min-h-screen bg-white text-slate-900 flex flex-col selection:bg-blue-600 selection:text-white relative",
+		className: `site-shell min-h-screen flex flex-col selection:bg-blue-600 selection:text-white relative${isPlayground ? " site-shell--playground" : ""}`,
 		children: [
 			/* @__PURE__ */ (0, import_jsx_runtime.jsx)(Navbar, {}),
 			/* @__PURE__ */ (0, import_jsx_runtime.jsx)("main", {
@@ -31974,4 +31974,4 @@ function App() {
 // src/main.tsx
 (0, import_client.createRoot)(document.getElementById("root")).render(/* @__PURE__ */ (0, import_jsx_runtime.jsx)(App, {}));
 
-//# sourceMappingURL=main-B9fQM8vT.js.map
+//# sourceMappingURL=main-jO4fA5UW.js.map

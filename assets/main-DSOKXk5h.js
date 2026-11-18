@@ -12743,6 +12743,16 @@ var Database = createLucideIcon("database", [
 * This source code is licensed under the ISC license.
 * See the LICENSE file in the root directory of this source tree.
 */
+var Diamond = createLucideIcon("diamond", [["path", {
+	d: "M2.7 10.3a2.41 2.41 0 0 0 0 3.41l7.59 7.59a2.41 2.41 0 0 0 3.41 0l7.59-7.59a2.41 2.41 0 0 0 0-3.41l-7.59-7.59a2.41 2.41 0 0 0-3.41 0Z",
+	key: "1f1r0c"
+}]]);
+/**
+* @license lucide-react v0.546.0 - ISC
+*
+* This source code is licensed under the ISC license.
+* See the LICENSE file in the root directory of this source tree.
+*/
 var Download = createLucideIcon("download", [
 	["path", {
 		d: "M12 15V3",
@@ -13140,6 +13150,16 @@ var HardDrive = createLucideIcon("hard-drive", [
 		key: "1l4acy"
 	}]
 ]);
+/**
+* @license lucide-react v0.546.0 - ISC
+*
+* This source code is licensed under the ISC license.
+* See the LICENSE file in the root directory of this source tree.
+*/
+var Heart = createLucideIcon("heart", [["path", {
+	d: "M2 9.5a5.5 5.5 0 0 1 9.591-3.676.56.56 0 0 0 .818 0A5.49 5.49 0 0 1 22 9.5c0 2.29-1.5 4-3 5.5l-5.492 5.313a2 2 0 0 1-3 .019L5 15c-1.5-1.5-3-3.2-3-5.5",
+	key: "mvr1a0"
+}]]);
 /**
 * @license lucide-react v0.546.0 - ISC
 *
@@ -14306,6 +14326,16 @@ var TriangleAlert = createLucideIcon("triangle-alert", [
 		key: "p32p05"
 	}]
 ]);
+/**
+* @license lucide-react v0.546.0 - ISC
+*
+* This source code is licensed under the ISC license.
+* See the LICENSE file in the root directory of this source tree.
+*/
+var Triangle = createLucideIcon("triangle", [["path", {
+	d: "M13.73 4a2 2 0 0 0-3.46 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z",
+	key: "14u9p9"
+}]]);
 /**
 * @license lucide-react v0.546.0 - ISC
 *
@@ -19903,6 +19933,120 @@ function toggleFavoriteColor(favoriteColors, hex, max = 12) {
 	return [normalized, ...favoriteColors].slice(0, max);
 }
 // src/canvas/geometry.ts
+function sampleCubicBezier(start, c1, c2, end, steps = 10) {
+	const points = [];
+	for (let i = 1; i <= steps; i++) {
+		const t = i / steps;
+		const mt = 1 - t;
+		points.push({
+			x: mt ** 3 * start.x + 3 * mt ** 2 * t * c1.x + 3 * mt * t ** 2 * c2.x + t ** 3 * end.x,
+			y: mt ** 3 * start.y + 3 * mt ** 2 * t * c1.y + 3 * mt * t ** 2 * c2.y + t ** 3 * end.y
+		});
+	}
+	return points;
+}
+/** Return the editable outline points for the custom geometric shapes. */
+function getShapeOutlinePoints(shapeType, box) {
+	const { minX: x, minY: y, maxX, maxY } = box;
+	const w = maxX - x;
+	const h = maxY - y;
+	const cx = x + w / 2;
+	const cy = y + h / 2;
+	if (shapeType === "triangle") return [
+		{
+			x: cx,
+			y
+		},
+		{
+			x: maxX,
+			y: maxY
+		},
+		{
+			x,
+			y: maxY
+		}
+	];
+	if (shapeType === "diamond") return [
+		{
+			x: cx,
+			y
+		},
+		{
+			x: maxX,
+			y: cy
+		},
+		{
+			x: cx,
+			y: maxY
+		},
+		{
+			x,
+			y: cy
+		}
+	];
+	if (shapeType === "star") {
+		const outer = Math.min(w, h) / 2;
+		const inner = outer * .43;
+		return Array.from({ length: 10 }, (_, index) => {
+			const angle = -Math.PI / 2 + index * Math.PI / 5;
+			const radius = index % 2 === 0 ? outer : inner;
+			return {
+				x: cx + Math.cos(angle) * radius,
+				y: cy + Math.sin(angle) * radius
+			};
+		});
+	}
+	if (shapeType === "heart") {
+		const notch = {
+			x: cx,
+			y: y + h * .27
+		};
+		const left = {
+			x,
+			y: y + h * .38
+		};
+		const bottom = {
+			x: cx,
+			y: maxY
+		};
+		const right = {
+			x: maxX,
+			y: y + h * .38
+		};
+		return [
+			notch,
+			...sampleCubicBezier(notch, {
+				x: cx - w * .27,
+				y: y - h * .08
+			}, {
+				x,
+				y: y + h * .02
+			}, left),
+			...sampleCubicBezier(left, {
+				x,
+				y: y + h * .68
+			}, {
+				x: cx - w * .22,
+				y: y + h * .86
+			}, bottom),
+			...sampleCubicBezier(bottom, {
+				x: cx + w * .22,
+				y: y + h * .86
+			}, {
+				x: maxX,
+				y: y + h * .68
+			}, right),
+			...sampleCubicBezier(right, {
+				x: maxX,
+				y: y + h * .02
+			}, {
+				x: cx + w * .27,
+				y: y - h * .08
+			}, notch)
+		];
+	}
+	return null;
+}
 function distanceBetweenPoints(a, b) {
 	const dx = a.x - b.x;
 	const dy = a.y - b.y;
@@ -20071,10 +20215,8 @@ function hitTestShape(shape, point, radius) {
 		}
 		return false;
 	}
-	const minX = Math.min(shape.start.x, shape.end.x);
-	const maxX = Math.max(shape.start.x, shape.end.x);
-	const minY = Math.min(shape.start.y, shape.end.y);
-	const maxY = Math.max(shape.start.y, shape.end.y);
+	const bounds = getAnnotationBoundingBox(shape);
+	const { minX, maxX, minY, maxY } = bounds;
 	if (shape.shapeType === "filled-rect") return point.x >= minX - tol && point.x <= maxX + tol && point.y >= minY - tol && point.y <= maxY + tol;
 	if (shape.shapeType === "rect") {
 		const top = distanceToSegment(point, {
@@ -20105,14 +20247,31 @@ function hitTestShape(shape, point, radius) {
 			x: minX,
 			y: minY
 		});
-		return Math.min(top, right, bottom, left) <= tol;
+		const onOutline = Math.min(top, right, bottom, left) <= tol;
+		const inside = point.x >= minX && point.x <= maxX && point.y >= minY && point.y <= maxY;
+		return onOutline || inside;
+	}
+	const outline = getShapeOutlinePoints(shape.shapeType, bounds);
+	if (outline) {
+		if (isPointInPolygon(point, outline)) return true;
+		return outline.some((a, index) => distanceToSegment(point, a, outline[(index + 1) % outline.length]) <= tol);
 	}
 	const cx = (minX + maxX) / 2;
 	const cy = (minY + maxY) / 2;
 	const rx = Math.max(2, (maxX - minX) / 2);
 	const ry = Math.max(2, (maxY - minY) / 2);
 	const norm = Math.hypot((point.x - cx) / rx, (point.y - cy) / ry);
-	return Math.abs(norm - 1) * Math.min(rx, ry) <= tol;
+	const approxPixelDist = Math.abs(norm - 1) * Math.min(rx, ry);
+	return norm <= 1 || approxPixelDist <= tol;
+}
+function isPointInPolygon(point, polygon) {
+	let inside = false;
+	for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+		const a = polygon[i];
+		const b = polygon[j];
+		if (a.y > point.y !== b.y > point.y && point.x < (b.x - a.x) * (point.y - a.y) / (b.y - a.y) + a.x) inside = !inside;
+	}
+	return inside;
 }
 function hitTestText(textItem, point, radius) {
 	const box = getTextBoundingBox(textItem);
@@ -20152,10 +20311,15 @@ function hitTestTopAnnotationAtClientPoint(items, clientPoint, radius, scroll) {
 }
 function getResizeHandleAtPoint(box, point, radius = 10) {
 	const pad = 6;
-	const corners = [
+	return [
 		{
 			handle: "nw",
 			x: box.minX - pad,
+			y: box.minY - pad
+		},
+		{
+			handle: "n",
+			x: (box.minX + box.maxX) / 2,
 			y: box.minY - pad
 		},
 		{
@@ -20164,21 +20328,112 @@ function getResizeHandleAtPoint(box, point, radius = 10) {
 			y: box.minY - pad
 		},
 		{
+			handle: "e",
+			x: box.maxX + pad,
+			y: (box.minY + box.maxY) / 2
+		},
+		{
 			handle: "sw",
 			x: box.minX - pad,
+			y: box.maxY + pad
+		},
+		{
+			handle: "s",
+			x: (box.minX + box.maxX) / 2,
 			y: box.maxY + pad
 		},
 		{
 			handle: "se",
 			x: box.maxX + pad,
 			y: box.maxY + pad
+		},
+		{
+			handle: "w",
+			x: box.minX - pad,
+			y: (box.minY + box.maxY) / 2
 		}
-	];
-	for (const corner of corners) if (distanceBetweenPoints(point, {
-		x: corner.x,
-		y: corner.y
-	}) <= radius) return corner.handle;
-	return null;
+	].map((handle) => ({
+		...handle,
+		distance: distanceBetweenPoints(point, handle)
+	})).filter((handle) => handle.distance <= radius).sort((a, b) => a.distance - b.distance)[0]?.handle ?? null;
+}
+/** Calculate a safe box for an eight-handle resize. The 6px offset matches the visible handles. */
+function resizeBoundingBoxFromHandle(box, handle, point, preserveAspectRatio = false) {
+	const minimum = 16;
+	const west = handle.includes("w");
+	const east = handle.includes("e");
+	const north = handle.includes("n");
+	const south = handle.includes("s");
+	const pointerX = point.x + (west ? 6 : east ? -6 : 0);
+	const pointerY = point.y + (north ? 6 : south ? -6 : 0);
+	const width = Math.max(minimum, box.width);
+	const height = Math.max(minimum, box.height);
+	if (preserveAspectRatio) {
+		const ratio = width / height;
+		if ((west || east) && (north || south)) {
+			const anchorX = west ? box.maxX : box.minX;
+			const anchorY = north ? box.maxY : box.minY;
+			const scale = Math.max(Math.abs(pointerX - anchorX) / width, Math.abs(pointerY - anchorY) / height, minimum / width, minimum / height);
+			const nextWidth = width * scale;
+			const nextHeight = height * scale;
+			const minX = west ? anchorX - nextWidth : anchorX;
+			const maxX = west ? anchorX : anchorX + nextWidth;
+			return {
+				minX,
+				minY: north ? anchorY - nextHeight : anchorY,
+				maxX,
+				maxY: north ? anchorY : anchorY + nextHeight,
+				width: nextWidth,
+				height: nextHeight
+			};
+		}
+		if (west || east) {
+			const anchorX = west ? box.maxX : box.minX;
+			const nextWidth = Math.max(minimum, Math.abs(pointerX - anchorX));
+			const nextHeight = nextWidth / ratio;
+			const centerY = (box.minY + box.maxY) / 2;
+			const minX = west ? anchorX - nextWidth : anchorX;
+			const maxX = west ? anchorX : anchorX + nextWidth;
+			return {
+				minX,
+				minY: centerY - nextHeight / 2,
+				maxX,
+				maxY: centerY + nextHeight / 2,
+				width: nextWidth,
+				height: nextHeight
+			};
+		}
+		const anchorY = north ? box.maxY : box.minY;
+		const nextHeight = Math.max(minimum, Math.abs(pointerY - anchorY));
+		const nextWidth = nextHeight * ratio;
+		const centerX = (box.minX + box.maxX) / 2;
+		const minX = centerX - nextWidth / 2;
+		const maxX = centerX + nextWidth / 2;
+		return {
+			minX,
+			minY: north ? anchorY - nextHeight : anchorY,
+			maxX,
+			maxY: north ? anchorY : anchorY + nextHeight,
+			width: nextWidth,
+			height: nextHeight
+		};
+	}
+	let minX = box.minX;
+	let maxX = box.maxX;
+	let minY = box.minY;
+	let maxY = box.maxY;
+	if (west) minX = Math.min(box.maxX - minimum, pointerX);
+	else if (east) maxX = Math.max(box.minX + minimum, pointerX);
+	if (north) minY = Math.min(box.maxY - minimum, pointerY);
+	else if (south) maxY = Math.max(box.minY + minimum, pointerY);
+	return {
+		minX,
+		minY,
+		maxX,
+		maxY,
+		width: maxX - minX,
+		height: maxY - minY
+	};
 }
 function translateAnnotationItem(item, dx, dy) {
 	if (item.category === "stroke") return {
@@ -20399,6 +20654,26 @@ function drawShape(ctx, shape, alphaScale) {
 			ctx.fill();
 		}
 		ctx.stroke();
+	} else {
+		const outline = getShapeOutlinePoints(shape.shapeType, {
+			minX: x,
+			minY: y,
+			maxX: x + w,
+			maxY: y + h,
+			width: w,
+			height: h
+		});
+		if (outline?.length) {
+			ctx.beginPath();
+			ctx.moveTo(outline[0].x, outline[0].y);
+			for (let i = 1; i < outline.length; i++) ctx.lineTo(outline[i].x, outline[i].y);
+			ctx.closePath();
+			if (shape.fillOpacity && shape.fillOpacity > 0 && shape.fillColor) {
+				ctx.fillStyle = hexToRgbaString(shape.fillColor, shape.fillOpacity * alphaScale);
+				ctx.fill();
+			}
+			ctx.stroke();
+		}
 	}
 	ctx.restore();
 }
@@ -20437,35 +20712,50 @@ function drawSelectionOverlay(ctx, item, scroll) {
 	const w = Math.max(12, box.width + 12);
 	const h = Math.max(12, box.height + 12);
 	ctx.save();
-	ctx.strokeStyle = "#3B82F6";
+	ctx.strokeStyle = "#38BDF8";
 	ctx.lineWidth = 1.5;
-	ctx.setLineDash([5, 4]);
-	ctx.strokeRect(x, y, w, h);
 	ctx.setLineDash([]);
+	ctx.strokeRect(x, y, w, h);
 	const handles = [
 		{
 			cx: x,
 			cy: y
 		},
 		{
+			cx: x + w / 2,
+			cy: y
+		},
+		{
 			cx: x + w,
 			cy: y
+		},
+		{
+			cx: x + w,
+			cy: y + h / 2
+		},
+		{
+			cx: x + w,
+			cy: y + h
+		},
+		{
+			cx: x + w / 2,
+			cy: y + h
 		},
 		{
 			cx: x,
 			cy: y + h
 		},
 		{
-			cx: x + w,
-			cy: y + h
+			cx: x,
+			cy: y + h / 2
 		}
 	];
 	for (const hPos of handles) {
 		ctx.fillStyle = "#FFFFFF";
-		ctx.strokeStyle = "#2563EB";
-		ctx.lineWidth = 2;
+		ctx.strokeStyle = "#0284C7";
+		ctx.lineWidth = 1.5;
 		ctx.beginPath();
-		ctx.rect(hPos.cx - 4, hPos.cy - 4, 8, 8);
+		ctx.roundRect(hPos.cx - 4, hPos.cy - 4, 8, 8, 2);
 		ctx.fill();
 		ctx.stroke();
 	}
@@ -20542,7 +20832,8 @@ function renderAnnotationLayer(ctx, width, height, items, options) {
 		y: 0
 	};
 	if (options.annotationsVisible) {
-		const allItems = options.activeDraftItem ? [...items, options.activeDraftItem] : items;
+		const draftItem = options.activeDraftItem;
+		const allItems = mergeActiveDraftItem(items, draftItem);
 		for (const item of allItems) {
 			const alpha = computeFadeAlpha(item, options.nowMs);
 			if (alpha <= .01) continue;
@@ -20557,7 +20848,7 @@ function renderAnnotationLayer(ctx, width, height, items, options) {
 			if (isDocSpace && (scroll.x !== 0 || scroll.y !== 0)) ctx.restore();
 		}
 		if (options.selectedItemId && !options.includeTextOnCanvas) {
-			const selected = items.find((it) => it.id === options.selectedItemId);
+			const selected = draftItem?.id === options.selectedItemId ? draftItem : items.find((it) => it.id === options.selectedItemId);
 			if (selected) drawSelectionOverlay(ctx, selected, scroll);
 		}
 	}
@@ -20581,6 +20872,56 @@ function renderAnnotationLayer(ctx, width, height, items, options) {
 	}
 	if (options.cursorHighlight?.enabled) drawCursorHighlightRing(ctx, options.cursorHighlight.x, options.cursorHighlight.y, options.cursorHighlight.color);
 	if (options.cursorSpotlight?.enabled) drawCursorSpotlight(ctx, width, height, options.cursorSpotlight.x, options.cursorSpotlight.y, options.cursorSpotlight.radius, options.cursorSpotlight.dimOpacity);
+}
+/** Replace an item being moved/resized instead of drawing its stale original underneath. */
+function mergeActiveDraftItem(items, draftItem) {
+	if (!draftItem) return items;
+	const existingDraftIndex = items.findIndex((item) => item.id === draftItem.id);
+	if (existingDraftIndex < 0) return [...items, draftItem];
+	return items.map((item, index) => index === existingDraftIndex ? draftItem : item);
+}
+// src/canvas/shapeSelection.ts
+function isShapeDoubleClick(shapeId, point, clickCount, previousClick, now) {
+	if (clickCount >= 2) return true;
+	return Boolean(previousClick?.shapeId === shapeId && now - previousClick.time <= 450 && distanceBetweenPoints(point, previousClick.point) <= 12);
+}
+// src/tools/toolDefinitions.ts
+var SHAPE_TOOLS = [
+	{
+		id: "line",
+		label: "Line"
+	},
+	{
+		id: "arrow",
+		label: "Arrow"
+	},
+	{
+		id: "rect",
+		label: "Rectangle / Square"
+	},
+	{
+		id: "circle",
+		label: "Circle"
+	},
+	{
+		id: "triangle",
+		label: "Triangle"
+	},
+	{
+		id: "diamond",
+		label: "Diamond"
+	},
+	{
+		id: "star",
+		label: "Star"
+	},
+	{
+		id: "heart",
+		label: "Heart"
+	}
+];
+function isShapeTool(tool) {
+	return tool === "line" || tool === "arrow" || tool === "double-arrow" || tool === "rect" || tool === "filled-rect" || tool === "circle" || tool === "triangle" || tool === "diamond" || tool === "star" || tool === "heart" || tool === "ellipse" || tool === "freehand-shape";
 }
 // src/canvas/cursors.ts
 /**
@@ -20623,6 +20964,10 @@ function getHighContrastCursor(activeTool, isPassThrough) {
 		case "line":
 		case "rect":
 		case "circle":
+		case "triangle":
+		case "diamond":
+		case "star":
+		case "heart":
 		case "ellipse":
 		case "filled-rect":
 		case "freehand-shape": return SHAPE_CROSSHAIR_CURSOR;
@@ -20630,9 +20975,11 @@ function getHighContrastCursor(activeTool, isPassThrough) {
 	}
 }
 // src/canvas/AnnotationCanvas.tsx
-var AnnotationCanvas = ({ activeTool, boardMode, items, settings, selectedItemId, draftItemRef, laserTrailRef, pointerPosRef, toolbarVisible = true, annotationsVisible = true, interactionMode = "pointer", onCanvasInteract, onBegin, onMove, onEnd, onTextClick }) => {
+var AnnotationCanvas = ({ activeTool, boardMode, items, settings, selectedItemId, draftItemRef, laserTrailRef, pointerPosRef, toolbarVisible = true, annotationsVisible = true, isRecording = false, interactionMode = "pointer", onCanvasInteract, onBegin, onMove, onEnd, onTextClick, onSelectShape }) => {
 	const canvasRef = (0, import_react.useRef)(null);
 	const isPointerDownRef = (0, import_react.useRef)(false);
+	const pointerStartRef = (0, import_react.useRef)(null);
+	const lastShapeClickRef = (0, import_react.useRef)(null);
 	const rafRef = (0, import_react.useRef)(null);
 	const onEndRef = (0, import_react.useRef)(onEnd);
 	onEndRef.current = onEnd;
@@ -20664,7 +21011,7 @@ var AnnotationCanvas = ({ activeTool, boardMode, items, settings, selectedItemId
 			annotationsVisible: annotationsVisible && settings.creator.annotationsVisible,
 			scroll,
 			activeDraftItem: annotationsVisible ? draftItemRef.current : null,
-			selectedItemId: annotationsVisible ? selectedItemId : null,
+			selectedItemId: annotationsVisible && !isRecording ? selectedItemId : null,
 			laserTrail: annotationsVisible ? laserTrailRef.current : [],
 			laserColor: settings.laserColor,
 			laserSize: settings.laserSize,
@@ -20731,6 +21078,7 @@ var AnnotationCanvas = ({ activeTool, boardMode, items, settings, selectedItemId
 		spotlightActive,
 		cursorHighlightActive,
 		annotationsVisible,
+		isRecording,
 		toolbarVisible
 	]);
 	(0, import_react.useEffect)(() => {
@@ -20741,6 +21089,8 @@ var AnnotationCanvas = ({ activeTool, boardMode, items, settings, selectedItemId
 		const finishIfInterrupted = () => {
 			if (!isPointerDownRef.current) return;
 			isPointerDownRef.current = false;
+			pointerStartRef.current = null;
+			lastShapeClickRef.current = null;
 			onEndRef.current();
 			kickLoop();
 		};
@@ -20762,6 +21112,8 @@ var AnnotationCanvas = ({ activeTool, boardMode, items, settings, selectedItemId
 	(0, import_react.useEffect)(() => {
 		if (isCursorPassThrough && isPointerDownRef.current) {
 			isPointerDownRef.current = false;
+			pointerStartRef.current = null;
+			lastShapeClickRef.current = null;
 			onEndRef.current();
 			kickLoop();
 		}
@@ -20794,6 +21146,38 @@ var AnnotationCanvas = ({ activeTool, boardMode, items, settings, selectedItemId
 			y: e.clientY
 		};
 		pointerPosRef.current = pt;
+		const canSelectShape = activeTool === "select" || isShapeTool(activeTool);
+		const scroll = {
+			x: window.scrollX || 0,
+			y: window.scrollY || 0
+		};
+		const hit = canSelectShape ? hitTestTopAnnotationAtClientPoint(items, pt, 10, scroll) : null;
+		const hitShape = hit?.category === "shape" ? hit : null;
+		const previousClick = lastShapeClickRef.current;
+		const now = Date.now();
+		if (Boolean(hitShape && isShapeDoubleClick(hitShape.id, pt, e.detail, previousClick, now)) && hitShape) {
+			lastShapeClickRef.current = null;
+			pointerStartRef.current = null;
+			e.stopPropagation();
+			onSelectShape?.(hitShape.id);
+			kickLoop();
+			return;
+		}
+		if (hitShape && isShapeTool(activeTool)) {
+			lastShapeClickRef.current = {
+				shapeId: hitShape.id,
+				point: pt,
+				time: now
+			};
+			pointerStartRef.current = null;
+			return;
+		}
+		pointerStartRef.current = hitShape ? {
+			point: pt,
+			shapeId: hitShape.id,
+			moved: false
+		} : null;
+		if (!hitShape) lastShapeClickRef.current = null;
 		if (activeTool === "text") {
 			onTextClick(pt);
 			return;
@@ -20809,6 +21193,11 @@ var AnnotationCanvas = ({ activeTool, boardMode, items, settings, selectedItemId
 			y: e.clientY
 		};
 		pointerPosRef.current = pt;
+		const pointerStart = pointerStartRef.current;
+		if (pointerStart && distanceBetweenPoints(pt, pointerStart.point) > 8) {
+			pointerStart.moved = true;
+			lastShapeClickRef.current = null;
+		}
 		if (activeTool === "laser") {
 			onMove(pt, e.pressure, e.shiftKey);
 			kickLoop();
@@ -20828,11 +21217,38 @@ var AnnotationCanvas = ({ activeTool, boardMode, items, settings, selectedItemId
 	const handlePointerUp = (e) => {
 		if (!isPointerDownRef.current) return;
 		isPointerDownRef.current = false;
+		const pointerStart = pointerStartRef.current;
+		const point = {
+			x: e.clientX,
+			y: e.clientY
+		};
+		if (e.type === "pointerup" && pointerStart && !pointerStart.moved && distanceBetweenPoints(point, pointerStart.point) <= 8) lastShapeClickRef.current = {
+			shapeId: pointerStart.shapeId,
+			point,
+			time: Date.now()
+		};
+		else lastShapeClickRef.current = null;
+		pointerStartRef.current = null;
 		try {
 			if (e.currentTarget.hasPointerCapture(e.pointerId)) e.currentTarget.releasePointerCapture(e.pointerId);
 		} catch {}
 		onEnd();
 		kickLoop();
+	};
+	const handleDoubleClick = (e) => {
+		if (isCursorPassThrough || e.button !== 0 || !(activeTool === "select" || isShapeTool(activeTool))) return;
+		const hit = hitTestTopAnnotationAtClientPoint(items, {
+			x: e.clientX,
+			y: e.clientY
+		}, 10, {
+			x: window.scrollX || 0,
+			y: window.scrollY || 0
+		});
+		if (hit?.category !== "shape") return;
+		e.preventDefault();
+		e.stopPropagation();
+		lastShapeClickRef.current = null;
+		onSelectShape?.(hit.id);
 	};
 	return /* @__PURE__ */ (0, import_jsx_runtime.jsx)("canvas", {
 		ref: canvasRef,
@@ -20848,6 +21264,7 @@ var AnnotationCanvas = ({ activeTool, boardMode, items, settings, selectedItemId
 		onPointerUp: handlePointerUp,
 		onPointerCancel: handlePointerUp,
 		onLostPointerCapture: handlePointerUp,
+		onDoubleClick: handleDoubleClick,
 		style: {
 			cursor: getCursorStyle(),
 			touchAction: isCursorPassThrough ? "auto" : "none",
@@ -21186,7 +21603,8 @@ function createDefaultTimerSettings() {
 	return {
 		enabled: false,
 		durationMs: 15e3,
-		paused: false
+		paused: false,
+		showInRecording: false
 	};
 }
 /**
@@ -21299,49 +21717,56 @@ function formatCountdownMs(ms) {
 	if (totalSec < 60) return `${totalSec}s`;
 	return `${Math.floor(totalSec / 60)}:${(totalSec % 60).toString().padStart(2, "0")}`;
 }
-// src/tools/toolDefinitions.ts
-var SHAPE_TOOLS = [
-	{
-		id: "line",
-		label: "Straight Line"
-	},
-	{
-		id: "arrow",
-		label: "Arrow"
-	},
-	{
-		id: "double-arrow",
-		label: "Double Arrow"
-	},
-	{
-		id: "rect",
-		label: "Rectangle"
-	},
-	{
-		id: "filled-rect",
-		label: "Filled Rectangle"
-	},
-	{
-		id: "circle",
-		label: "Circle"
-	},
-	{
-		id: "ellipse",
-		label: "Ellipse"
-	},
-	{
-		id: "freehand-shape",
-		label: "Freehand Shape"
-	}
-];
-function isShapeTool(tool) {
-	return tool === "line" || tool === "arrow" || tool === "double-arrow" || tool === "rect" || tool === "filled-rect" || tool === "circle" || tool === "ellipse" || tool === "freehand-shape";
-}
 // src/desktop/keyboardVisualizer.ts
+var KEYBOARD_VISUALIZER_AUTO_HIDE_MS = 2e3;
+function getKeyboardShortcutEventFromInput(input, scope = "application-window") {
+	if (input.type !== "keyDown" || input.isAutoRepeat) return null;
+	if (!input.control && !input.alt && !input.meta && !input.shift) return null;
+	const key = {
+		ArrowDown: "Down",
+		ArrowLeft: "Left",
+		ArrowRight: "Right",
+		ArrowUp: "Up",
+		Backspace: "Backspace",
+		Delete: "Del",
+		Escape: "Esc",
+		PageDown: "PageDown",
+		PageUp: "PageUp",
+		" ": "Space"
+	}[input.key] || input.key;
+	if (!/^(?:[A-Za-z0-9]|F(?:[1-9]|1\d|2[0-4])|Enter|Tab|Space|Backspace|Del|Esc|Home|End|Insert|PageUp|PageDown|Up|Down|Left|Right)$/.test(key)) return null;
+	return {
+		type: "shortcut",
+		label: [...[
+			input.control ? "Ctrl" : "",
+			input.alt ? "Alt" : "",
+			input.shift ? "Shift" : "",
+			input.meta ? "Meta" : ""
+		].filter(Boolean), /^[a-z]$/i.test(key) ? key.toUpperCase() : key].join("+"),
+		scope
+	};
+}
+function isEditableKeyboardTarget(target) {
+	if (typeof Element === "undefined" || !(target instanceof Element)) return false;
+	const editable = target.closest("input, textarea, select, [contenteditable=\"\"], [contenteditable=\"true\"], [role=\"textbox\"]");
+	return Boolean(editable);
+}
+function getKeyboardShortcutEventFromDomEvent(event) {
+	if (isEditableKeyboardTarget(event.target)) return null;
+	return getKeyboardShortcutEventFromInput({
+		type: event.type === "keydown" ? "keyDown" : event.type,
+		key: event.key,
+		control: event.ctrlKey,
+		alt: event.altKey,
+		shift: event.shiftKey,
+		meta: event.metaKey,
+		isAutoRepeat: event.repeat
+	}, "proscreen-tab");
+}
 function getKeyboardVisualizerButtonModel(input) {
 	const label = input.enabled ? "Turn keyboard visualizer off (ProScreen only)" : "Turn keyboard visualizer on (ProScreen only)";
-	const privacyDisclosure = input.enabled ? "Only detects shortcuts while a ProScreen window is focused. Other apps are not observed. Ordinary typing is ignored and keyboard history is not saved." : "When enabled, only detects shortcuts while a ProScreen window is focused. Other apps are not observed. Ordinary typing is ignored and keyboard history is not saved.";
-	const description = input.error ? `${privacyDisclosure} ${input.error}` : !input.supported ? "Keyboard shortcut visualization is available in the ProScreen desktop app only." : privacyDisclosure;
+	const privacyDisclosure = input.enabled ? "Only detects modified shortcuts while a ProScreen app window or supported ProScreen tab is active. Other apps are not observed. Text fields and ordinary typing are ignored; shortcut history is not saved." : "When enabled, only detects modified shortcuts while a ProScreen app window or supported ProScreen tab is active. Other apps are not observed. Text fields and ordinary typing are ignored; shortcut history is not saved.";
+	const description = input.error ? `${privacyDisclosure} ${input.error}` : !input.supported ? "Keyboard shortcut visualization is available in ProScreen desktop and supported extension tabs." : privacyDisclosure;
 	return {
 		pressed: input.enabled,
 		disabled: !input.supported || Boolean(input.busy),
@@ -21349,6 +21774,51 @@ function getKeyboardVisualizerButtonModel(input) {
 		description
 	};
 }
+var TimedShortcutNotificationBuffer = class {
+	constructor(onChange, autoHideMs = KEYBOARD_VISUALIZER_AUTO_HIDE_MS) {
+		this.onChange = onChange;
+		this.autoHideMs = autoHideMs;
+		this.notifications = [];
+		this.timeout = null;
+		this.nextId = 0;
+		this.disposed = false;
+	}
+	add(event) {
+		if (this.disposed) return;
+		this.notifications = [{
+			id: ++this.nextId,
+			label: event.label
+		}, ...this.notifications].slice(0, 5);
+		this.publish();
+		this.resetTimer();
+	}
+	clear() {
+		if (this.timeout) {
+			clearTimeout(this.timeout);
+			this.timeout = null;
+		}
+		if (this.notifications.length === 0) return;
+		this.notifications = [];
+		this.publish();
+	}
+	dispose() {
+		this.disposed = true;
+		if (this.timeout) {
+			clearTimeout(this.timeout);
+			this.timeout = null;
+		}
+	}
+	resetTimer() {
+		if (this.timeout) clearTimeout(this.timeout);
+		this.timeout = setTimeout(() => {
+			this.timeout = null;
+			this.clear();
+		}, this.autoHideMs);
+	}
+	publish() {
+		this.onChange([...this.notifications]);
+	}
+};
 // src/utils/env.ts
 function isExtensionContext() {
 	return typeof chrome !== "undefined" && typeof chrome.runtime !== "undefined" && typeof chrome.runtime.id === "string" && chrome.runtime.id.length > 0;
@@ -23166,6 +23636,30 @@ var ColorBrushPopover = ({ open, activeTool, settings, resolvedTheme, onSelectTo
 		]
 	});
 };
+// src/toolbar/ShapeIcon.tsx
+var SHAPE_ICON = {
+	line: Minus,
+	arrow: ArrowUpRight,
+	rect: Square,
+	circle: Circle,
+	triangle: Triangle,
+	diamond: Diamond,
+	star: Star,
+	heart: Heart,
+	"double-arrow": ArrowLeftRight,
+	"filled-rect": SquareDot,
+	ellipse: Circle,
+	"freehand-shape": Spline
+};
+function ShapeIcon({ shape, className, strokeWidth = 1.8 }) {
+	const Icon = SHAPE_ICON[shape];
+	return /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Icon, {
+		"aria-hidden": "true",
+		"data-shape-icon": shape,
+		className,
+		strokeWidth
+	});
+}
 // src/toolbar/ToolbarPopouts.tsx
 var FONT_FAMILIES = [
 	"Plus Jakarta Sans",
@@ -23278,20 +23772,18 @@ var ToolbarPopouts = ({ activePopout, popoutPosition, activeTool, boardMode, boa
 	if (!activePopout) return null;
 	const isDark = resolvedTheme === "dark";
 	const accent = settings.accentColor || "#0EA5E9";
-	const surfaceClass = isDark ? "bg-[#1B1D24]/98 text-[#E4E7EF] border-[#2E323E] shadow-[0_14px_34px_-6px_rgba(0,0,0,0.65)]" : "bg-[#FBFBFD]/98 text-[#111827] border-[#CBD2E1] shadow-[0_14px_34px_-6px_rgba(15,23,42,0.18)]";
+	const activeSurfaceClass = activePopout === "shapes" ? "bg-[#171B24]/98 text-[#E4E7EF] border-[#313B4C] shadow-[0_16px_40px_-8px_rgba(0,0,0,0.72)]" : isDark ? "bg-[#1B1D24]/98 text-[#E4E7EF] border-[#2E323E] shadow-[0_14px_34px_-6px_rgba(0,0,0,0.65)]" : "bg-[#FBFBFD]/98 text-[#111827] border-[#CBD2E1] shadow-[0_14px_34px_-6px_rgba(15,23,42,0.18)]";
 	const mutedBtnClass = isDark ? "hover:bg-[#2A2E39] text-[#CBD2E1] border-[#313644]" : "hover:bg-[#EEF2F7] text-[#374151] border-[#D5DCE8]";
 	const inputClass = isDark ? "bg-[#14161C] border-[#313644] text-[#E4E7EF]" : "bg-[#F3F5F9] border-[#CBD2E1] text-[#111827]";
 	const dividerBorderClass = isDark ? "border-[#2D313D]" : "border-[#E2E7F0]";
 	const subBarBg = isDark ? "bg-[#14161C]" : "bg-[#EEF1F6]";
 	const bridgePaddingClass = popoutPosition.openSide === "right" ? "pl-2" : "pr-2";
 	const renderShapeIcon = (shape) => {
-		if (shape === "line") return /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Minus, { className: "w-3.5 h-3.5 -rotate-45" });
-		if (shape === "arrow") return /* @__PURE__ */ (0, import_jsx_runtime.jsx)(ArrowUpRight, { className: "w-3.5 h-3.5" });
-		if (shape === "double-arrow") return /* @__PURE__ */ (0, import_jsx_runtime.jsx)(ArrowLeftRight, { className: "w-3.5 h-3.5" });
-		if (shape === "filled-rect") return /* @__PURE__ */ (0, import_jsx_runtime.jsx)(SquareDot, { className: "w-3.5 h-3.5" });
-		if (shape === "circle" || shape === "ellipse") return /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Circle, { className: "w-3.5 h-3.5" });
-		if (shape === "freehand-shape") return /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Spline, { className: "w-3.5 h-3.5" });
-		return /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Square, { className: "w-3.5 h-3.5" });
+		return /* @__PURE__ */ (0, import_jsx_runtime.jsx)(ShapeIcon, {
+			shape,
+			className: "w-4 h-4",
+			strokeWidth: 1.8
+		});
 	};
 	const activeShapeDef = SHAPE_TOOLS.find((s) => s.id === activeTool);
 	return /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", {
@@ -23348,13 +23840,13 @@ var ToolbarPopouts = ({ activePopout, popoutPosition, activeTool, boardMode, boa
 				onClose
 			})]
 		}) : /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", {
-			className: `relative rounded-lg border p-2.5 max-h-[min(520px,calc(100vh-16px))] overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden backdrop-blur-xl space-y-2 text-xs ${surfaceClass} ${{
+			className: `relative rounded-lg border p-2.5 max-h-[min(520px,calc(100vh-16px))] overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden backdrop-blur-xl space-y-2 text-xs ${activeSurfaceClass} ${{
 				cursor: "w-[244px]",
 				pen: "w-[248px]",
 				highlighter: "w-[240px]",
 				eraser: "w-[234px]",
 				brush: "w-[228px]",
-				shapes: "w-[292px]",
+				shapes: "w-[216px]",
 				text: "w-[252px]",
 				undo: "w-[228px]",
 				timer: "w-[260px]",
@@ -23367,7 +23859,7 @@ var ToolbarPopouts = ({ activePopout, popoutPosition, activeTool, boardMode, boa
 				/* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", {
 					"aria-hidden": "true",
 					style: { top: popoutPosition.anchorOffsetY - 4 },
-					className: `pointer-events-none absolute w-2 h-2 rotate-45 border ${popoutPosition.openSide === "right" ? "-left-1 border-r-0 border-t-0" : "-right-1 border-l-0 border-b-0"} ${isDark ? "bg-[#1B1D24] border-[#2E323E]" : "bg-[#FBFBFD] border-[#CBD2E1]"}`
+					className: `pointer-events-none absolute w-2 h-2 rotate-45 border ${popoutPosition.openSide === "right" ? "-left-1 border-r-0 border-t-0" : "-right-1 border-l-0 border-b-0"} ${activePopout === "shapes" ? "bg-[#171B24] border-[#313B4C]" : isDark ? "bg-[#1B1D24] border-[#2E323E]" : "bg-[#FBFBFD] border-[#CBD2E1]"}`
 				}),
 				activePopout === "brush" && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", {
 					className: "space-y-2",
@@ -24014,19 +24506,24 @@ var ToolbarPopouts = ({ activePopout, popoutPosition, activeTool, boardMode, boa
 							})]
 						}),
 						/* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", {
-							className: `grid grid-cols-8 gap-0.5 p-1 rounded-lg ${subBarBg}`,
+							role: "group",
+							"aria-label": "Choose a shape",
+							"data-testid": "shape-choice-grid",
+							className: "grid grid-cols-4 grid-rows-2 gap-1 rounded-lg border border-white/[0.07] bg-[#111722] p-1 shadow-inner",
 							children: SHAPE_TOOLS.map((shape) => {
 								const active = activeTool === shape.id;
 								return /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", {
 									type: "button",
 									title: shape.label,
 									"aria-label": shape.label,
+									"aria-pressed": active,
+									"data-shape-choice": shape.id,
 									onClick: () => {
 										onSelectTool(shape.id);
 										onClose();
 									},
 									style: active ? { backgroundColor: accent } : void 0,
-									className: `h-7 flex items-center justify-center rounded-md transition-colors cursor-pointer ${active ? "text-white shadow-sm" : isDark ? "text-[#B8BFCE] hover:text-white hover:bg-[#2A2E39]" : "text-[#4B5565] hover:text-[#111827] hover:bg-white"}`,
+									className: `h-8 min-w-8 flex items-center justify-center rounded-md border transition-all duration-150 cursor-pointer ${active ? "text-white border-cyan-300/55 shadow-[0_0_10px_rgba(56,189,248,0.18)]" : "text-[#B8BFCE] border-transparent hover:text-white hover:bg-[#2A3445] hover:border-cyan-300/25"}`,
 									children: renderShapeIcon(shape.id)
 								}, shape.id);
 							})
@@ -24254,24 +24751,33 @@ var ToolbarPopouts = ({ activePopout, popoutPosition, activeTool, boardMode, boa
 					})]
 				}),
 				activePopout === "timer" && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", {
-					className: "space-y-2",
+					className: "space-y-3",
 					children: [
 						/* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", {
-							className: "flex items-center justify-between",
-							children: [/* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { children: [/* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", {
-								className: "font-semibold text-[11px]",
-								children: "Auto-Clear Ink Timer"
-							}), /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", {
-								className: "text-[10px] text-[#8E96A8]",
-								children: settings.timer.enabled ? activeTimerCountdownMs !== null ? `Next expiry in ${formatCountdownMs(activeTimerCountdownMs)}` : `Armed (${formatCountdownMs(settings.timer.durationMs)})` : "OFF — drawings stay permanently"
-							})] }), /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", {
-								type: "button",
-								"data-testid": "timer-toggle-btn",
-								onClick: onToggleTimerEnabled,
-								style: settings.timer.enabled ? { backgroundColor: accent } : void 0,
-								className: `px-2.5 py-1 rounded-md font-semibold text-[11px] border cursor-pointer ${settings.timer.enabled ? "text-white border-transparent" : mutedBtnClass}`,
-								children: settings.timer.enabled ? "ON" : "OFF"
-							})]
+							className: "flex items-center justify-between gap-3 rounded-lg border border-white/[0.08] bg-white/[0.035] px-3 py-2.5",
+							children: [
+								/* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { children: [/* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", {
+									className: "font-semibold text-[11px] text-slate-100",
+									children: "Ink duration"
+								}), /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", {
+									className: "mt-0.5 text-[10px] text-slate-400",
+									children: settings.timer.enabled ? "New ink follows the selected duration." : "New ink stays until you clear it."
+								})] }),
+								/* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", {
+									role: "status",
+									"aria-label": settings.timer.enabled ? settings.timer.paused ? "Timer paused" : "Timer active" : "Timer off",
+									className: `inline-flex items-center gap-1.5 rounded-full border px-2 py-1 text-[9px] font-semibold tracking-[.08em] ${settings.timer.enabled ? "border-emerald-400/25 bg-emerald-400/[0.08] text-emerald-200" : "border-white/[0.1] bg-white/[0.035] text-slate-400"}`,
+									children: [/* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: `h-1.5 w-1.5 rounded-full ${settings.timer.enabled ? "bg-emerald-300" : "bg-slate-500"}` }), settings.timer.enabled ? settings.timer.paused ? "PAUSED" : "ON" : "OFF"]
+								}),
+								/* @__PURE__ */ (0, import_jsx_runtime.jsxs)("button", {
+									type: "button",
+									"data-testid": "timer-toggle-btn",
+									onClick: onToggleTimerEnabled,
+									style: settings.timer.enabled ? { backgroundColor: accent } : void 0,
+									className: `inline-flex min-h-8 items-center gap-1.5 rounded-lg border px-2.5 font-semibold text-[11px] transition-all duration-150 hover:-translate-y-px active:translate-y-0 cursor-pointer ${settings.timer.enabled ? "text-white border-transparent shadow-sm" : mutedBtnClass}`,
+									children: [settings.timer.enabled ? /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Square, { className: "h-3 w-3" }) : /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Play, { className: "h-3 w-3" }), settings.timer.enabled ? "Stop" : "Start"]
+								})
+							]
 						}),
 						/* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", {
 							className: "grid grid-cols-4 gap-1",
@@ -24336,6 +24842,7 @@ var ToolbarPopouts = ({ activePopout, popoutPosition, activeTool, boardMode, boa
 									type: "button",
 									"data-testid": "timer-pause-btn",
 									onClick: onToggleTimerPaused,
+									disabled: !settings.timer.enabled,
 									className: `flex items-center justify-center gap-1 px-2 py-1 rounded-md border text-[11px] cursor-pointer ${settings.timer.paused ? "bg-amber-500 text-slate-950 border-amber-400 font-semibold" : mutedBtnClass}`,
 									children: [settings.timer.paused ? /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Play, { className: "w-3 h-3" }) : /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Pause, { className: "w-3 h-3" }), /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { children: settings.timer.paused ? "Resume" : "Pause" })]
 								}),
@@ -24343,7 +24850,8 @@ var ToolbarPopouts = ({ activePopout, popoutPosition, activeTool, boardMode, boa
 									type: "button",
 									"data-testid": "timer-reset-btn",
 									onClick: onResetTimer,
-									className: `flex items-center justify-center gap-1 px-2 py-1 rounded-md border text-[11px] cursor-pointer ${mutedBtnClass}`,
+									disabled: !settings.timer.enabled,
+									className: `flex items-center justify-center gap-1 px-2 py-1 rounded-md border text-[11px] cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed ${mutedBtnClass}`,
 									children: [/* @__PURE__ */ (0, import_jsx_runtime.jsx)(RotateCcw, { className: "w-3 h-3" }), /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { children: "Reset" })]
 								}),
 								/* @__PURE__ */ (0, import_jsx_runtime.jsxs)("button", {
@@ -25416,31 +25924,8 @@ var FloatingToolbar = ({ activeTool, boardMode, boardPageIndex, boardPageCount, 
 		}
 	};
 	const renderShapeIcon = (shape) => {
-		if (shape === "line") return /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Minus, {
-			className: `${iconDim} -rotate-45`,
-			strokeWidth: iconStroke
-		});
-		if (shape === "arrow") return /* @__PURE__ */ (0, import_jsx_runtime.jsx)(ArrowUpRight, {
-			className: iconDim,
-			strokeWidth: iconStroke
-		});
-		if (shape === "double-arrow") return /* @__PURE__ */ (0, import_jsx_runtime.jsx)(ArrowLeftRight, {
-			className: iconDim,
-			strokeWidth: iconStroke
-		});
-		if (shape === "filled-rect") return /* @__PURE__ */ (0, import_jsx_runtime.jsx)(SquareDot, {
-			className: iconDim,
-			strokeWidth: iconStroke
-		});
-		if (shape === "circle" || shape === "ellipse") return /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Circle, {
-			className: iconDim,
-			strokeWidth: iconStroke
-		});
-		if (shape === "freehand-shape") return /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Spline, {
-			className: iconDim,
-			strokeWidth: iconStroke
-		});
-		return /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Square, {
+		return /* @__PURE__ */ (0, import_jsx_runtime.jsx)(ShapeIcon, {
+			shape,
 			className: iconDim,
 			strokeWidth: iconStroke
 		});
@@ -25552,7 +26037,7 @@ var FloatingToolbar = ({ activeTool, boardMode, boardPageIndex, boardPageCount, 
 						return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("button", {
 							type: "button",
 							"data-testid": "toolbar-keyboard-visualizer-btn",
-							"aria-label": "Keyboard shortcut visualizer, ProScreen windows only",
+							"aria-label": "Keyboard shortcut visualizer, ProScreen only",
 							"aria-pressed": buttonModel.pressed,
 							"aria-description": buttonModel.description,
 							title: buttonModel.description,
@@ -27340,7 +27825,7 @@ var SettingsDashboard = ({ open, isStandalonePage = false, settings, resolvedThe
 				})
 			})] }), /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", {
 				className: "hidden md:block pt-4 border-t border-slate-500/20 text-[11px] text-slate-400 px-2",
-				children: [/* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { children: "ProScreen v1.0.0" }), /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", {
+				children: [/* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { children: "ProScreen v3.0.0" }), /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", {
 					className: "mt-0.5",
 					children: isDesktopApp ? "Windows Desktop · Local Storage" : "Manifest V3 · Local Storage"
 				})]
@@ -27880,6 +28365,34 @@ var SettingsDashboard = ({ open, isStandalonePage = false, settings, resolvedThe
 												})
 											]
 										}),
+										/* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", {
+											className: "pt-3 border-t border-slate-500/20",
+											children: /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("label", {
+												className: "flex items-center justify-between gap-3 text-xs",
+												children: [/* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", {
+													className: "max-w-xl",
+													children: [/* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", {
+														className: "block font-medium",
+														children: "Show timer progress in recordings"
+													}), /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", {
+														className: "block mt-1 text-slate-400",
+														children: "Shows a small progress ring while timed ink is active. Nothing floats on screen while you are not recording."
+													})]
+												}), /* @__PURE__ */ (0, import_jsx_runtime.jsx)("input", {
+													type: "checkbox",
+													"aria-label": "Show timer progress in recordings",
+													checked: settings.timer.showInRecording,
+													onChange: (e) => onUpdateSettings((p) => ({
+														...p,
+														timer: {
+															...p.timer,
+															showInRecording: e.target.checked
+														}
+													})),
+													className: "w-4 h-4 accent-emerald-500 cursor-pointer"
+												})]
+											})
+										}),
 										/* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", {
 											className: "flex items-center justify-between pt-3 border-t border-slate-500/20",
 											children: [/* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { children: [/* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", {
@@ -27900,6 +28413,99 @@ var SettingsDashboard = ({ open, isStandalonePage = false, settings, resolvedThe
 													}
 												})),
 												className: "w-4 h-4 accent-blue-600 cursor-pointer"
+											})]
+										})
+									]
+								})]
+							}),
+							/* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", {
+								className: `p-4 rounded-xl border space-y-4 ${cardClass}`,
+								children: [/* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", {
+									className: "flex items-center justify-between gap-4",
+									children: [/* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { children: [/* @__PURE__ */ (0, import_jsx_runtime.jsx)("h4", {
+										className: "text-xs font-semibold",
+										children: "Keyboard Shortcut Visualizer"
+									}), /* @__PURE__ */ (0, import_jsx_runtime.jsx)("p", {
+										className: "mt-1 max-w-xl text-xs text-slate-400",
+										children: "Off by default. When enabled, ProScreen shows modified shortcuts only while a ProScreen desktop window or supported extension tab is active. Other apps are never observed, and keys are not saved."
+									})] }), /* @__PURE__ */ (0, import_jsx_runtime.jsx)("input", {
+										type: "checkbox",
+										"aria-label": "Enable Keyboard Shortcut Visualizer",
+										checked: settings.keyboardVisualizer.enabled,
+										onChange: (e) => onUpdateSettings((p) => ({
+											...p,
+											keyboardVisualizer: {
+												...p.keyboardVisualizer,
+												enabled: e.target.checked
+											}
+										})),
+										className: "w-4 h-4 accent-sky-500 cursor-pointer"
+									})]
+								}), /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", {
+									className: "grid grid-cols-1 sm:grid-cols-3 gap-3",
+									children: [
+										/* @__PURE__ */ (0, import_jsx_runtime.jsxs)("label", {
+											className: "space-y-1 text-xs",
+											children: [/* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", {
+												className: "block text-slate-400",
+												children: "Notification position"
+											}), /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("select", {
+												"aria-label": "Keyboard Visualizer Position",
+												value: settings.keyboardVisualizer.position,
+												onChange: (e) => onUpdateSettings((p) => ({
+													...p,
+													keyboardVisualizer: {
+														...p.keyboardVisualizer,
+														position: e.target.value
+													}
+												})),
+												className: `w-full px-2.5 py-2 rounded-lg border ${inputClass}`,
+												children: [
+													/* @__PURE__ */ (0, import_jsx_runtime.jsx)("option", {
+														value: "bottom-left",
+														children: "Bottom left"
+													}),
+													/* @__PURE__ */ (0, import_jsx_runtime.jsx)("option", {
+														value: "bottom-center",
+														children: "Bottom center"
+													}),
+													/* @__PURE__ */ (0, import_jsx_runtime.jsx)("option", {
+														value: "bottom-right",
+														children: "Bottom right"
+													})
+												]
+											})]
+										}),
+										/* @__PURE__ */ (0, import_jsx_runtime.jsxs)("label", {
+											className: "flex items-center justify-between gap-3 text-xs",
+											children: [/* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { children: "Animate notifications" }), /* @__PURE__ */ (0, import_jsx_runtime.jsx)("input", {
+												type: "checkbox",
+												"aria-label": "Animate shortcut notifications",
+												checked: settings.keyboardVisualizer.animate,
+												onChange: (e) => onUpdateSettings((p) => ({
+													...p,
+													keyboardVisualizer: {
+														...p.keyboardVisualizer,
+														animate: e.target.checked
+													}
+												})),
+												className: "w-4 h-4 accent-sky-500 cursor-pointer"
+											})]
+										}),
+										/* @__PURE__ */ (0, import_jsx_runtime.jsxs)("label", {
+											className: "flex items-center justify-between gap-3 text-xs",
+											children: [/* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { children: "Show shortcuts in recordings" }), /* @__PURE__ */ (0, import_jsx_runtime.jsx)("input", {
+												type: "checkbox",
+												"aria-label": "Show shortcuts in recordings",
+												checked: settings.keyboardVisualizer.showInRecording,
+												onChange: (e) => onUpdateSettings((p) => ({
+													...p,
+													keyboardVisualizer: {
+														...p.keyboardVisualizer,
+														showInRecording: e.target.checked
+													}
+												})),
+												className: "w-4 h-4 accent-sky-500 cursor-pointer"
 											})]
 										})
 									]
@@ -28374,7 +28980,7 @@ var SettingsDashboard = ({ open, isStandalonePage = false, settings, resolvedThe
 							children: [
 								/* @__PURE__ */ (0, import_jsx_runtime.jsx)("h4", {
 									className: "font-semibold text-sm",
-									children: isDesktopApp ? "ProScreen Desktop v1.0.0" : "ProScreen v1.0.0"
+									children: isDesktopApp ? "ProScreen Desktop v3.0.0" : "ProScreen v3.0.0"
 								}),
 								/* @__PURE__ */ (0, import_jsx_runtime.jsx)("p", {
 									className: "text-slate-400",
@@ -28992,6 +29598,140 @@ var RecordingPreviewModal = ({ artifact, open, theme, accentColor = "#0EA5E9", o
 		})
 	});
 };
+// src/desktop/KeyboardVisualizerOverlay.tsx
+var POSITION_CLASSES = {
+	"bottom-left": "left-4 sm:left-6 bottom-[max(1rem,env(safe-area-inset-bottom))]",
+	"bottom-center": "left-1/2 -translate-x-1/2 bottom-[max(1rem,env(safe-area-inset-bottom))]",
+	"bottom-right": "right-4 sm:right-6 bottom-[max(1rem,env(safe-area-inset-bottom))]"
+};
+function KeyboardShortcutCards({ notifications, position = "bottom-center", animate = true }) {
+	const [displayed, setDisplayed] = (0, import_react.useState)(() => notifications.map((notification) => ({
+		...notification,
+		entering: true
+	})));
+	const exitTimerRef = (0, import_react.useRef)(null);
+	(0, import_react.useEffect)(() => {
+		const incomingIds = new Set(notifications.map((notification) => notification.id));
+		setDisplayed((current) => {
+			const retained = current.filter((item) => !incomingIds.has(item.id) && !item.exiting);
+			const incoming = notifications.map((item) => ({
+				...item,
+				entering: !current.some((old) => old.id === item.id)
+			}));
+			const leaving = retained.map((item) => ({
+				...item,
+				entering: false,
+				exiting: true
+			}));
+			return [...incoming, ...leaving].slice(0, 5);
+		});
+		if (exitTimerRef.current) clearTimeout(exitTimerRef.current);
+		if (displayed.some((item) => item.exiting) || notifications.length < displayed.length) exitTimerRef.current = setTimeout(() => {
+			exitTimerRef.current = null;
+			setDisplayed((current) => current.filter((item) => !item.exiting));
+		}, 180);
+	}, [notifications]);
+	(0, import_react.useEffect)(() => () => {
+		if (exitTimerRef.current) clearTimeout(exitTimerRef.current);
+	}, []);
+	return /* @__PURE__ */ (0, import_jsx_runtime.jsx)("section", {
+		"data-testid": "keyboard-visualizer-overlay",
+		"aria-label": "Recent shortcuts detected only in ProScreen",
+		"aria-live": "polite",
+		className: `fixed ${POSITION_CLASSES[position]} z-[2147483647] flex max-h-[55vh] max-w-[calc(100vw-2rem)] flex-col items-center gap-2 overflow-hidden pointer-events-none`,
+		children: displayed.map((notification) => /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", {
+			"data-testid": "keyboard-shortcut-notification",
+			className: `w-fit max-w-full rounded-[14px] border border-white/80 bg-[#f2f1ee] p-[7px] shadow-[0_8px_24px_rgba(0,0,0,.23),0_0_16px_rgba(167,139,250,.12)] ${animate && notification.entering ? "proscreen-shortcut-enter" : ""} ${animate && notification.exiting ? "proscreen-shortcut-exit" : ""}`,
+			children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", {
+				className: "flex max-w-full flex-wrap items-center justify-center gap-1.5",
+				children: notification.label.split("+").map((key, keyIndex) => /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(import_react.Fragment, { children: [keyIndex > 0 && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", {
+					"aria-hidden": "true",
+					className: "px-px text-[13px] font-semibold text-[#72737b]",
+					children: "+"
+				}), /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("kbd", {
+					className: `relative inline-flex h-9 min-w-9 shrink-0 items-center justify-center overflow-hidden rounded-[7px] border border-[#393b42] border-b-[3px] border-b-[#101115] bg-gradient-to-b from-[#33363e] to-[#202228] px-2.5 font-mono text-[12px] font-bold tracking-wide text-[#f8f8f9] shadow-[0_2px_3px_rgba(13,15,19,.28)] ${animate && notification.entering ? "proscreen-keycap-enter" : ""}`,
+					style: animate && notification.entering ? { animationDelay: `${keyIndex * 32}ms` } : void 0,
+					children: [key, /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", {
+						"aria-hidden": "true",
+						className: "pointer-events-none absolute bottom-[1px] left-1 right-1 h-px rounded-full bg-gradient-to-r from-emerald-300 via-violet-400 to-rose-300 opacity-90 blur-[0.4px]"
+					})]
+				})] }, `${notification.id}-${keyIndex}`))
+			})
+		}, notification.id))
+	});
+}
+function KeyboardVisualizerOverlay({ enabled = false, position = "bottom-center", animate = true, showInRecording = true, recording = false }) {
+	const desktop = typeof window !== "undefined" ? window.proscreenDesktop : void 0;
+	const [notifications, setNotifications] = (0, import_react.useState)([]);
+	const enabledRef = (0, import_react.useRef)(enabled);
+	enabledRef.current = enabled;
+	(0, import_react.useEffect)(() => {
+		if (!desktop) return void 0;
+		const buffer = new TimedShortcutNotificationBuffer(setNotifications);
+		const unsubscribeShortcut = desktop.onKeyboardShortcut((event) => {
+			if (enabledRef.current) buffer.add(event);
+		});
+		const unsubscribeDisabled = desktop.onKeyboardVisualizerDisabled(() => buffer.clear());
+		return () => {
+			unsubscribeShortcut();
+			unsubscribeDisabled();
+			buffer.dispose();
+		};
+	}, [desktop]);
+	(0, import_react.useEffect)(() => {
+		if (desktop) return void 0;
+		const buffer = new TimedShortcutNotificationBuffer(setNotifications);
+		if (!enabled) {
+			buffer.clear();
+			return () => buffer.dispose();
+		}
+		const onKeyDown = (event) => {
+			const shortcut = getKeyboardShortcutEventFromDomEvent(event);
+			if (shortcut) buffer.add(shortcut);
+		};
+		window.addEventListener("keydown", onKeyDown, {
+			capture: true,
+			passive: true
+		});
+		return () => {
+			window.removeEventListener("keydown", onKeyDown, true);
+			buffer.dispose();
+		};
+	}, [desktop, enabled]);
+	if (!enabled || recording && !showInRecording) return null;
+	return /* @__PURE__ */ (0, import_jsx_runtime.jsx)(KeyboardShortcutCards, {
+		notifications,
+		position,
+		animate
+	});
+}
+/** A quiet visual progress indicator, shown only in a recording when explicitly enabled. */
+function TimerHud({ enabled, paused, durationMs, countdownMs, showInRecording, recording }) {
+	if (!recording || !showInRecording || !enabled || countdownMs === null) return null;
+	const progress = Math.max(0, Math.min(1, countdownMs / Math.max(1, durationMs)));
+	return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", {
+		"data-testid": "timer-hud",
+		role: "status",
+		"aria-label": paused ? "Annotation timer paused" : "Annotation timer active",
+		title: paused ? "Timer paused" : "Timer active",
+		className: "fixed right-4 top-4 z-[2147483645] flex h-9 w-9 items-center justify-center rounded-full border border-white/[0.12] text-slate-100 shadow-[0_8px_24px_rgba(0,0,0,.35)] pointer-events-none relative",
+		style: { backgroundColor: "rgb(17 19 24 / 95%)" },
+		children: [/* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", {
+			className: "absolute inset-[-2px] rounded-full",
+			style: {
+				background: `conic-gradient(${paused ? "rgba(251,191,36,.88)" : "rgba(110,231,183,.9)"} ${progress * 360}deg, rgba(255,255,255,.10) ${progress * 360}deg)`,
+				mask: "radial-gradient(farthest-side, transparent calc(100% - 2px), #000 calc(100% - 1px))",
+				WebkitMask: "radial-gradient(farthest-side, transparent calc(100% - 2px), #000 calc(100% - 1px))"
+			}
+		}), paused ? /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Pause, {
+			className: "relative h-3.5 w-3.5 text-amber-200",
+			"aria-hidden": "true"
+		}) : /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Timer, {
+			className: "relative h-3.5 w-3.5 text-emerald-200",
+			"aria-hidden": "true"
+		})]
+	});
+}
 // src/overlay/ProScreenOverlay.tsx
 var ProScreenOverlay = ({ engine }) => {
 	const [activePopout, setActivePopout] = (0, import_react.useState)(null);
@@ -29021,6 +29761,7 @@ var ProScreenOverlay = ({ engine }) => {
 				activeTool: engine.activeTool,
 				toolbarVisible: engine.toolbarVisible,
 				annotationsVisible: engine.annotationsVisible,
+				isRecording: engine.recordingStatus !== "idle",
 				interactionMode: engine.interactionMode,
 				boardMode: engine.boardMode,
 				items: engine.history.items,
@@ -29033,7 +29774,8 @@ var ProScreenOverlay = ({ engine }) => {
 				onBegin: engine.beginStrokeOrShape,
 				onMove: engine.moveStrokeOrShape,
 				onEnd: engine.endStrokeOrShape,
-				onTextClick: engine.createTextAt
+				onTextClick: engine.createTextAt,
+				onSelectShape: engine.selectShapeForEditing
 			}),
 			/* @__PURE__ */ (0, import_jsx_runtime.jsx)(TextInputOverlay, {
 				items: engine.textItems,
@@ -29129,6 +29871,15 @@ var ProScreenOverlay = ({ engine }) => {
 				onCloseEye: engine.closeEye,
 				onOpenEye: engine.openEye,
 				onToggleEye: engine.toggleEye,
+				keyboardVisualizerEnabled: engine.settings.keyboardVisualizer.enabled,
+				keyboardVisualizerSupported: isExtensionContext(),
+				onToggleKeyboardVisualizer: () => engine.updateSettings((prev) => ({
+					...prev,
+					keyboardVisualizer: {
+						...prev.keyboardVisualizer,
+						enabled: !prev.keyboardVisualizer.enabled
+					}
+				})),
 				onRestoreToolbar: engine.openEye
 			}),
 			engine.restoreButtonVisible && /* @__PURE__ */ (0, import_jsx_runtime.jsx)(FloatingEyeRestoreButton, {
@@ -29259,6 +30010,21 @@ var ProScreenOverlay = ({ engine }) => {
 				onDownload: engine.downloadLatestRecording,
 				onDiscard: engine.clearTemporaryRecording,
 				onClose: () => engine.setRecordingPreviewOpen(false)
+			}),
+			/* @__PURE__ */ (0, import_jsx_runtime.jsx)(KeyboardVisualizerOverlay, {
+				enabled: engine.settings.keyboardVisualizer.enabled && isExtensionContext(),
+				position: engine.settings.keyboardVisualizer.position,
+				animate: engine.settings.keyboardVisualizer.animate,
+				showInRecording: engine.settings.keyboardVisualizer.showInRecording,
+				recording: engine.recordingStatus !== "idle"
+			}),
+			/* @__PURE__ */ (0, import_jsx_runtime.jsx)(TimerHud, {
+				enabled: engine.settings.timer.enabled,
+				paused: engine.settings.timer.paused,
+				durationMs: engine.settings.timer.durationMs,
+				countdownMs: engine.activeTimerCountdownMs,
+				showInRecording: engine.settings.timer.showInRecording,
+				recording: engine.recordingStatus !== "idle"
 			}),
 			/* @__PURE__ */ (0, import_jsx_runtime.jsx)(SettingsDashboard, {
 				open: engine.settingsOpen,
@@ -29887,6 +30653,12 @@ function createDefaultSettings() {
 			annotationsVisible: true
 		},
 		timer: createDefaultTimerSettings(),
+		keyboardVisualizer: {
+			enabled: false,
+			position: "bottom-center",
+			animate: true,
+			showInRecording: true
+		},
 		recording: {
 			mode: "tab",
 			quality: "high",
@@ -29933,6 +30705,10 @@ var VALID_SHAPES = /* @__PURE__ */ new Set([
 	"filled-rect",
 	"circle",
 	"ellipse",
+	"triangle",
+	"diamond",
+	"star",
+	"heart",
 	"freehand-shape"
 ]);
 var VALID_PEN_STYLES = /* @__PURE__ */ new Set([
@@ -30160,7 +30936,14 @@ function mergeAndValidateSettings(raw) {
 		timer: {
 			enabled: typeof obj.timer?.enabled === "boolean" ? obj.timer.enabled : defaults.timer.enabled,
 			durationMs: typeof obj.timer?.durationMs === "number" ? clampTimerDurationMs(obj.timer.durationMs) : defaults.timer.durationMs,
-			paused: typeof obj.timer?.paused === "boolean" ? obj.timer.paused : defaults.timer.paused
+			paused: typeof obj.timer?.paused === "boolean" ? obj.timer.paused : defaults.timer.paused,
+			showInRecording: typeof obj.timer?.showInRecording === "boolean" ? obj.timer.showInRecording : defaults.timer.showInRecording
+		},
+		keyboardVisualizer: {
+			enabled: typeof obj.keyboardVisualizer?.enabled === "boolean" ? obj.keyboardVisualizer.enabled : defaults.keyboardVisualizer.enabled,
+			position: obj.keyboardVisualizer?.position === "bottom-left" || obj.keyboardVisualizer?.position === "bottom-center" || obj.keyboardVisualizer?.position === "bottom-right" ? obj.keyboardVisualizer.position : defaults.keyboardVisualizer.position,
+			animate: typeof obj.keyboardVisualizer?.animate === "boolean" ? obj.keyboardVisualizer.animate : defaults.keyboardVisualizer.animate,
+			showInRecording: typeof obj.keyboardVisualizer?.showInRecording === "boolean" ? obj.keyboardVisualizer.showInRecording : defaults.keyboardVisualizer.showInRecording
 		},
 		recording: {
 			mode: obj.recording?.mode === "screen" || obj.recording?.mode === "window" || obj.recording?.mode === "tab" || obj.recording?.mode === "area" ? obj.recording.mode : defaults.recording.mode,
@@ -30439,6 +31222,14 @@ function useProScreenEngine(initialTabKey) {
 	const webpageHistoryRef = (0, import_react.useRef)(createHistoryState([]));
 	const historyRef = (0, import_react.useRef)(history);
 	historyRef.current = history;
+	const selectShapeForEditing = (0, import_react.useCallback)((id) => {
+		const item = historyRef.current.items.find((candidate) => candidate.id === id);
+		if (!item || item.category !== "shape") return;
+		setSelectedItemId(id);
+		setSelectedTextId(null);
+		setEditingTextId(null);
+		setActiveToolState("select");
+	}, []);
 	const isRecording = recordingStatus !== "idle";
 	const recordingSupported = isRecordingApiSupported();
 	const supportedRecordingFormats = getSupportedRecordingFormats();
@@ -30549,6 +31340,16 @@ function useProScreenEngine(initialTabKey) {
 		};
 	}, [tabKey]);
 	(0, import_react.useEffect)(() => {
+		if (!isExtensionContext() || typeof chrome === "undefined" || !chrome.storage?.onChanged) return;
+		const onChanged = (changes, areaName) => {
+			const nextSettings = changes[SETTINGS_KEY]?.newValue;
+			if (areaName !== "local" || !nextSettings) return;
+			setSettings(mergeAndValidateSettings(nextSettings));
+		};
+		chrome.storage.onChanged.addListener(onChanged);
+		return () => chrome.storage.onChanged.removeListener(onChanged);
+	}, []);
+	(0, import_react.useEffect)(() => {
 		if (!settingsLoaded || hydratedTabKey !== tabKey) return;
 		if (boardMode !== "webpage") return;
 		saveTabAnnotationState({
@@ -30588,7 +31389,19 @@ function useProScreenEngine(initialTabKey) {
 			setTimerNowMs(now);
 			setHistory((prev) => pruneExpiredItems(prev, now));
 		}, 200);
-		return () => window.clearInterval(timer);
+		const refreshTimer = () => {
+			if (document.visibilityState !== "visible") return;
+			const now = Date.now();
+			setTimerNowMs(now);
+			setHistory((prev) => pruneExpiredItems(prev, now));
+		};
+		document.addEventListener("visibilitychange", refreshTimer);
+		window.addEventListener("focus", refreshTimer);
+		return () => {
+			window.clearInterval(timer);
+			document.removeEventListener("visibilitychange", refreshTimer);
+			window.removeEventListener("focus", refreshTimer);
+		};
 	}, [history.items, settings.timer?.paused]);
 	(0, import_react.useEffect)(() => {
 		const onFsChange = () => {
@@ -30789,11 +31602,7 @@ function useProScreenEngine(initialTabKey) {
 	}, [updateSettings]);
 	const toggleTimerEnabled = (0, import_react.useCallback)(() => {
 		updateSettings((prev) => {
-			const timer = prev.timer || {
-				enabled: false,
-				durationMs: 15e3,
-				paused: false
-			};
+			const timer = prev.timer || createDefaultTimerSettings();
 			const nextEnabled = !timer.enabled;
 			return {
 				...prev,
@@ -30808,11 +31617,7 @@ function useProScreenEngine(initialTabKey) {
 	const setTimerDurationMs = (0, import_react.useCallback)((ms) => {
 		const clamped = clampTimerDurationMs(ms);
 		updateSettings((prev) => {
-			const timer = prev.timer || {
-				enabled: false,
-				durationMs: 15e3,
-				paused: false
-			};
+			const timer = prev.timer || createDefaultTimerSettings();
 			return {
 				...prev,
 				timer: {
@@ -30826,11 +31631,7 @@ function useProScreenEngine(initialTabKey) {
 		const now = Date.now();
 		const nextPaused = !Boolean(settings.timer?.paused);
 		updateSettings((prev) => {
-			const timer = prev.timer || {
-				enabled: false,
-				durationMs: 15e3,
-				paused: false
-			};
+			const timer = prev.timer || createDefaultTimerSettings();
 			return {
 				...prev,
 				timer: {
@@ -30848,19 +31649,10 @@ function useProScreenEngine(initialTabKey) {
 		const isPaused = Boolean(settings.timer?.paused);
 		setHistory((prev) => mapItemsWithoutHistory(prev, (items) => resetAnnotationTimers(items, durationMs, isPaused, now)));
 		setTimerNowMs(now);
-		showBanner("Active annotation timers reset", "info");
-	}, [
-		settings.timer?.durationMs,
-		settings.timer?.paused,
-		showBanner
-	]);
+	}, [settings.timer?.durationMs, settings.timer?.paused]);
 	const cancelTimer = (0, import_react.useCallback)(() => {
 		updateSettings((prev) => {
-			const timer = prev.timer || {
-				enabled: false,
-				durationMs: 15e3,
-				paused: false
-			};
+			const timer = prev.timer || createDefaultTimerSettings();
 			return {
 				...prev,
 				timer: {
@@ -30871,8 +31663,7 @@ function useProScreenEngine(initialTabKey) {
 			};
 		});
 		setHistory((prev) => mapItemsWithoutHistory(prev, cancelAnnotationTimers));
-		showBanner("Annotation timer turned off — existing ink will stay on screen.", "info");
-	}, [showBanner, updateSettings]);
+	}, [updateSettings]);
 	const settingsRef = (0, import_react.useRef)(settings);
 	settingsRef.current = settings;
 	(0, import_react.useEffect)(() => {
@@ -31263,7 +32054,8 @@ function useProScreenEngine(initialTabKey) {
 					kind: "move",
 					itemId: hit.id,
 					initialItem: hit,
-					startClient: pt
+					startClient: pt,
+					startItem: clientToItemPoint(pt, hit.coordSpace ?? "viewport", scroll)
 				};
 				draftItemRef.current = hit;
 			} else {
@@ -31353,27 +32145,18 @@ function useProScreenEngine(initialTabKey) {
 		const scroll = getScrollOffset();
 		if (activeTool === "select" && selectDragRef.current) {
 			const drag = selectDragRef.current;
-			const dx = pt.x - drag.startClient.x;
-			const dy = pt.y - drag.startClient.y;
-			if (drag.kind === "move") draftItemRef.current = translateAnnotationItem(drag.initialItem, dx, dy);
-			else {
+			if (drag.kind === "move") {
+				const itemPoint = clientToItemPoint(pt, drag.initialItem.coordSpace ?? "viewport", scroll);
+				const dx = itemPoint.x - drag.startItem.x;
+				const dy = itemPoint.y - drag.startItem.y;
+				draftItemRef.current = translateAnnotationItem(drag.initialItem, dx, dy);
+			} else {
 				const b = drag.initialBox;
-				let minX = b.minX;
-				let minY = b.minY;
-				let maxX = b.maxX;
-				let maxY = b.maxY;
-				if (drag.handle === "nw" || drag.handle === "sw") minX = Math.min(b.maxX - 16, b.minX + dx);
-				else maxX = Math.max(b.minX + 16, b.maxX + dx);
-				if (drag.handle === "nw" || drag.handle === "ne") minY = Math.min(b.maxY - 16, b.minY + dy);
-				else maxY = Math.max(b.minY + 16, b.maxY + dy);
-				draftItemRef.current = scaleAnnotationItem(drag.initialItem, b, {
-					minX,
-					minY,
-					maxX,
-					maxY,
-					width: maxX - minX,
-					height: maxY - minY
-				});
+				const itemPoint = clientToItemPoint(pt, drag.initialItem.coordSpace ?? "viewport", scroll);
+				const shapeType = drag.initialItem.category === "shape" ? drag.initialItem.shapeType : null;
+				const preserveAspectRatio = shapeType === "circle" || shapeType === "triangle" || shapeType === "diamond" || shapeType === "star" || shapeType === "heart";
+				const nextBox = resizeBoundingBoxFromHandle(b, drag.handle, itemPoint, preserveAspectRatio);
+				draftItemRef.current = scaleAnnotationItem(drag.initialItem, b, nextBox);
 			}
 			return;
 		}
@@ -31413,7 +32196,7 @@ function useProScreenEngine(initialTabKey) {
 				return;
 			}
 			let nextEnd = itemPt;
-			if (draft.shapeType === "circle") nextEnd = normalizeCircleEnd(draft.start, itemPt);
+			if (draft.shapeType === "circle" || draft.shapeType === "triangle" || draft.shapeType === "diamond" || draft.shapeType === "star" || draft.shapeType === "heart") nextEnd = normalizeCircleEnd(draft.start, itemPt);
 			else if (shiftKey && (draft.shapeType === "line" || draft.shapeType === "arrow" || draft.shapeType === "double-arrow")) nextEnd = snapAnglePoint(draft.start, itemPt, 15);
 			else if (shiftKey && (draft.shapeType === "rect" || draft.shapeType === "filled-rect")) nextEnd = normalizeCircleEnd(draft.start, itemPt);
 			draft.end = nextEnd;
@@ -31429,7 +32212,7 @@ function useProScreenEngine(initialTabKey) {
 			const drag = selectDragRef.current;
 			selectDragRef.current = null;
 			draftItemRef.current = null;
-			if (transformed && Math.hypot(0, 0) === 0) {
+			if (transformed) {
 				if (Math.hypot(pointerPosRef.current.x - drag.startClient.x, pointerPosRef.current.y - drag.startClient.y) >= 2) setHistory((prev) => updateAnnotationItem(prev, transformed));
 			}
 			return;
@@ -31940,6 +32723,7 @@ function useProScreenEngine(initialTabKey) {
 		setSelectedTextId,
 		selectedItemId,
 		setSelectedItemId,
+		selectShapeForEditing,
 		deleteSelectedObject,
 		textItems,
 		savedSessions,
@@ -32080,4 +32864,4 @@ function App() {
 // src/main.tsx
 (0, import_client.createRoot)(document.getElementById("root")).render(/* @__PURE__ */ (0, import_jsx_runtime.jsx)(App, {}));
 
-//# sourceMappingURL=main-Cg7FnRPA.js.map
+//# sourceMappingURL=main-DSOKXk5h.js.map

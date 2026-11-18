@@ -1,11 +1,14 @@
 import React, { useEffect, useRef } from 'react';
-import { AnnotationItem, BoardMode, LaserPoint, Point } from '../types/annotation';
+import { AnnotationItem, BoardMode, LaserPoint, Point, ToolType } from '../types/annotation';
 import { UserSettings } from '../types/settings';
 import { renderAnnotationLayer } from '../canvas/renderer';
+import { distanceBetweenPoints, hitTestTopAnnotationAtClientPoint } from '../canvas/geometry';
+import { isShapeDoubleClick } from '../canvas/shapeSelection';
+import { isShapeTool } from '../tools/toolDefinitions';
 import { getHighContrastCursor } from './cursors';
 
 interface AnnotationCanvasProps {
-  activeTool: string;
+  activeTool: ToolType;
   boardMode: BoardMode;
   items: AnnotationItem[];
   settings: UserSettings;
@@ -15,12 +18,14 @@ interface AnnotationCanvasProps {
   pointerPosRef: React.MutableRefObject<Point>;
   toolbarVisible?: boolean;
   annotationsVisible?: boolean;
+  isRecording?: boolean;
   interactionMode?: 'pointer' | 'drawing';
   onCanvasInteract?: () => void;
   onBegin: (pt: Point, pressure?: number) => void;
   onMove: (pt: Point, pressure?: number, shiftKey?: boolean) => void;
   onEnd: () => void;
   onTextClick: (pt: Point) => void;
+  onSelectShape?: (id: string) => void;
 }
 
 export const AnnotationCanvas: React.FC<AnnotationCanvasProps> = ({
@@ -34,15 +39,19 @@ export const AnnotationCanvas: React.FC<AnnotationCanvasProps> = ({
   pointerPosRef,
   toolbarVisible = true,
   annotationsVisible = true,
+  isRecording = false,
   interactionMode = 'pointer',
   onCanvasInteract,
   onBegin,
   onMove,
   onEnd,
   onTextClick,
+  onSelectShape,
 }) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const isPointerDownRef = useRef(false);
+  const pointerStartRef = useRef<{ point: Point; shapeId: string; moved: boolean } | null>(null);
+  const lastShapeClickRef = useRef<{ shapeId: string; point: Point; time: number } | null>(null);
   const rafRef = useRef<number | null>(null);
   const onEndRef = useRef(onEnd);
   onEndRef.current = onEnd;
@@ -82,7 +91,7 @@ export const AnnotationCanvas: React.FC<AnnotationCanvasProps> = ({
       annotationsVisible: annotationsVisible && settings.creator.annotationsVisible,
       scroll,
       activeDraftItem: annotationsVisible ? draftItemRef.current : null,
-      selectedItemId: annotationsVisible ? selectedItemId : null,
+      selectedItemId: annotationsVisible && !isRecording ? selectedItemId : null,
       laserTrail: annotationsVisible ? laserTrailRef.current : [],
       laserColor: settings.laserColor,
       laserSize: settings.laserSize,
@@ -181,6 +190,7 @@ export const AnnotationCanvas: React.FC<AnnotationCanvasProps> = ({
     spotlightActive,
     cursorHighlightActive,
     annotationsVisible,
+    isRecording,
     toolbarVisible,
   ]);
 
@@ -193,6 +203,8 @@ export const AnnotationCanvas: React.FC<AnnotationCanvasProps> = ({
     const finishIfInterrupted = () => {
       if (!isPointerDownRef.current) return;
       isPointerDownRef.current = false;
+      pointerStartRef.current = null;
+      lastShapeClickRef.current = null;
       onEndRef.current();
       kickLoop();
     };
@@ -216,6 +228,8 @@ export const AnnotationCanvas: React.FC<AnnotationCanvasProps> = ({
   useEffect(() => {
     if (isCursorPassThrough && isPointerDownRef.current) {
       isPointerDownRef.current = false;
+      pointerStartRef.current = null;
+      lastShapeClickRef.current = null;
       onEndRef.current();
       kickLoop();
     }
@@ -244,6 +258,41 @@ export const AnnotationCanvas: React.FC<AnnotationCanvasProps> = ({
     const pt: Point = { x: e.clientX, y: e.clientY };
     pointerPosRef.current = pt;
 
+    const canSelectShape = activeTool === 'select' || isShapeTool(activeTool);
+    const scroll = { x: window.scrollX || 0, y: window.scrollY || 0 };
+    const hit = canSelectShape
+      ? hitTestTopAnnotationAtClientPoint(items, pt, 10, scroll)
+      : null;
+    const hitShape = hit?.category === 'shape' ? hit : null;
+    const previousClick = lastShapeClickRef.current;
+    const now = Date.now();
+    const isDoubleClick = Boolean(
+      hitShape && isShapeDoubleClick(hitShape.id, pt, e.detail, previousClick, now)
+    );
+
+    if (isDoubleClick && hitShape) {
+      lastShapeClickRef.current = null;
+      pointerStartRef.current = null;
+      e.stopPropagation();
+      onSelectShape?.(hitShape.id);
+      kickLoop();
+      return;
+    }
+
+    // A click on an existing shape while a shape tool is active is treated as
+    // the first half of a possible double-click. Waiting here prevents that
+    // click from starting a tiny overlapping shape before selection can occur.
+    if (hitShape && isShapeTool(activeTool)) {
+      lastShapeClickRef.current = { shapeId: hitShape.id, point: pt, time: now };
+      pointerStartRef.current = null;
+      return;
+    }
+
+    pointerStartRef.current = hitShape
+      ? { point: pt, shapeId: hitShape.id, moved: false }
+      : null;
+    if (!hitShape) lastShapeClickRef.current = null;
+
     if (activeTool === 'text') {
       onTextClick(pt);
       return;
@@ -258,6 +307,11 @@ export const AnnotationCanvas: React.FC<AnnotationCanvasProps> = ({
   const handlePointerMove = (e: React.PointerEvent<HTMLCanvasElement>) => {
     const pt: Point = { x: e.clientX, y: e.clientY };
     pointerPosRef.current = pt;
+    const pointerStart = pointerStartRef.current;
+    if (pointerStart && distanceBetweenPoints(pt, pointerStart.point) > 8) {
+      pointerStart.moved = true;
+      lastShapeClickRef.current = null;
+    }
 
     if (activeTool === 'laser') {
       onMove(pt, e.pressure, e.shiftKey);
@@ -282,6 +336,23 @@ export const AnnotationCanvas: React.FC<AnnotationCanvasProps> = ({
   const handlePointerUp = (e: React.PointerEvent<HTMLCanvasElement>) => {
     if (!isPointerDownRef.current) return;
     isPointerDownRef.current = false;
+    const pointerStart = pointerStartRef.current;
+    const point = { x: e.clientX, y: e.clientY };
+    if (
+      e.type === 'pointerup' &&
+      pointerStart &&
+      !pointerStart.moved &&
+      distanceBetweenPoints(point, pointerStart.point) <= 8
+    ) {
+      lastShapeClickRef.current = {
+        shapeId: pointerStart.shapeId,
+        point,
+        time: Date.now(),
+      };
+    } else {
+      lastShapeClickRef.current = null;
+    }
+    pointerStartRef.current = null;
     try {
       if (e.currentTarget.hasPointerCapture(e.pointerId)) {
         e.currentTarget.releasePointerCapture(e.pointerId);
@@ -291,6 +362,23 @@ export const AnnotationCanvas: React.FC<AnnotationCanvasProps> = ({
     }
     onEnd();
     kickLoop();
+  };
+
+  const handleDoubleClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    if (isCursorPassThrough || e.button !== 0 || !(activeTool === 'select' || isShapeTool(activeTool))) {
+      return;
+    }
+    const hit = hitTestTopAnnotationAtClientPoint(
+      items,
+      { x: e.clientX, y: e.clientY },
+      10,
+      { x: window.scrollX || 0, y: window.scrollY || 0 }
+    );
+    if (hit?.category !== 'shape') return;
+    e.preventDefault();
+    e.stopPropagation();
+    lastShapeClickRef.current = null;
+    onSelectShape?.(hit.id);
   };
 
   return (
@@ -308,6 +396,7 @@ export const AnnotationCanvas: React.FC<AnnotationCanvasProps> = ({
       onPointerUp={handlePointerUp}
       onPointerCancel={handlePointerUp}
       onLostPointerCapture={handlePointerUp}
+      onDoubleClick={handleDoubleClick}
       style={{
         cursor: getCursorStyle(),
         touchAction: isCursorPassThrough ? 'auto' : 'none',

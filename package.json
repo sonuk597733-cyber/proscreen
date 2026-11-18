@@ -1,10 +1,10 @@
 {
   "name": "proscreen",
   "productName": "ProScreen",
-  "description": "Professional Windows Desktop & Chrome Screen Annotation Studio",
+  "description": "Professional Windows Desktop and Chrome Screen Annotation Studio",
   "author": "ProScreen Team",
   "private": true,
-  "version": "1.0.3",
+  "version": "3.0.0",
   "type": "module",
   "main": "dist-electron/main.cjs",
   "scripts": {
@@ -23,6 +23,9 @@
   },
   "build": {
     "appId": "com.proscreen.annotationstudio",
+    "toolsets": {
+      "nsis": "1.2.1"
+    },
     "productName": "ProScreen",
     "publish": null,
     "directories": {

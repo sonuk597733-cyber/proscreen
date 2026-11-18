@@ -4,7 +4,7 @@ export const KEYBOARD_VISUALIZER_MAX_NOTIFICATIONS = 5;
 export interface KeyboardShortcutEvent {
   type: 'shortcut';
   label: string;
-  scope: 'application-window';
+  scope: 'application-window' | 'proscreen-tab';
 }
 
 export interface KeyboardVisualizerStatus {
@@ -32,17 +32,24 @@ export interface ShortcutNotification {
 export function parseKeyboardShortcutEvent(value: unknown): KeyboardShortcutEvent | null {
   if (!value || typeof value !== 'object') return null;
   const event = value as { type?: unknown; label?: unknown; scope?: unknown };
-  if (event.type !== 'shortcut' || event.scope !== 'application-window' || typeof event.label !== 'string') return null;
+  if (
+    event.type !== 'shortcut' ||
+    (event.scope !== 'application-window' && event.scope !== 'proscreen-tab') ||
+    typeof event.label !== 'string'
+  ) return null;
   const label = event.label.trim();
   if (!label || label.length > 64 || !/^[A-Za-z0-9 ]+(?:\+[A-Za-z0-9 ]+){1,5}$/.test(label)) {
     return null;
   }
-  return { type: 'shortcut', label, scope: 'application-window' };
+  return { type: 'shortcut', label, scope: event.scope };
 }
 
-export function getKeyboardShortcutEventFromInput(input: KeyboardVisualizerInput): KeyboardShortcutEvent | null {
+export function getKeyboardShortcutEventFromInput(
+  input: KeyboardVisualizerInput,
+  scope: KeyboardShortcutEvent['scope'] = 'application-window'
+): KeyboardShortcutEvent | null {
   if (input.type !== 'keyDown' || input.isAutoRepeat) return null;
-  if (!input.control && !input.alt && !input.meta) return null;
+  if (!input.control && !input.alt && !input.meta && !input.shift) return null;
 
   const keyNames: Record<string, string> = {
     ArrowDown: 'Down',
@@ -57,7 +64,7 @@ export function getKeyboardShortcutEventFromInput(input: KeyboardVisualizerInput
     ' ': 'Space',
   };
   const key = keyNames[input.key] || input.key;
-  if (!/^(?:[A-Za-z0-9]|F(?:[1-9]|1[0-2])|Enter|Tab|Space|Backspace|Del|Esc|Home|End|Insert|PageUp|PageDown|Up|Down|Left|Right)$/.test(key)) {
+  if (!/^(?:[A-Za-z0-9]|F(?:[1-9]|1\d|2[0-4])|Enter|Tab|Space|Backspace|Del|Esc|Home|End|Insert|PageUp|PageDown|Up|Down|Left|Right)$/.test(key)) {
     return null;
   }
 
@@ -70,8 +77,29 @@ export function getKeyboardShortcutEventFromInput(input: KeyboardVisualizerInput
   return {
     type: 'shortcut',
     label: [...modifiers, /^[a-z]$/i.test(key) ? key.toUpperCase() : key].join('+'),
-    scope: 'application-window',
+    scope,
   };
+}
+
+export function isEditableKeyboardTarget(target: EventTarget | null): boolean {
+  if (typeof Element === 'undefined' || !(target instanceof Element)) return false;
+  const editable = target.closest('input, textarea, select, [contenteditable=""], [contenteditable="true"], [role="textbox"]');
+  return Boolean(editable);
+}
+
+export function getKeyboardShortcutEventFromDomEvent(
+  event: Pick<KeyboardEvent, 'type' | 'key' | 'ctrlKey' | 'altKey' | 'shiftKey' | 'metaKey' | 'repeat' | 'target'>
+): KeyboardShortcutEvent | null {
+  if (isEditableKeyboardTarget(event.target)) return null;
+  return getKeyboardShortcutEventFromInput({
+    type: event.type === 'keydown' ? 'keyDown' : event.type,
+    key: event.key,
+    control: event.ctrlKey,
+    alt: event.altKey,
+    shift: event.shiftKey,
+    meta: event.metaKey,
+    isAutoRepeat: event.repeat,
+  }, 'proscreen-tab');
 }
 
 export function getKeyboardVisualizerButtonModel(input: {
@@ -84,12 +112,12 @@ export function getKeyboardVisualizerButtonModel(input: {
     ? 'Turn keyboard visualizer off (ProScreen only)'
     : 'Turn keyboard visualizer on (ProScreen only)';
   const privacyDisclosure = input.enabled
-    ? 'Only detects shortcuts while a ProScreen window is focused. Other apps are not observed. Ordinary typing is ignored and keyboard history is not saved.'
-    : 'When enabled, only detects shortcuts while a ProScreen window is focused. Other apps are not observed. Ordinary typing is ignored and keyboard history is not saved.';
+    ? 'Only detects modified shortcuts while a ProScreen app window or supported ProScreen tab is active. Other apps are not observed. Text fields and ordinary typing are ignored; shortcut history is not saved.'
+    : 'When enabled, only detects modified shortcuts while a ProScreen app window or supported ProScreen tab is active. Other apps are not observed. Text fields and ordinary typing are ignored; shortcut history is not saved.';
   const description = input.error
     ? `${privacyDisclosure} ${input.error}`
     : !input.supported
-      ? 'Keyboard shortcut visualization is available in the ProScreen desktop app only.'
+      ? 'Keyboard shortcut visualization is available in ProScreen desktop and supported extension tabs.'
       : privacyDisclosure;
   return {
     pressed: input.enabled,

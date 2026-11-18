@@ -74,7 +74,18 @@ test('CURSOR-4: getHighContrastCursor maps all drawing & annotation tools cleanl
   assert.equal(getHighContrastCursor('crop', false), AREA_CROP_CURSOR);
 
   // Shape Tools all map to high-contrast precision crosshair
-  const shapeTools = ['line', 'rect', 'circle', 'ellipse', 'filled-rect', 'freehand-shape'];
+  const shapeTools = [
+    'line',
+    'rect',
+    'circle',
+    'triangle',
+    'diamond',
+    'star',
+    'heart',
+    'ellipse',
+    'filled-rect',
+    'freehand-shape',
+  ];
   for (const tool of shapeTools) {
     assert.equal(getHighContrastCursor(tool, false), SHAPE_CROSSHAIR_CURSOR, `Tool ${tool} must use SHAPE_CROSSHAIR_CURSOR`);
   }

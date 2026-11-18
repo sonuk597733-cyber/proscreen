@@ -1,6 +1,7 @@
 import {
   AnnotationItem,
   Point,
+  ShapeToolType,
   ShapeAnnotation,
   StrokeAnnotation,
   TextAnnotation,
@@ -15,7 +16,58 @@ export interface BoundingBox {
   height: number;
 }
 
-export type ResizeHandle = 'nw' | 'ne' | 'sw' | 'se';
+export type ResizeHandle = 'nw' | 'n' | 'ne' | 'e' | 'se' | 's' | 'sw' | 'w';
+
+function sampleCubicBezier(start: Point, c1: Point, c2: Point, end: Point, steps = 10): Point[] {
+  const points: Point[] = [];
+  for (let i = 1; i <= steps; i++) {
+    const t = i / steps;
+    const mt = 1 - t;
+    points.push({
+      x: mt ** 3 * start.x + 3 * mt ** 2 * t * c1.x + 3 * mt * t ** 2 * c2.x + t ** 3 * end.x,
+      y: mt ** 3 * start.y + 3 * mt ** 2 * t * c1.y + 3 * mt * t ** 2 * c2.y + t ** 3 * end.y,
+    });
+  }
+  return points;
+}
+
+/** Return the editable outline points for the custom geometric shapes. */
+export function getShapeOutlinePoints(shapeType: ShapeToolType, box: BoundingBox): Point[] | null {
+  const { minX: x, minY: y, maxX, maxY } = box;
+  const w = maxX - x;
+  const h = maxY - y;
+  const cx = x + w / 2;
+  const cy = y + h / 2;
+  if (shapeType === 'triangle') {
+    return [{ x: cx, y }, { x: maxX, y: maxY }, { x, y: maxY }];
+  }
+  if (shapeType === 'diamond') {
+    return [{ x: cx, y }, { x: maxX, y: cy }, { x: cx, y: maxY }, { x, y: cy }];
+  }
+  if (shapeType === 'star') {
+    const outer = Math.min(w, h) / 2;
+    const inner = outer * 0.43;
+    return Array.from({ length: 10 }, (_, index) => {
+      const angle = -Math.PI / 2 + (index * Math.PI) / 5;
+      const radius = index % 2 === 0 ? outer : inner;
+      return { x: cx + Math.cos(angle) * radius, y: cy + Math.sin(angle) * radius };
+    });
+  }
+  if (shapeType === 'heart') {
+    const notch = { x: cx, y: y + h * 0.27 };
+    const left = { x, y: y + h * 0.38 };
+    const bottom = { x: cx, y: maxY };
+    const right = { x: maxX, y: y + h * 0.38 };
+    return [
+      notch,
+      ...sampleCubicBezier(notch, { x: cx - w * 0.27, y: y - h * 0.08 }, { x, y: y + h * 0.02 }, left),
+      ...sampleCubicBezier(left, { x, y: y + h * 0.68 }, { x: cx - w * 0.22, y: y + h * 0.86 }, bottom),
+      ...sampleCubicBezier(bottom, { x: cx + w * 0.22, y: y + h * 0.86 }, { x: maxX, y: y + h * 0.68 }, right),
+      ...sampleCubicBezier(right, { x: maxX, y: y + h * 0.02 }, { x: cx + w * 0.27, y: y - h * 0.08 }, notch),
+    ];
+  }
+  return null;
+}
 
 export function distanceBetweenPoints(a: Point, b: Point): number {
   const dx = a.x - b.x;
@@ -206,10 +258,8 @@ export function hitTestShape(shape: ShapeAnnotation, point: Point, radius: numbe
     }
     return false;
   }
-  const minX = Math.min(shape.start.x, shape.end.x);
-  const maxX = Math.max(shape.start.x, shape.end.x);
-  const minY = Math.min(shape.start.y, shape.end.y);
-  const maxY = Math.max(shape.start.y, shape.end.y);
+  const bounds = getAnnotationBoundingBox(shape);
+  const { minX, maxX, minY, maxY } = bounds;
 
   if (shape.shapeType === 'filled-rect') {
     return (
@@ -225,7 +275,17 @@ export function hitTestShape(shape: ShapeAnnotation, point: Point, radius: numbe
     const right = distanceToSegment(point, { x: maxX, y: minY }, { x: maxX, y: maxY });
     const bottom = distanceToSegment(point, { x: maxX, y: maxY }, { x: minX, y: maxY });
     const left = distanceToSegment(point, { x: minX, y: maxY }, { x: minX, y: minY });
-    return Math.min(top, right, bottom, left) <= tol;
+    const onOutline = Math.min(top, right, bottom, left) <= tol;
+    const inside = point.x >= minX && point.x <= maxX && point.y >= minY && point.y <= maxY;
+    return onOutline || inside;
+  }
+
+  const outline = getShapeOutlinePoints(shape.shapeType, bounds);
+  if (outline) {
+    // Treat the closed outline's interior as a move target even when its visual fill is transparent.
+    // Otherwise an unfilled heart/star/etc. can only be moved by grabbing a thin stroke perimeter.
+    if (isPointInPolygon(point, outline)) return true;
+    return outline.some((a, index) => distanceToSegment(point, a, outline[(index + 1) % outline.length]) <= tol);
   }
 
   // Circle or Ellipse perimeter check
@@ -235,7 +295,20 @@ export function hitTestShape(shape: ShapeAnnotation, point: Point, radius: numbe
   const ry = Math.max(2, (maxY - minY) / 2);
   const norm = Math.hypot((point.x - cx) / rx, (point.y - cy) / ry);
   const approxPixelDist = Math.abs(norm - 1) * Math.min(rx, ry);
-  return approxPixelDist <= tol;
+  return norm <= 1 || approxPixelDist <= tol;
+}
+
+function isPointInPolygon(point: Point, polygon: Point[]): boolean {
+  let inside = false;
+  for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+    const a = polygon[i];
+    const b = polygon[j];
+    const crosses = a.y > point.y !== b.y > point.y;
+    if (crosses && point.x < ((b.x - a.x) * (point.y - a.y)) / (b.y - a.y) + a.x) {
+      inside = !inside;
+    }
+  }
+  return inside;
 }
 
 export function hitTestText(textItem: TextAnnotation, point: Point, radius: number): boolean {
@@ -337,18 +410,92 @@ export function getResizeHandleAtPoint(
   radius = 10
 ): ResizeHandle | null {
   const pad = 6;
-  const corners: { handle: ResizeHandle; x: number; y: number }[] = [
+  const handles: { handle: ResizeHandle; x: number; y: number }[] = [
     { handle: 'nw', x: box.minX - pad, y: box.minY - pad },
+    { handle: 'n', x: (box.minX + box.maxX) / 2, y: box.minY - pad },
     { handle: 'ne', x: box.maxX + pad, y: box.minY - pad },
+    { handle: 'e', x: box.maxX + pad, y: (box.minY + box.maxY) / 2 },
     { handle: 'sw', x: box.minX - pad, y: box.maxY + pad },
+    { handle: 's', x: (box.minX + box.maxX) / 2, y: box.maxY + pad },
     { handle: 'se', x: box.maxX + pad, y: box.maxY + pad },
+    { handle: 'w', x: box.minX - pad, y: (box.minY + box.maxY) / 2 },
   ];
-  for (const corner of corners) {
-    if (distanceBetweenPoints(point, { x: corner.x, y: corner.y }) <= radius) {
-      return corner.handle;
+  const hit = handles
+    .map((handle) => ({ ...handle, distance: distanceBetweenPoints(point, handle) }))
+    .filter((handle) => handle.distance <= radius)
+    .sort((a, b) => a.distance - b.distance)[0];
+  return hit?.handle ?? null;
+}
+
+/** Calculate a safe box for an eight-handle resize. The 6px offset matches the visible handles. */
+export function resizeBoundingBoxFromHandle(
+  box: BoundingBox,
+  handle: ResizeHandle,
+  point: Point,
+  preserveAspectRatio = false
+): BoundingBox {
+  const minimum = 16;
+  const west = handle.includes('w');
+  const east = handle.includes('e');
+  const north = handle.includes('n');
+  const south = handle.includes('s');
+  const pointerX = point.x + (west ? 6 : east ? -6 : 0);
+  const pointerY = point.y + (north ? 6 : south ? -6 : 0);
+  const width = Math.max(minimum, box.width);
+  const height = Math.max(minimum, box.height);
+
+  if (preserveAspectRatio) {
+    const ratio = width / height;
+    if ((west || east) && (north || south)) {
+      const anchorX = west ? box.maxX : box.minX;
+      const anchorY = north ? box.maxY : box.minY;
+      const scale = Math.max(
+        Math.abs(pointerX - anchorX) / width,
+        Math.abs(pointerY - anchorY) / height,
+        minimum / width,
+        minimum / height
+      );
+      const nextWidth = width * scale;
+      const nextHeight = height * scale;
+      const minX = west ? anchorX - nextWidth : anchorX;
+      const maxX = west ? anchorX : anchorX + nextWidth;
+      const minY = north ? anchorY - nextHeight : anchorY;
+      const maxY = north ? anchorY : anchorY + nextHeight;
+      return { minX, minY, maxX, maxY, width: nextWidth, height: nextHeight };
     }
+
+    if (west || east) {
+      const anchorX = west ? box.maxX : box.minX;
+      const nextWidth = Math.max(minimum, Math.abs(pointerX - anchorX));
+      const nextHeight = nextWidth / ratio;
+      const centerY = (box.minY + box.maxY) / 2;
+      const minX = west ? anchorX - nextWidth : anchorX;
+      const maxX = west ? anchorX : anchorX + nextWidth;
+      const minY = centerY - nextHeight / 2;
+      const maxY = centerY + nextHeight / 2;
+      return { minX, minY, maxX, maxY, width: nextWidth, height: nextHeight };
+    }
+
+    const anchorY = north ? box.maxY : box.minY;
+    const nextHeight = Math.max(minimum, Math.abs(pointerY - anchorY));
+    const nextWidth = nextHeight * ratio;
+    const centerX = (box.minX + box.maxX) / 2;
+    const minX = centerX - nextWidth / 2;
+    const maxX = centerX + nextWidth / 2;
+    const minY = north ? anchorY - nextHeight : anchorY;
+    const maxY = north ? anchorY : anchorY + nextHeight;
+    return { minX, minY, maxX, maxY, width: nextWidth, height: nextHeight };
   }
-  return null;
+
+  let minX = box.minX;
+  let maxX = box.maxX;
+  let minY = box.minY;
+  let maxY = box.maxY;
+  if (west) minX = Math.min(box.maxX - minimum, pointerX);
+  else if (east) maxX = Math.max(box.minX + minimum, pointerX);
+  if (north) minY = Math.min(box.maxY - minimum, pointerY);
+  else if (south) maxY = Math.max(box.minY + minimum, pointerY);
+  return { minX, minY, maxX, maxY, width: maxX - minX, height: maxY - minY };
 }
 
 export function translateAnnotationItem(

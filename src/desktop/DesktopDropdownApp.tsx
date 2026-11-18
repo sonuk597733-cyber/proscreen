@@ -48,6 +48,7 @@ export const DesktopDropdownApp: React.FC = () => {
     selectedItemId: null,
     activePageIndex: 0,
     boardPageCount: 1,
+    activeTimerCountdownMs: null,
     isRecording: false,
     recordingStatus: 'idle',
     recordingElapsedMs: 0,
@@ -205,7 +206,7 @@ export const DesktopDropdownApp: React.FC = () => {
         hasSelectedObject={Boolean(state.selectedItemId)}
         ghostMode={state.ghostMode}
         presentationMode={state.presentationMode}
-        activeTimerCountdownMs={null}
+        activeTimerCountdownMs={state.activeTimerCountdownMs}
         recordingStatus={state.recordingStatus || (state.isRecording ? 'recording' : 'idle')}
         recordingElapsedMs={state.recordingElapsedMs || 0}
         latestRecording={state.latestRecording || null}
@@ -249,11 +250,11 @@ export const DesktopDropdownApp: React.FC = () => {
         onRedo={(scope) => desktop?.dispatchAction('redo', scope)}
         onToggleGhostMode={() => desktop?.dispatchAction('toggle-ghost-mode')}
         onTogglePresentationMode={() => desktop?.dispatchAction('toggle-presentation-mode')}
-        onToggleTimerEnabled={() => {}}
-        onSetTimerDurationMs={() => {}}
-        onToggleTimerPaused={() => {}}
-        onResetTimer={() => {}}
-        onCancelTimer={() => {}}
+        onToggleTimerEnabled={() => desktop?.dispatchAction('toggle-timer-enabled')}
+        onSetTimerDurationMs={(ms) => desktop?.dispatchAction('set-timer-duration', ms)}
+        onToggleTimerPaused={() => desktop?.dispatchAction('toggle-timer-paused')}
+        onResetTimer={() => desktop?.dispatchAction('reset-timer')}
+        onCancelTimer={() => desktop?.dispatchAction('cancel-timer')}
         onCaptureFull={() => {
           desktop?.dispatchAction('capture-screenshot');
           handleClose();

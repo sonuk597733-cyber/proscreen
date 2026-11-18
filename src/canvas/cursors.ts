@@ -68,6 +68,10 @@ export function getHighContrastCursor(activeTool: string, isPassThrough: boolean
     case 'line':
     case 'rect':
     case 'circle':
+    case 'triangle':
+    case 'diamond':
+    case 'star':
+    case 'heart':
     case 'ellipse':
     case 'filled-rect':
     case 'freehand-shape':

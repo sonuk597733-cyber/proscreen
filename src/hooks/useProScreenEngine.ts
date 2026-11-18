@@ -36,6 +36,7 @@ import {
 import {
   cancelAnnotationTimers,
   clampTimerDurationMs,
+  createDefaultTimerSettings,
   getActiveTimerCountdownMs,
   pauseAnnotationTimers,
   resetAnnotationTimers,
@@ -62,6 +63,7 @@ import {
   hitTestTopAnnotationAtClientPoint,
   itemBoxToViewportBox,
   normalizeCircleEnd,
+  resizeBoundingBoxFromHandle,
   scaleAnnotationItem,
   simplifyAndSmoothPoints,
   snapAnglePoint,
@@ -77,9 +79,11 @@ import {
   saveSessionSnapshot,
   saveSettings,
   saveTabAnnotationState,
+  SETTINGS_KEY,
 } from '../storage/storageAdapter';
 import {
   createDefaultSettings,
+  mergeAndValidateSettings,
   validateImportedAnnotations,
   validateImportedSettingsJson,
 } from '../storage/validation';
@@ -114,6 +118,7 @@ type SelectDragMode =
       itemId: string;
       initialItem: AnnotationItem;
       startClient: Point;
+      startItem: Point;
     }
   | {
       kind: 'resize';
@@ -277,6 +282,15 @@ export function useProScreenEngine(initialTabKey: string) {
   const historyRef = useRef<HistoryState>(history);
   historyRef.current = history;
 
+  const selectShapeForEditing = useCallback((id: string) => {
+    const item = historyRef.current.items.find((candidate) => candidate.id === id);
+    if (!item || item.category !== 'shape') return;
+    setSelectedItemId(id);
+    setSelectedTextId(null);
+    setEditingTextId(null);
+    setActiveToolState('select');
+  }, []);
+
   const isRecording = recordingStatus !== 'idle';
   const recordingSupported = isRecordingApiSupported();
   const supportedRecordingFormats = getSupportedRecordingFormats();
@@ -399,6 +413,19 @@ export function useProScreenEngine(initialTabKey: string) {
     };
   }, [tabKey]);
 
+  // Extension settings are shared by Chrome storage, so mirror visualizer ON/OFF changes
+  // to every open supported ProScreen tab without writing the same update back.
+  useEffect(() => {
+    if (!isExtensionContext() || typeof chrome === 'undefined' || !chrome.storage?.onChanged) return;
+    const onChanged = (changes: { [key: string]: chrome.storage.StorageChange }, areaName: string) => {
+      const nextSettings = changes[SETTINGS_KEY]?.newValue;
+      if (areaName !== 'local' || !nextSettings) return;
+      setSettings(mergeAndValidateSettings(nextSettings));
+    };
+    chrome.storage.onChanged.addListener(onChanged);
+    return () => chrome.storage.onChanged.removeListener(onChanged);
+  }, []);
+
   // Persist tab webpage annotations only once active tab has completed hydration
   useEffect(() => {
     if (!settingsLoaded || hydratedTabKey !== tabKey) return;
@@ -446,7 +473,19 @@ export function useProScreenEngine(initialTabKey: string) {
       setTimerNowMs(now);
       setHistory((prev) => pruneExpiredItems(prev, now));
     }, 200);
-    return () => window.clearInterval(timer);
+    const refreshTimer = () => {
+      if (document.visibilityState !== 'visible') return;
+      const now = Date.now();
+      setTimerNowMs(now);
+      setHistory((prev) => pruneExpiredItems(prev, now));
+    };
+    document.addEventListener('visibilitychange', refreshTimer);
+    window.addEventListener('focus', refreshTimer);
+    return () => {
+      window.clearInterval(timer);
+      document.removeEventListener('visibilitychange', refreshTimer);
+      window.removeEventListener('focus', refreshTimer);
+    };
   }, [history.items, settings.timer?.paused]);
 
   // Fullscreen listener
@@ -634,7 +673,7 @@ export function useProScreenEngine(initialTabKey: string) {
   // Timer Controls
   const toggleTimerEnabled = useCallback(() => {
     updateSettings((prev) => {
-      const timer = prev.timer || { enabled: false, durationMs: 15000, paused: false };
+      const timer = prev.timer || createDefaultTimerSettings();
       const nextEnabled = !timer.enabled;
       return {
         ...prev,
@@ -651,7 +690,7 @@ export function useProScreenEngine(initialTabKey: string) {
     (ms: number) => {
       const clamped = clampTimerDurationMs(ms);
       updateSettings((prev) => {
-        const timer = prev.timer || { enabled: false, durationMs: 15000, paused: false };
+        const timer = prev.timer || createDefaultTimerSettings();
         return {
           ...prev,
           timer: {
@@ -669,7 +708,7 @@ export function useProScreenEngine(initialTabKey: string) {
     const currentPaused = Boolean(settings.timer?.paused);
     const nextPaused = !currentPaused;
     updateSettings((prev) => {
-      const timer = prev.timer || { enabled: false, durationMs: 15000, paused: false };
+      const timer = prev.timer || createDefaultTimerSettings();
       return {
         ...prev,
         timer: { ...timer, paused: nextPaused },
@@ -693,12 +732,11 @@ export function useProScreenEngine(initialTabKey: string) {
       )
     );
     setTimerNowMs(now);
-    showBanner('Active annotation timers reset', 'info');
-  }, [settings.timer?.durationMs, settings.timer?.paused, showBanner]);
+  }, [settings.timer?.durationMs, settings.timer?.paused]);
 
   const cancelTimer = useCallback(() => {
     updateSettings((prev) => {
-      const timer = prev.timer || { enabled: false, durationMs: 15000, paused: false };
+      const timer = prev.timer || createDefaultTimerSettings();
       return {
         ...prev,
         timer: {
@@ -709,8 +747,7 @@ export function useProScreenEngine(initialTabKey: string) {
       };
     });
     setHistory((prev) => mapItemsWithoutHistory(prev, cancelAnnotationTimers));
-    showBanner('Annotation timer turned off — existing ink will stay on screen.', 'info');
-  }, [showBanner, updateSettings]);
+  }, [updateSettings]);
 
   // Video Screen Recorder setup & controls
   const settingsRef = useRef(settings);
@@ -1232,6 +1269,7 @@ export function useProScreenEngine(initialTabKey: string) {
             itemId: hit.id,
             initialItem: hit,
             startClient: pt,
+            startItem: clientToItemPoint(pt, hit.coordSpace ?? 'viewport', scroll),
           };
           draftItemRef.current = hit;
         } else {
@@ -1315,34 +1353,36 @@ export function useProScreenEngine(initialTabKey: string) {
 
       if (activeTool === 'select' && selectDragRef.current) {
         const drag = selectDragRef.current;
-        const dx = pt.x - drag.startClient.x;
-        const dy = pt.y - drag.startClient.y;
         if (drag.kind === 'move') {
+          const itemPoint = clientToItemPoint(
+            pt,
+            drag.initialItem.coordSpace ?? 'viewport',
+            scroll
+          );
+          const dx = itemPoint.x - drag.startItem.x;
+          const dy = itemPoint.y - drag.startItem.y;
           draftItemRef.current = translateAnnotationItem(drag.initialItem, dx, dy);
         } else {
           const b = drag.initialBox;
-          let minX = b.minX;
-          let minY = b.minY;
-          let maxX = b.maxX;
-          let maxY = b.maxY;
-          if (drag.handle === 'nw' || drag.handle === 'sw') {
-            minX = Math.min(b.maxX - 16, b.minX + dx);
-          } else {
-            maxX = Math.max(b.minX + 16, b.maxX + dx);
-          }
-          if (drag.handle === 'nw' || drag.handle === 'ne') {
-            minY = Math.min(b.maxY - 16, b.minY + dy);
-          } else {
-            maxY = Math.max(b.minY + 16, b.maxY + dy);
-          }
-          draftItemRef.current = scaleAnnotationItem(drag.initialItem, b, {
-            minX,
-            minY,
-            maxX,
-            maxY,
-            width: maxX - minX,
-            height: maxY - minY,
-          });
+          const itemPoint = clientToItemPoint(
+            pt,
+            drag.initialItem.coordSpace ?? 'viewport',
+            scroll
+          );
+          const shapeType = drag.initialItem.category === 'shape' ? drag.initialItem.shapeType : null;
+          const preserveAspectRatio =
+            shapeType === 'circle' ||
+            shapeType === 'triangle' ||
+            shapeType === 'diamond' ||
+            shapeType === 'star' ||
+            shapeType === 'heart';
+          const nextBox = resizeBoundingBoxFromHandle(
+            b,
+            drag.handle,
+            itemPoint,
+            preserveAspectRatio
+          );
+          draftItemRef.current = scaleAnnotationItem(drag.initialItem, b, nextBox);
         }
         return;
       }
@@ -1385,7 +1425,13 @@ export function useProScreenEngine(initialTabKey: string) {
           return;
         }
         let nextEnd = itemPt;
-        if (draft.shapeType === 'circle') {
+        if (
+          draft.shapeType === 'circle' ||
+          draft.shapeType === 'triangle' ||
+          draft.shapeType === 'diamond' ||
+          draft.shapeType === 'star' ||
+          draft.shapeType === 'heart'
+        ) {
           nextEnd = normalizeCircleEnd(draft.start, itemPt);
         } else if (
           shiftKey &&
@@ -1409,7 +1455,7 @@ export function useProScreenEngine(initialTabKey: string) {
       const drag = selectDragRef.current;
       selectDragRef.current = null;
       draftItemRef.current = null;
-      if (transformed && Math.hypot(0, 0) === 0) {
+      if (transformed) {
         // Only commit if pointer moved >= 2px
         const movedDist = Math.hypot(
           pointerPosRef.current.x - drag.startClient.x,
@@ -2001,6 +2047,7 @@ export function useProScreenEngine(initialTabKey: string) {
     setSelectedTextId,
     selectedItemId,
     setSelectedItemId,
+    selectShapeForEditing,
     deleteSelectedObject,
     textItems,
     savedSessions,

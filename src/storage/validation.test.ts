@@ -62,9 +62,43 @@ test('validateImportedAnnotations accepts valid bundle and rejects malformed pay
   assert.equal(badColor.ok, false);
 });
 
+test('validateImportedAnnotations preserves all eight signature shapes', () => {
+  const shapeTypes = ['line', 'arrow', 'rect', 'circle', 'triangle', 'diamond', 'star', 'heart'];
+  const result = validateImportedAnnotations(
+    JSON.stringify({
+      schema: 'proscreen-annotations-v1',
+      exportedAt: 1700000000000,
+      tabKey: 'tab:shapes',
+      boardMode: 'whiteboard',
+      items: shapeTypes.map((shapeType, index) => ({
+        id: `shape-${index}`,
+        category: 'shape',
+        shapeType,
+        start: { x: 10, y: 10 },
+        end: { x: 100, y: 100 },
+        color: '#2563EB',
+        thickness: 4,
+        opacity: 1,
+        createdAt: 1700000000000,
+      })),
+    })
+  );
+
+  assert.equal(result.ok, true);
+  assert.deepEqual(
+    result.data?.items.map((item) => (item.category === 'shape' ? item.shapeType : null)),
+    shapeTypes
+  );
+});
+
 test('settings validation merges safely and rejects invalid version', () => {
   const defaults = createDefaultSettings();
   assert.equal(defaults.timer.enabled, false);
+  assert.equal(defaults.timer.showInRecording, false);
+  assert.equal(defaults.keyboardVisualizer.enabled, false);
+  assert.equal(defaults.keyboardVisualizer.position, 'bottom-center');
+  assert.equal(defaults.keyboardVisualizer.showInRecording, true);
+  assert.equal('showToolIndicator' in defaults.recording, false);
   assert.equal(defaults.creator.fadingInkEnabled, false);
   assert.equal(defaults.showTooltips, true);
   const merged = mergeAndValidateSettings({

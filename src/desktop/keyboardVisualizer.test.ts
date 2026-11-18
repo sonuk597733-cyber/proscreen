@@ -4,7 +4,9 @@ import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import {
   getKeyboardShortcutEventFromInput,
+  getKeyboardShortcutEventFromDomEvent,
   getKeyboardVisualizerButtonModel,
+  isEditableKeyboardTarget,
   KeyboardVisualizerController,
   parseKeyboardShortcutEvent,
   TimedShortcutNotificationBuffer,
@@ -19,7 +21,7 @@ import {
   KEYBOARD_VISUALIZER_STOP_CHANNEL,
   registerKeyboardVisualizerIpc,
 } from './keyboardVisualizerIpc';
-import { KeyboardShortcutCards } from './KeyboardVisualizerOverlay';
+import { KeyboardShortcutCards, TimerHud } from './KeyboardVisualizerOverlay';
 
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -174,10 +176,10 @@ test('KEYBOARD-04: toolbar model clearly limits detection to focused ProScreen w
   assert.equal(on.disabled, false);
   assert.equal(unavailable.disabled, true);
   assert.equal(busy.disabled, true);
-  assert.match(on.description, /while a ProScreen window is focused/);
+  assert.match(on.description, /ProScreen app window or supported ProScreen tab is active/);
   assert.match(on.description, /Other apps are not observed/);
-  assert.match(on.description, /Ordinary typing is ignored/);
-  assert.match(unavailable.description, /ProScreen desktop app only/);
+  assert.match(on.description, /Text fields and ordinary typing are ignored/);
+  assert.match(unavailable.description, /desktop and supported extension tabs/);
 });
 
 test('KEYBOARD-05: overlay cards identify app-window scope and do not capture pointer input', () => {
@@ -191,9 +193,83 @@ test('KEYBOARD-05: overlay cards identify app-window scope and do not capture po
   );
   assert.match(html, /keyboard-visualizer-overlay/);
   assert.match(html, /keyboard-shortcut-notification/);
-  assert.match(html, /Ctrl\+Shift\+S/);
-  assert.match(html, /ProScreen window was focused/);
+  assert.match(html, />Ctrl</);
+  assert.match(html, />Shift</);
+  assert.match(html, /Recent shortcuts detected only in ProScreen/);
   assert.match(html, /pointer-events-none/);
+  assert.match(html, /bg-\[#f2f1ee\]/);
+  assert.match(html, /border-b-\[3px\]/);
+  assert.doesNotMatch(html, /w-\[min\(25rem/);
+});
+
+test('KEYBOARD-09: ProScreen tab events stay scoped, skip editable fields, and leave keys untouched', () => {
+  class FakeElement {
+    constructor(private readonly editable: boolean) {}
+    closest() { return this.editable ? this : null; }
+  }
+  const originalElement = globalThis.Element;
+  Object.defineProperty(globalThis, 'Element', { configurable: true, value: FakeElement });
+  try {
+    const inputTarget = new FakeElement(true) as unknown as EventTarget;
+    const pageTarget = new FakeElement(false) as unknown as EventTarget;
+    assert.equal(isEditableKeyboardTarget(inputTarget), true);
+    assert.equal(
+      getKeyboardShortcutEventFromDomEvent({
+        type: 'keydown', key: 'a', ctrlKey: true, altKey: false, shiftKey: false,
+        metaKey: false, repeat: false, target: inputTarget,
+      }),
+      null
+    );
+    assert.deepEqual(
+      getKeyboardShortcutEventFromDomEvent({
+        type: 'keydown', key: 'a', ctrlKey: true, altKey: false, shiftKey: false,
+        metaKey: false, repeat: false, target: pageTarget,
+      }),
+      { type: 'shortcut', label: 'Ctrl+A', scope: 'proscreen-tab' }
+    );
+    assert.equal(
+      getKeyboardShortcutEventFromDomEvent({
+        type: 'keydown', key: 'a', ctrlKey: false, altKey: false, shiftKey: false,
+        metaKey: false, repeat: false, target: pageTarget,
+      }),
+      null
+    );
+    assert.equal(
+      getKeyboardShortcutEventFromDomEvent({
+        type: 'keydown', key: 'a', ctrlKey: true, altKey: false, shiftKey: false,
+        metaKey: false, repeat: true, target: pageTarget,
+      }),
+      null
+    );
+    assert.deepEqual(
+      getKeyboardShortcutEventFromInput(input({ key: 'F24', control: false, alt: false, shift: true })),
+      { type: 'shortcut', label: 'Shift+F24', scope: 'application-window' }
+    );
+  } finally {
+    if (originalElement) Object.defineProperty(globalThis, 'Element', { configurable: true, value: originalElement });
+    else delete (globalThis as { Element?: unknown }).Element;
+  }
+});
+
+test('KEYBOARD-10: timer progress is visible only when configured and recording; tool status has no floating HUD', () => {
+  const timer = renderToStaticMarkup(React.createElement(TimerHud, {
+    enabled: true, paused: false, durationMs: 15_000, countdownMs: 6_000,
+    showInRecording: true, recording: true,
+  }));
+  assert.doesNotMatch(timer, />6s</);
+  assert.doesNotMatch(timer, /Ink auto-clear armed/);
+  assert.match(timer, /timer-hud/);
+  const hiddenTimer = renderToStaticMarkup(React.createElement(TimerHud, {
+    enabled: true, paused: false, durationMs: 15_000, countdownMs: null,
+    showInRecording: false, recording: true,
+  }));
+  assert.equal(hiddenTimer, '');
+  const nonRecordingTimer = renderToStaticMarkup(React.createElement(TimerHud, {
+    enabled: true, paused: false, durationMs: 15_000, countdownMs: 6_000,
+    showInRecording: true, recording: false,
+  }));
+  assert.equal(nonRecordingTimer, '');
+  assert.doesNotMatch(timer, /recording-tool-hud|active tool:/i);
 });
 
 test('KEYBOARD-06: notification buffer keeps five items, resets inactivity timer, and clears immediately', async () => {

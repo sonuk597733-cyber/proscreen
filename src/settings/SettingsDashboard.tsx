@@ -147,7 +147,7 @@ export const SettingsDashboard: React.FC<SettingsDashboardProps> = ({
         </div>
 
         <div className="hidden md:block pt-4 border-t border-slate-500/20 text-[11px] text-slate-400 px-2">
-          <div>ProScreen v1.0.0</div>
+          <div>ProScreen v3.0.0</div>
           <div className="mt-0.5">
             {isDesktopApp ? 'Windows Desktop · Local Storage' : 'Manifest V3 · Local Storage'}
           </div>
@@ -626,6 +626,29 @@ export const SettingsDashboard: React.FC<SettingsDashboardProps> = ({
                     </label>
                   </div>
 
+                  <div className="pt-3 border-t border-slate-500/20">
+                    <label className="flex items-center justify-between gap-3 text-xs">
+                      <span className="max-w-xl">
+                        <span className="block font-medium">Show timer progress in recordings</span>
+                        <span className="block mt-1 text-slate-400">
+                          Shows a small progress ring while timed ink is active. Nothing floats on screen while you are not recording.
+                        </span>
+                      </span>
+                      <input
+                        type="checkbox"
+                        aria-label="Show timer progress in recordings"
+                        checked={settings.timer.showInRecording}
+                        onChange={(e) =>
+                          onUpdateSettings((p) => ({
+                            ...p,
+                            timer: { ...p.timer, showInRecording: e.target.checked },
+                          }))
+                        }
+                        className="w-4 h-4 accent-emerald-500 cursor-pointer"
+                      />
+                    </label>
+                  </div>
+
                   <div className="flex items-center justify-between pt-3 border-t border-slate-500/20">
                     <div>
                       <div className="text-xs font-semibold">
@@ -649,6 +672,82 @@ export const SettingsDashboard: React.FC<SettingsDashboardProps> = ({
                       className="w-4 h-4 accent-blue-600 cursor-pointer"
                     />
                   </div>
+                </div>
+              </div>
+
+              <div className={`p-4 rounded-xl border space-y-4 ${cardClass}`}>
+                <div className="flex items-center justify-between gap-4">
+                  <div>
+                    <h4 className="text-xs font-semibold">Keyboard Shortcut Visualizer</h4>
+                    <p className="mt-1 max-w-xl text-xs text-slate-400">
+                      Off by default. When enabled, ProScreen shows modified shortcuts only while a ProScreen desktop window or supported extension tab is active. Other apps are never observed, and keys are not saved.
+                    </p>
+                  </div>
+                  <input
+                    type="checkbox"
+                    aria-label="Enable Keyboard Shortcut Visualizer"
+                    checked={settings.keyboardVisualizer.enabled}
+                    onChange={(e) =>
+                      onUpdateSettings((p) => ({
+                        ...p,
+                        keyboardVisualizer: { ...p.keyboardVisualizer, enabled: e.target.checked },
+                      }))
+                    }
+                    className="w-4 h-4 accent-sky-500 cursor-pointer"
+                  />
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <label className="space-y-1 text-xs">
+                    <span className="block text-slate-400">Notification position</span>
+                    <select
+                      aria-label="Keyboard Visualizer Position"
+                      value={settings.keyboardVisualizer.position}
+                      onChange={(e) =>
+                        onUpdateSettings((p) => ({
+                          ...p,
+                          keyboardVisualizer: {
+                            ...p.keyboardVisualizer,
+                            position: e.target.value as UserSettings['keyboardVisualizer']['position'],
+                          },
+                        }))
+                      }
+                      className={`w-full px-2.5 py-2 rounded-lg border ${inputClass}`}
+                    >
+                      <option value="bottom-left">Bottom left</option>
+                      <option value="bottom-center">Bottom center</option>
+                      <option value="bottom-right">Bottom right</option>
+                    </select>
+                  </label>
+                  <label className="flex items-center justify-between gap-3 text-xs">
+                    <span>Animate notifications</span>
+                    <input
+                      type="checkbox"
+                      aria-label="Animate shortcut notifications"
+                      checked={settings.keyboardVisualizer.animate}
+                      onChange={(e) =>
+                        onUpdateSettings((p) => ({
+                          ...p,
+                          keyboardVisualizer: { ...p.keyboardVisualizer, animate: e.target.checked },
+                        }))
+                      }
+                      className="w-4 h-4 accent-sky-500 cursor-pointer"
+                    />
+                  </label>
+                  <label className="flex items-center justify-between gap-3 text-xs">
+                    <span>Show shortcuts in recordings</span>
+                    <input
+                      type="checkbox"
+                      aria-label="Show shortcuts in recordings"
+                      checked={settings.keyboardVisualizer.showInRecording}
+                      onChange={(e) =>
+                        onUpdateSettings((p) => ({
+                          ...p,
+                          keyboardVisualizer: { ...p.keyboardVisualizer, showInRecording: e.target.checked },
+                        }))
+                      }
+                      className="w-4 h-4 accent-sky-500 cursor-pointer"
+                    />
+                  </label>
                 </div>
               </div>
             </div>
@@ -1105,7 +1204,7 @@ export const SettingsDashboard: React.FC<SettingsDashboardProps> = ({
             <div className="space-y-4 text-xs leading-relaxed">
               <div className={`p-4 rounded-xl border space-y-2 ${cardClass}`}>
                 <h4 className="font-semibold text-sm">
-                  {isDesktopApp ? 'ProScreen Desktop v1.0.0' : 'ProScreen v1.0.0'}
+                  {isDesktopApp ? 'ProScreen Desktop v3.0.0' : 'ProScreen v3.0.0'}
                 </h4>
                 <p className="text-slate-400">
                   {isDesktopApp

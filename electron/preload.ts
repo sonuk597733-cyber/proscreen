@@ -12,6 +12,30 @@ import { createKeyboardVisualizerBridge } from '../src/desktop/keyboardVisualize
 
 const keyboardVisualizerBridge = createKeyboardVisualizerBridge(ipcRenderer);
 
+function isEditableKeyboardTarget(target: EventTarget | null): boolean {
+  if (typeof Element === 'undefined' || !(target instanceof Element)) return false;
+  return Boolean(
+    target.closest(
+      'input, textarea, select, [contenteditable=""], [contenteditable="true"], [role="textbox"]'
+    )
+  );
+}
+
+let lastKeyboardTargetWasEditable: boolean | null = null;
+function syncKeyboardTargetFocus(target: EventTarget | null): void {
+  const isEditable = isEditableKeyboardTarget(target);
+  if (lastKeyboardTargetWasEditable === isEditable) return;
+  lastKeyboardTargetWasEditable = isEditable;
+  ipcRenderer.send('desktop:keyboard-sensitive-focus', isEditable);
+}
+
+document.addEventListener('focusin', (event) => syncKeyboardTargetFocus(event.target), true);
+document.addEventListener(
+  'focusout',
+  () => window.setTimeout(() => syncKeyboardTargetFocus(document.activeElement), 0),
+  true
+);
+
 const desktopAPI: ProScreenDesktopAPI = {
   isDesktop: true,
   platform: process.platform as 'win32' | 'darwin' | 'linux',

@@ -12,6 +12,10 @@ export type ToolType =
   | 'filled-rect'
   | 'circle'
   | 'ellipse'
+  | 'triangle'
+  | 'diamond'
+  | 'star'
+  | 'heart'
   | 'freehand-shape'
   | 'text'
   | 'laser';
@@ -29,6 +33,10 @@ export function isDrawingTool(tool: ToolType | string): boolean {
     tool === 'rect' ||
     tool === 'filled-rect' ||
     tool === 'circle' ||
+    tool === 'triangle' ||
+    tool === 'diamond' ||
+    tool === 'star' ||
+    tool === 'heart' ||
     tool === 'ellipse' ||
     tool === 'freehand-shape' ||
     tool === 'text' ||
@@ -48,6 +56,10 @@ export type ShapeToolType =
   | 'filled-rect'
   | 'circle'
   | 'ellipse'
+  | 'triangle'
+  | 'diamond'
+  | 'star'
+  | 'heart'
   | 'freehand-shape';
 
 export type BoardMode =

@@ -39,7 +39,7 @@ test('Timer defaults to OFF and annotations stamped with timer OFF never expire'
 
 test('Timer ON schedules only newly created annotations and expires them at deadline', () => {
   const oldPermanent = stampAnnotationWithTimer(makeStroke('old', 500), createDefaultTimerSettings(), 500);
-  const timer = { enabled: true, durationMs: 5000, paused: false };
+  const timer = { enabled: true, durationMs: 5000, paused: false, showInRecording: false };
   const timed = stampAnnotationWithTimer(makeStroke('new', 1000), timer, 1000);
 
   assert.equal(timed.expiresAt, 6000);
@@ -49,7 +49,7 @@ test('Timer ON schedules only newly created annotations and expires them at dead
 });
 
 test('Pause freezes remaining ms and resume shifts expiresAt cleanly', () => {
-  const timer = { enabled: true, durationMs: 10_000, paused: false };
+  const timer = { enabled: true, durationMs: 10_000, paused: false, showInRecording: false };
   const s = stampAnnotationWithTimer(makeStroke('p1', 1000), timer, 1000);
 
   const paused = pauseAnnotationTimers([s], 4000);
@@ -65,7 +65,11 @@ test('Pause freezes remaining ms and resume shifts expiresAt cleanly', () => {
 
 test('Reset updates timed items only; Cancel disarms pending expiration without deleting items', () => {
   const perm = makeStroke('perm', 100);
-  const timed = stampAnnotationWithTimer(makeStroke('timed', 1000), { enabled: true, durationMs: 5000, paused: false }, 1000);
+  const timed = stampAnnotationWithTimer(
+    makeStroke('timed', 1000),
+    { enabled: true, durationMs: 5000, paused: false, showInRecording: false },
+    1000
+  );
 
   const reset = resetAnnotationTimers([perm, timed], 12_000, false, 3000);
   assert.equal(reset[0].expiresAt, undefined);
@@ -77,7 +81,7 @@ test('Reset updates timed items only; Cancel disarms pending expiration without 
 });
 
 test('Countdown formatting & active countdown calculation work as expected', () => {
-  const timer = { enabled: true, durationMs: 15_000, paused: false };
+  const timer = { enabled: true, durationMs: 15_000, paused: false, showInRecording: false };
   const s1 = stampAnnotationWithTimer(makeStroke('s1', 1000), timer, 1000);
   const s2 = stampAnnotationWithTimer(makeStroke('s2', 5000), timer, 5000);
   const rem = getActiveTimerCountdownMs([s1, s2], timer, 10_000);

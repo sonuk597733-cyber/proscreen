@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { PopoutId, PopoutPosition } from '../toolbar/ToolbarPopouts';
+import { isPointerInsidePopoutBoundary, shouldDismissPopoutForPointer } from './popoutInteraction';
 
 // Standalone mathematical model matching computePopoutCoords & DesktopToolbarApp bounds logic
 function computeTestPopoutCoords(params: {
@@ -973,5 +974,29 @@ test('DROPDOWN-32: Restored Recorder Popout structure, width (270px), and 4 reco
   assert.equal(currentMode, 'area');
   assert.equal(activePopout, null, 'Popout closes when area mode launches selector overlay');
   assert.equal(areaSelectionTriggered, true);
+});
+
+test('DROPDOWN-33: Shared native hover boundary keeps the popout open between toolbar and menu', () => {
+  const toolbar = { x: 100, y: 80, width: 44, height: 640 };
+  const rightPopout = { x: 144, y: 80, width: 320, height: 540 };
+  const leftPopout = { x: -220, y: 80, width: 320, height: 540 };
+
+  assert.equal(isPointerInsidePopoutBoundary({ x: 120, y: 120 }, toolbar, rightPopout), true);
+  assert.equal(isPointerInsidePopoutBoundary({ x: 160, y: 120 }, toolbar, rightPopout), true);
+  assert.equal(
+    isPointerInsidePopoutBoundary({ x: 142, y: 120 }, toolbar, rightPopout),
+    true,
+    'The small window seam remains part of the interaction boundary'
+  );
+  assert.equal(isPointerInsidePopoutBoundary({ x: 50, y: 750 }, toolbar, rightPopout), false);
+  assert.equal(isPointerInsidePopoutBoundary({ x: 30, y: 120 }, toolbar, leftPopout), true);
+  assert.equal(isPointerInsidePopoutBoundary({ x: -210, y: 120 }, toolbar, leftPopout), true);
+});
+
+test('DROPDOWN-34: Outside pointer closes only after a short grace period', () => {
+  assert.equal(shouldDismissPopoutForPointer({ pointerInside: true, outsideSince: 0, now: 500 }), false);
+  assert.equal(shouldDismissPopoutForPointer({ pointerInside: false, outsideSince: null, now: 500 }), false);
+  assert.equal(shouldDismissPopoutForPointer({ pointerInside: false, outsideSince: 500, now: 739 }), false);
+  assert.equal(shouldDismissPopoutForPointer({ pointerInside: false, outsideSince: 500, now: 740 }), true);
 });
 

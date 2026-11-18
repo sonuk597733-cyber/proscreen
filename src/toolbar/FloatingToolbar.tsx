@@ -1,16 +1,13 @@
 import React, { useEffect, useRef, useState } from 'react';
 import {
-  ArrowLeftRight,
   ArrowUpRight,
   Camera,
-  Circle,
   Eraser,
   Eye,
   EyeOff,
   GripHorizontal,
   Highlighter,
   Keyboard,
-  Minus,
   MousePointer,
   Move,
   PenTool,
@@ -18,9 +15,6 @@ import {
   Redo2,
   Settings,
   Sparkles,
-  Spline,
-  Square,
-  SquareDot,
   Timer,
   Trash2,
   Type,
@@ -40,6 +34,7 @@ import { isShapeTool } from '../tools/toolDefinitions';
 import { hexToRgb } from '../utils/color';
 import { getKeyboardVisualizerButtonModel } from '../desktop/keyboardVisualizer';
 import { PopoutId, PopoutPosition, ToolbarPopouts } from './ToolbarPopouts';
+import { ShapeIcon } from './ShapeIcon';
 
 interface FloatingToolbarProps {
   activeTool: ToolType;
@@ -726,13 +721,7 @@ export const FloatingToolbar: React.FC<FloatingToolbarProps> = ({
   };
 
   const renderShapeIcon = (shape: ShapeToolType) => {
-    if (shape === 'line') return <Minus className={`${iconDim} -rotate-45`} strokeWidth={iconStroke} />;
-    if (shape === 'arrow') return <ArrowUpRight className={iconDim} strokeWidth={iconStroke} />;
-    if (shape === 'double-arrow') return <ArrowLeftRight className={iconDim} strokeWidth={iconStroke} />;
-    if (shape === 'filled-rect') return <SquareDot className={iconDim} strokeWidth={iconStroke} />;
-    if (shape === 'circle' || shape === 'ellipse') return <Circle className={iconDim} strokeWidth={iconStroke} />;
-    if (shape === 'freehand-shape') return <Spline className={iconDim} strokeWidth={iconStroke} />;
-    return <Square className={iconDim} strokeWidth={iconStroke} />;
+    return <ShapeIcon shape={shape} className={iconDim} strokeWidth={iconStroke} />;
   };
 
   const shapeMenuActive = isShapeTool(activeTool);
@@ -816,7 +805,7 @@ export const FloatingToolbar: React.FC<FloatingToolbarProps> = ({
         }
         className={`w-[34px] flex flex-col items-center px-[3px] py-[4px] rounded-[4px] border ${isDesktopToolbarWindow ? '' : 'backdrop-blur-xl transition-colors duration-150'} overflow-y-auto pointer-events-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden ${surfaceClasses}`}
       >
-        {/* 1. Drag Handle (Dark Circular Cap inspired by Epic Pen handle) */}
+        {/* 1. Original Drag Handle (Dark Circular Cap inspired by Epic Pen handle) */}
         <button
           type="button"
           data-testid="toolbar-drag-handle"
@@ -879,7 +868,7 @@ export const FloatingToolbar: React.FC<FloatingToolbarProps> = ({
             <button
               type="button"
               data-testid="toolbar-keyboard-visualizer-btn"
-              aria-label="Keyboard shortcut visualizer, ProScreen windows only"
+              aria-label="Keyboard shortcut visualizer, ProScreen only"
               aria-pressed={buttonModel.pressed}
               aria-description={buttonModel.description}
               title={buttonModel.description}

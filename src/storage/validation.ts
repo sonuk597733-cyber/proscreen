@@ -79,6 +79,12 @@ export function createDefaultSettings(): UserSettings {
       annotationsVisible: true,
     },
     timer: createDefaultTimerSettings(),
+    keyboardVisualizer: {
+      enabled: false,
+      position: 'bottom-center',
+      animate: true,
+      showInRecording: true,
+    },
     recording: {
       mode: 'tab',
       quality: 'high',
@@ -116,6 +122,10 @@ const VALID_SHAPES = new Set<ShapeToolType>([
   'filled-rect',
   'circle',
   'ellipse',
+  'triangle',
+  'diamond',
+  'star',
+  'heart',
   'freehand-shape',
 ]);
 const VALID_PEN_STYLES = new Set<PenStyle>(['solid', 'calligraphy', 'dashed']);
@@ -449,6 +459,30 @@ export function mergeAndValidateSettings(raw: unknown): UserSettings {
           : defaults.timer.durationMs,
       paused:
         typeof obj.timer?.paused === 'boolean' ? obj.timer.paused : defaults.timer.paused,
+      showInRecording:
+        typeof obj.timer?.showInRecording === 'boolean'
+          ? obj.timer.showInRecording
+          : defaults.timer.showInRecording,
+    },
+    keyboardVisualizer: {
+      enabled:
+        typeof obj.keyboardVisualizer?.enabled === 'boolean'
+          ? obj.keyboardVisualizer.enabled
+          : defaults.keyboardVisualizer.enabled,
+      position:
+        obj.keyboardVisualizer?.position === 'bottom-left' ||
+        obj.keyboardVisualizer?.position === 'bottom-center' ||
+        obj.keyboardVisualizer?.position === 'bottom-right'
+          ? obj.keyboardVisualizer.position
+          : defaults.keyboardVisualizer.position,
+      animate:
+        typeof obj.keyboardVisualizer?.animate === 'boolean'
+          ? obj.keyboardVisualizer.animate
+          : defaults.keyboardVisualizer.animate,
+      showInRecording:
+        typeof obj.keyboardVisualizer?.showInRecording === 'boolean'
+          ? obj.keyboardVisualizer.showInRecording
+          : defaults.keyboardVisualizer.showInRecording,
     },
     recording: {
       mode:

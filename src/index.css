@@ -1,6 +1,37 @@
 @import "tailwindcss";
 @custom-variant dark (&:where(.dark, .dark *));
 
+:root {
+  --proscreen-bg-primary: #090a0d;
+  --proscreen-bg-secondary: #111318;
+  --proscreen-surface-card: #171a20;
+  --proscreen-surface-raised: #20242c;
+  --proscreen-text-primary: #f5f6f8;
+  --proscreen-text-secondary: #a4a8b2;
+  --proscreen-border-subtle: rgb(255 255 255 / 12%);
+  --proscreen-gradient-premium: linear-gradient(125deg, rgb(52 211 153 / 70%), rgb(139 92 246 / 55%) 52%, rgb(251 113 133 / 45%));
+  --proscreen-motion-fast: 150ms;
+  --proscreen-motion-enter: 180ms;
+  --proscreen-radius-card: 14px;
+}
+
+.proscreen-premium-control {
+  transition: color var(--proscreen-motion-fast) ease, background-color var(--proscreen-motion-fast) ease,
+    border-color var(--proscreen-motion-fast) ease, box-shadow var(--proscreen-motion-fast) ease,
+    transform var(--proscreen-motion-fast) ease;
+}
+
+.proscreen-premium-control:focus-visible {
+  outline: 2px solid rgb(110 231 183 / 75%);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .proscreen-premium-control {
+    transition-duration: 0.01ms;
+  }
+}
+
 @layer base {
   body {
     font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
@@ -235,4 +266,40 @@
 
 .animate-fadeIn {
   animation: fadeIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes proscreen-shortcut-enter {
+  from { opacity: 0; transform: translateY(8px) scale(0.985); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes proscreen-shortcut-exit {
+  from { opacity: 1; transform: translateY(0) scale(1); }
+  to { opacity: 0; transform: translateY(5px) scale(0.99); }
+}
+
+.proscreen-shortcut-enter {
+  animation: proscreen-shortcut-enter var(--proscreen-motion-enter) cubic-bezier(.2,.75,.25,1) both;
+}
+
+.proscreen-shortcut-exit {
+  animation: proscreen-shortcut-exit 150ms ease-in both;
+}
+
+@keyframes proscreen-keycap-enter {
+  0% { opacity: 0; transform: translateY(5px) scale(.96); }
+  65% { opacity: 1; transform: translateY(-1px) scale(1.015); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.proscreen-keycap-enter {
+  animation: proscreen-keycap-enter 220ms cubic-bezier(.2,.75,.25,1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .proscreen-shortcut-enter,
+  .proscreen-shortcut-exit,
+  .proscreen-keycap-enter {
+    animation-duration: 0.01ms;
+  }
 }

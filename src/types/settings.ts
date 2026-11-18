@@ -34,6 +34,16 @@ export interface TimerSettings {
   enabled: boolean;
   durationMs: number;
   paused: boolean;
+  showInRecording: boolean;
+}
+
+export type KeyboardVisualizerPosition = 'bottom-left' | 'bottom-center' | 'bottom-right';
+
+export interface KeyboardVisualizerSettings {
+  enabled: boolean;
+  position: KeyboardVisualizerPosition;
+  animate: boolean;
+  showInRecording: boolean;
 }
 
 export interface RecordingSettings {
@@ -140,6 +150,7 @@ export interface UserSettings {
   text: TextSettings;
   creator: CreatorSettings;
   timer: TimerSettings;
+  keyboardVisualizer: KeyboardVisualizerSettings;
   recording: RecordingSettings;
   exportPrefs: ExportPreferences;
   recentColors: string[];

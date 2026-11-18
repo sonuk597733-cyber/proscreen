@@ -7,7 +7,7 @@ import {
   sanitizeSavedSessions,
 } from './validation';
 
-const SETTINGS_KEY = 'proscreen_settings_v1';
+export const SETTINGS_KEY = 'proscreen_settings_v1';
 const SESSIONS_KEY = 'proscreen_saved_sessions_v1';
 const TAB_STATE_PREFIX = 'proscreen_tab_state_v1:';
 

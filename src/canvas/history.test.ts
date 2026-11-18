@@ -9,8 +9,15 @@ import {
   pruneExpiredItems,
   redoHistory,
   removeAnnotationItems,
+  updateAnnotationItem,
   undoHistory,
 } from './history';
+import {
+  getAnnotationBoundingBox,
+  resizeBoundingBoxFromHandle,
+  scaleAnnotationItem,
+  translateAnnotationItem,
+} from './geometry';
 import { ShapeAnnotation, StrokeAnnotation } from '../types/annotation';
 
 const sampleStroke = (id: string, fadeDurationMs?: number): StrokeAnnotation => ({
@@ -74,6 +81,63 @@ test('separate stroke and shape undo/redo scopes operate independently', () => {
   state = redoHistory(state, 'shape');
   assert.equal(state.items.length, 3);
   assert.ok(state.items.some((i) => i.id === 'sh1'));
+});
+
+test('shape move and resize updates preserve full annotation data through undo and redo', () => {
+  const original = sampleShape('editable-heart');
+  const heart: ShapeAnnotation = { ...original, shapeType: 'heart', fillColor: '#F472B6', fillOpacity: 0.2 };
+  let state = addAnnotationItem(createHistoryState(), heart);
+  const transformed: ShapeAnnotation = {
+    ...heart,
+    start: { x: 30, y: 35 },
+    end: { x: 130, y: 135 },
+  };
+  state = updateAnnotationItem(state, transformed);
+  assert.deepEqual(state.items[0], transformed);
+
+  state = undoHistory(state, 'shape');
+  assert.deepEqual(state.items[0], heart);
+  state = redoHistory(state, 'shape');
+  assert.deepEqual(state.items[0], transformed);
+});
+
+test('shape draw, move, and resize each create one undoable shape-history step', () => {
+  const heart: ShapeAnnotation = {
+    ...sampleShape('heart-edit-sequence'),
+    shapeType: 'heart',
+    start: { x: 10, y: 20 },
+    end: { x: 110, y: 120 },
+    fillOpacity: 0,
+  };
+  let state = addAnnotationItem(createHistoryState(), heart);
+
+  state = undoHistory(state, 'shape');
+  assert.equal(state.items.length, 0, 'drawing can be undone');
+  state = redoHistory(state, 'shape');
+  assert.deepEqual(state.items[0], heart, 'drawing can be redone');
+
+  const moved = translateAnnotationItem(heart, 25, 18) as ShapeAnnotation;
+  state = updateAnnotationItem(state, moved);
+  assert.deepEqual(state.items[0], moved);
+  state = undoHistory(state, 'shape');
+  assert.deepEqual(state.items[0], heart, 'move undo restores the original position');
+  state = redoHistory(state, 'shape');
+  assert.deepEqual(state.items[0], moved, 'move redo restores the moved position');
+
+  const box = getAnnotationBoundingBox(moved);
+  const resizedBox = resizeBoundingBoxFromHandle(
+    box,
+    'se',
+    { x: box.maxX + 46, y: box.maxY + 46 },
+    true
+  );
+  const resized = scaleAnnotationItem(moved, box, resizedBox) as ShapeAnnotation;
+  state = updateAnnotationItem(state, resized);
+  assert.deepEqual(state.items[0], resized);
+  state = undoHistory(state, 'shape');
+  assert.deepEqual(state.items[0], moved, 'resize undo restores the moved geometry');
+  state = redoHistory(state, 'shape');
+  assert.deepEqual(state.items[0], resized, 'resize redo restores the resized geometry');
 });
 
 test('clearAllAnnotations is undoable and removeAnnotationItems restores deleted items on undo', () => {

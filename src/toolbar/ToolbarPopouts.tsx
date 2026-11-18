@@ -3,13 +3,10 @@ import {
   AlignCenter,
   AlignLeft,
   AlignRight,
-  ArrowLeftRight,
-  ArrowUpRight,
   Bold,
   Camera,
   ChevronLeft,
   ChevronRight,
-  Circle,
   Copy,
   Crop,
   Download,
@@ -36,9 +33,7 @@ import {
   Save,
   Sliders,
   Sparkles,
-  Spline,
   Square,
-  SquareDot,
   Sun,
   Trash2,
   Upload,
@@ -63,7 +58,7 @@ import {
   UserSettings,
 } from '../types/settings';
 import { HistoryScope } from '../canvas/history';
-import { TIMER_PRESETS_MS, formatCountdownMs } from '../canvas/timer';
+import { TIMER_PRESETS_MS } from '../canvas/timer';
 import {
   RecordingArtifact,
   RecordingFormatOption,
@@ -82,6 +77,7 @@ import {
 import { PRESET_COLORS, normalizeHex } from '../utils/color';
 import { SHAPE_TOOLS } from '../tools/toolDefinitions';
 import { ColorBrushPopover } from './ColorBrushPopover';
+import { ShapeIcon } from './ShapeIcon';
 
 export type PopoutId =
   | 'cursor'
@@ -335,6 +331,10 @@ export const ToolbarPopouts: React.FC<ToolbarPopoutsProps> = ({
   const surfaceClass = isDark
     ? 'bg-[#1B1D24]/98 text-[#E4E7EF] border-[#2E323E] shadow-[0_14px_34px_-6px_rgba(0,0,0,0.65)]'
     : 'bg-[#FBFBFD]/98 text-[#111827] border-[#CBD2E1] shadow-[0_14px_34px_-6px_rgba(15,23,42,0.18)]';
+  const activeSurfaceClass =
+    activePopout === 'shapes'
+      ? 'bg-[#171B24]/98 text-[#E4E7EF] border-[#313B4C] shadow-[0_16px_40px_-8px_rgba(0,0,0,0.72)]'
+      : surfaceClass;
   const mutedBtnClass = isDark
     ? 'hover:bg-[#2A2E39] text-[#CBD2E1] border-[#313644]'
     : 'hover:bg-[#EEF2F7] text-[#374151] border-[#D5DCE8]';
@@ -349,13 +349,7 @@ export const ToolbarPopouts: React.FC<ToolbarPopoutsProps> = ({
     popoutPosition.openSide === 'right' ? 'pl-2' : 'pr-2';
 
   const renderShapeIcon = (shape: ShapeToolType) => {
-    if (shape === 'line') return <Minus className="w-3.5 h-3.5 -rotate-45" />;
-    if (shape === 'arrow') return <ArrowUpRight className="w-3.5 h-3.5" />;
-    if (shape === 'double-arrow') return <ArrowLeftRight className="w-3.5 h-3.5" />;
-    if (shape === 'filled-rect') return <SquareDot className="w-3.5 h-3.5" />;
-    if (shape === 'circle' || shape === 'ellipse') return <Circle className="w-3.5 h-3.5" />;
-    if (shape === 'freehand-shape') return <Spline className="w-3.5 h-3.5" />;
-    return <Square className="w-3.5 h-3.5" />;
+    return <ShapeIcon shape={shape} className="w-4 h-4" strokeWidth={1.8} />;
   };
 
   const activeShapeDef = SHAPE_TOOLS.find((s) => s.id === activeTool);
@@ -366,7 +360,7 @@ export const ToolbarPopouts: React.FC<ToolbarPopoutsProps> = ({
     highlighter: 'w-[240px]',
     eraser: 'w-[234px]',
     brush: 'w-[228px]',
-    shapes: 'w-[292px]',
+    shapes: 'w-[216px]',
     text: 'w-[252px]',
     undo: 'w-[228px]',
     timer: 'w-[260px]',
@@ -437,7 +431,7 @@ export const ToolbarPopouts: React.FC<ToolbarPopoutsProps> = ({
         </div>
       ) : (
         <div
-          className={`relative rounded-lg border p-2.5 max-h-[min(520px,calc(100vh-16px))] overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden backdrop-blur-xl space-y-2 text-xs ${surfaceClass} ${widthClassMap[activePopout]}`}
+          className={`relative rounded-lg border p-2.5 max-h-[min(520px,calc(100vh-16px))] overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden backdrop-blur-xl space-y-2 text-xs ${activeSurfaceClass} ${widthClassMap[activePopout]}`}
         >
           {/* Directional Epic-style notch pointing back to the hovered icon */}
           <span
@@ -447,7 +441,7 @@ export const ToolbarPopouts: React.FC<ToolbarPopoutsProps> = ({
               popoutPosition.openSide === 'right'
                 ? '-left-1 border-r-0 border-t-0'
                 : '-right-1 border-l-0 border-b-0'
-            } ${isDark ? 'bg-[#1B1D24] border-[#2E323E]' : 'bg-[#FBFBFD] border-[#CBD2E1]'}`}
+            } ${activePopout === 'shapes' ? 'bg-[#171B24] border-[#313B4C]' : isDark ? 'bg-[#1B1D24] border-[#2E323E]' : 'bg-[#FBFBFD] border-[#CBD2E1]'}`}
           />
 
           {/* BRUSH SIZE: Proportional Circular Dots + Thickness & Opacity Sliders */}
@@ -1072,7 +1066,7 @@ export const ToolbarPopouts: React.FC<ToolbarPopoutsProps> = ({
             </div>
           )}
 
-          {/* 5. SHAPES: Epic Pen Signature Horizontal 8-Icon Strip + Stroke Width Slider */}
+          {/* 5. SHAPES: exactly eight signature shape choices in a balanced 4×2 grid. */}
           {activePopout === 'shapes' && (
             <div className="space-y-2">
               <div className="flex items-center justify-between text-[11px] px-0.5">
@@ -1084,7 +1078,12 @@ export const ToolbarPopouts: React.FC<ToolbarPopoutsProps> = ({
                 </span>
               </div>
 
-              <div className={`grid grid-cols-8 gap-0.5 p-1 rounded-lg ${subBarBg}`}>
+              <div
+                role="group"
+                aria-label="Choose a shape"
+                data-testid="shape-choice-grid"
+                className="grid grid-cols-4 grid-rows-2 gap-1 rounded-lg border border-white/[0.07] bg-[#111722] p-1 shadow-inner"
+              >
                 {SHAPE_TOOLS.map((shape) => {
                   const active = activeTool === shape.id;
                   return (
@@ -1093,17 +1092,17 @@ export const ToolbarPopouts: React.FC<ToolbarPopoutsProps> = ({
                       type="button"
                       title={shape.label}
                       aria-label={shape.label}
+                      aria-pressed={active}
+                      data-shape-choice={shape.id}
                       onClick={() => {
                         onSelectTool(shape.id);
                         onClose();
                       }}
                       style={active ? { backgroundColor: accent } : undefined}
-                      className={`h-7 flex items-center justify-center rounded-md transition-colors cursor-pointer ${
+                      className={`h-8 min-w-8 flex items-center justify-center rounded-md border transition-all duration-150 cursor-pointer ${
                         active
-                          ? 'text-white shadow-sm'
-                          : isDark
-                          ? 'text-[#B8BFCE] hover:text-white hover:bg-[#2A2E39]'
-                          : 'text-[#4B5565] hover:text-[#111827] hover:bg-white'
+                          ? 'text-white border-cyan-300/55 shadow-[0_0_10px_rgba(56,189,248,0.18)]'
+                          : 'text-[#B8BFCE] border-transparent hover:text-white hover:bg-[#2A3445] hover:border-cyan-300/25'
                       }`}
                     >
                       {renderShapeIcon(shape.id)}
@@ -1317,28 +1316,37 @@ export const ToolbarPopouts: React.FC<ToolbarPopoutsProps> = ({
 
           {/* 8. TIMER: Compact Controls with Presets + Custom + Pause/Reset/Cancel */}
           {activePopout === 'timer' && (
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
+            <div className="space-y-3">
+              <div className="flex items-center justify-between gap-3 rounded-lg border border-white/[0.08] bg-white/[0.035] px-3 py-2.5">
                 <div>
-                  <div className="font-semibold text-[11px]">Auto-Clear Ink Timer</div>
-                  <div className="text-[10px] text-[#8E96A8]">
-                    {settings.timer.enabled
-                      ? activeTimerCountdownMs !== null
-                        ? `Next expiry in ${formatCountdownMs(activeTimerCountdownMs)}`
-                        : `Armed (${formatCountdownMs(settings.timer.durationMs)})`
-                      : 'OFF — drawings stay permanently'}
+                  <div className="font-semibold text-[11px] text-slate-100">Ink duration</div>
+                  <div className="mt-0.5 text-[10px] text-slate-400">
+                    {settings.timer.enabled ? 'New ink follows the selected duration.' : 'New ink stays until you clear it.'}
                   </div>
                 </div>
+                <span
+                  role="status"
+                  aria-label={settings.timer.enabled ? (settings.timer.paused ? 'Timer paused' : 'Timer active') : 'Timer off'}
+                  className={`inline-flex items-center gap-1.5 rounded-full border px-2 py-1 text-[9px] font-semibold tracking-[.08em] ${
+                    settings.timer.enabled
+                      ? 'border-emerald-400/25 bg-emerald-400/[0.08] text-emerald-200'
+                      : 'border-white/[0.1] bg-white/[0.035] text-slate-400'
+                  }`}
+                >
+                  <span className={`h-1.5 w-1.5 rounded-full ${settings.timer.enabled ? 'bg-emerald-300' : 'bg-slate-500'}`} />
+                  {settings.timer.enabled ? (settings.timer.paused ? 'PAUSED' : 'ON') : 'OFF'}
+                </span>
                 <button
                   type="button"
                   data-testid="timer-toggle-btn"
                   onClick={onToggleTimerEnabled}
                   style={settings.timer.enabled ? { backgroundColor: accent } : undefined}
-                  className={`px-2.5 py-1 rounded-md font-semibold text-[11px] border cursor-pointer ${
-                    settings.timer.enabled ? 'text-white border-transparent' : mutedBtnClass
+                  className={`inline-flex min-h-8 items-center gap-1.5 rounded-lg border px-2.5 font-semibold text-[11px] transition-all duration-150 hover:-translate-y-px active:translate-y-0 cursor-pointer ${
+                    settings.timer.enabled ? 'text-white border-transparent shadow-sm' : mutedBtnClass
                   }`}
                 >
-                  {settings.timer.enabled ? 'ON' : 'OFF'}
+                  {settings.timer.enabled ? <Square className="h-3 w-3" /> : <Play className="h-3 w-3" />}
+                  {settings.timer.enabled ? 'Stop' : 'Start'}
                 </button>
               </div>
 
@@ -1409,6 +1417,7 @@ export const ToolbarPopouts: React.FC<ToolbarPopoutsProps> = ({
                   type="button"
                   data-testid="timer-pause-btn"
                   onClick={onToggleTimerPaused}
+                  disabled={!settings.timer.enabled}
                   className={`flex items-center justify-center gap-1 px-2 py-1 rounded-md border text-[11px] cursor-pointer ${
                     settings.timer.paused
                       ? 'bg-amber-500 text-slate-950 border-amber-400 font-semibold'
@@ -1422,7 +1431,8 @@ export const ToolbarPopouts: React.FC<ToolbarPopoutsProps> = ({
                   type="button"
                   data-testid="timer-reset-btn"
                   onClick={onResetTimer}
-                  className={`flex items-center justify-center gap-1 px-2 py-1 rounded-md border text-[11px] cursor-pointer ${mutedBtnClass}`}
+                  disabled={!settings.timer.enabled}
+                  className={`flex items-center justify-center gap-1 px-2 py-1 rounded-md border text-[11px] cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed ${mutedBtnClass}`}
                 >
                   <RotateCcw className="w-3 h-3" />
                   <span>Reset</span>

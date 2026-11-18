@@ -12,6 +12,7 @@ import {
   classifyForwardedShortcut,
   shouldToolbarApplyPopoutClosed,
 } from './interactionLifecycle';
+import { DESKTOP_TOOLBAR_WIDTH, getDesktopToolbarHeight } from './toolbarLayout';
 
 export const DesktopToolbarApp: React.FC = () => {
   const desktop = typeof window !== 'undefined' ? window.proscreenDesktop : undefined;
@@ -24,6 +25,7 @@ export const DesktopToolbarApp: React.FC = () => {
     }
     return defaults;
   });
+  const [settingsLoaded, setSettingsLoaded] = useState(false);
   const [state, setState] = useState<DesktopSharedState>({
     activeTool: 'pointer',
     interactionMode: 'pointer',
@@ -45,6 +47,7 @@ export const DesktopToolbarApp: React.FC = () => {
     selectedItemId: null,
     activePageIndex: 0,
     boardPageCount: 1,
+    activeTimerCountdownMs: null,
     isRecording: false,
     recordingStatus: 'idle',
     recordingElapsedMs: 0,
@@ -52,7 +55,7 @@ export const DesktopToolbarApp: React.FC = () => {
   });
 
   const isDraggingRef = useRef(false);
-  const [keyboardVisualizerEnabled, setKeyboardVisualizerEnabled] = useState(false);
+  const keyboardVisualizerEnabled = settings.keyboardVisualizer.enabled;
   const [keyboardVisualizerBusy, setKeyboardVisualizerBusy] = useState(false);
   const [keyboardVisualizerError, setKeyboardVisualizerError] = useState<string | null>(null);
 
@@ -64,11 +67,13 @@ export const DesktopToolbarApp: React.FC = () => {
       const status = keyboardVisualizerEnabled
         ? await desktop.stopKeyboardVisualizer()
         : await desktop.startKeyboardVisualizer();
-      setKeyboardVisualizerEnabled(status.enabled);
       setKeyboardVisualizerError(status.error || null);
+      handleUpdateSettings((prev) => ({
+        ...prev,
+        keyboardVisualizer: { ...prev.keyboardVisualizer, enabled: status.enabled },
+      }));
     } catch (error) {
       setKeyboardVisualizerError(error instanceof Error ? error.message : String(error));
-      setKeyboardVisualizerEnabled(false);
     } finally {
       setKeyboardVisualizerBusy(false);
     }
@@ -115,6 +120,9 @@ export const DesktopToolbarApp: React.FC = () => {
           return merged;
         });
       }
+      setSettingsLoaded(true);
+    }).catch(() => {
+      setSettingsLoaded(true);
     });
     if (desktop.onSettingsChanged) {
       return desktop.onSettingsChanged((updated) => {
@@ -130,6 +138,23 @@ export const DesktopToolbarApp: React.FC = () => {
     }
     return undefined;
   }, [desktop]);
+
+  // Restore the user's explicit monitoring choice after persistent settings are available.
+  useEffect(() => {
+    if (!desktop || !settingsLoaded) return;
+    let active = true;
+    const sync = settings.keyboardVisualizer.enabled
+      ? desktop.startKeyboardVisualizer()
+      : desktop.stopKeyboardVisualizer();
+    void sync.then((status) => {
+      if (active) setKeyboardVisualizerError(status.error || null);
+    }).catch((error) => {
+      if (active) setKeyboardVisualizerError(error instanceof Error ? error.message : String(error));
+    });
+    return () => {
+      active = false;
+    };
+  }, [desktop, settingsLoaded, settings.keyboardVisualizer.enabled]);
 
   // Synchronize live state from Main process / Overlay
   useEffect(() => {
@@ -209,7 +234,7 @@ export const DesktopToolbarApp: React.FC = () => {
 
   // Dynamically resize toolbar window & manage mouse pass-through:
   // - Eye OFF / Restore button: 44x44, accepts clicks
-  // - Normal vertical toolbar: 44x520 (fits all 18 tools), accepts clicks
+  // - Normal vertical toolbar: 44x640 on standard desktop work areas, accepts clicks
   // - Hidden / unmounted: setToolbarIgnoreMouse(true) so no invisible mouse trap can ever exist
   // NOTE: When a dropdown/popout opens, the toolbar window is NEVER resized or moved.
   // The dropdown opens in a dedicated transparent utility window, keeping the toolbar 100% stationary!
@@ -217,10 +242,14 @@ export const DesktopToolbarApp: React.FC = () => {
     if (!desktop || isDraggingRef.current) return;
 
     if (!state.toolbarVisible && state.restoreButtonVisible) {
-      desktop.setToolbarBounds({ width: 44, height: 44 });
+      desktop.setToolbarBounds({ width: DESKTOP_TOOLBAR_WIDTH, height: 44 });
       desktop.setToolbarIgnoreMouse(false);
     } else if (state.toolbarVisible) {
-      desktop.setToolbarBounds({ width: 44, height: 520 });
+      const workAreaHeight = window.screen?.availHeight ?? 648;
+      desktop.setToolbarBounds({
+        width: DESKTOP_TOOLBAR_WIDTH,
+        height: getDesktopToolbarHeight(workAreaHeight),
+      });
       desktop.setToolbarIgnoreMouse(false);
     } else {
       // Safety guard: if neither toolbar nor restore button is visible, pass clicks through 100%
@@ -407,7 +436,7 @@ export const DesktopToolbarApp: React.FC = () => {
         ghostMode={state.ghostMode}
         presentationMode={state.presentationMode}
         isCapturing={false}
-        activeTimerCountdownMs={null}
+        activeTimerCountdownMs={state.activeTimerCountdownMs}
         recordingStatus={state.recordingStatus || (state.isRecording ? 'recording' : 'idle')}
         recordingElapsedMs={state.recordingElapsedMs || 0}
         latestRecording={state.latestRecording || null}
@@ -481,11 +510,11 @@ export const DesktopToolbarApp: React.FC = () => {
         onClearScreen={() => desktop?.dispatchAction('clear-screen')}
         onToggleGhostMode={() => desktop?.dispatchAction('toggle-ghost-mode')}
         onTogglePresentationMode={() => desktop?.dispatchAction('toggle-presentation-mode')}
-        onToggleTimerEnabled={() => {}}
-        onSetTimerDurationMs={() => {}}
-        onToggleTimerPaused={() => {}}
-        onResetTimer={() => {}}
-        onCancelTimer={() => {}}
+        onToggleTimerEnabled={() => desktop?.dispatchAction('toggle-timer-enabled')}
+        onSetTimerDurationMs={(ms) => desktop?.dispatchAction('set-timer-duration', ms)}
+        onToggleTimerPaused={() => desktop?.dispatchAction('toggle-timer-paused')}
+        onResetTimer={() => desktop?.dispatchAction('reset-timer')}
+        onCancelTimer={() => desktop?.dispatchAction('cancel-timer')}
         onCaptureFull={() => desktop?.dispatchAction('capture-screenshot')}
         onCaptureArea={() => {
           desktop?.dispatchAction('capture-area');

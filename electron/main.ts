@@ -25,7 +25,7 @@ import {
 } from '../src/desktop/desktopTypes';
 import { calculateVirtualBounds, clampToolbarToDisplays } from '../src/desktop/multiMonitor';
 import { UserSettings } from '../src/types/settings';
-import { createDefaultSettings } from '../src/storage/validation';
+import { createDefaultSettings, mergeAndValidateSettings } from '../src/storage/validation';
 import {
   pickFirstExistingPath,
   resolveBundledIconCandidates,
@@ -54,6 +54,8 @@ import {
   KEYBOARD_VISUALIZER_DISABLED_CHANNEL,
 } from '../src/desktop/keyboardVisualizerBridge';
 import { registerKeyboardVisualizerIpc } from '../src/desktop/keyboardVisualizerIpc';
+import { isPointerInsidePopoutBoundary, shouldDismissPopoutForPointer } from '../src/desktop/popoutInteraction';
+import { DESKTOP_TOOLBAR_MAX_HEIGHT, DESKTOP_TOOLBAR_WIDTH, getDesktopToolbarHeight } from '../src/desktop/toolbarLayout';
 
 function getDesktopLogPath(): string {
   try {
@@ -205,6 +207,8 @@ process.on('unhandledRejection', (reason) => {
 let overlayWindow: BrowserWindow | null = null;
 let toolbarWindow: BrowserWindow | null = null;
 let popoutWindow: BrowserWindow | null = null;
+let popoutHoverWatchTimer: NodeJS.Timeout | null = null;
+let popoutPointerOutsideSince: number | null = null;
 let settingsWindow: BrowserWindow | null = null;
 let tray: Tray | null = null;
 let authoritativeDesktopAnnotations: unknown[] = [];
@@ -220,6 +224,7 @@ let targetRecordingMode: string | null = null;
 let ipcHandlersRegistered = false;
 let keyboardVisualizerEnabled = false;
 let unregisterKeyboardVisualizerIpc: (() => void) | null = null;
+const keyboardSensitiveFocusWindowIds = new Set<number>();
 
 const isDev = Boolean(process.env.VITE_DEV_SERVER_URL);
 const devServerUrl = process.env.VITE_DEV_SERVER_URL;
@@ -246,6 +251,7 @@ let sharedState: DesktopSharedState = {
   selectedItemId: null,
   activePageIndex: 0,
   boardPageCount: 1,
+  activeTimerCountdownMs: null,
   isRecording: false,
   recordingStatus: 'idle',
   recordingElapsedMs: 0,
@@ -311,7 +317,7 @@ function loadSavedSettings(): UserSettings {
   } catch (err) {
     console.error('[SETTINGS] Failed to read desktop settings:', err);
   }
-  activeSettings = loaded || createDefaultSettings();
+  activeSettings = mergeAndValidateSettings(loaded || createDefaultSettings());
   return activeSettings;
 }
 
@@ -611,10 +617,12 @@ function instrumentWindow(win: BrowserWindow, name: string) {
   const onBeforeInput = (_event: Electron.Event, input: Electron.Input) => {
     // This passive Electron event only receives keys while this ProScreen window is focused.
     // Deliberately do not call preventDefault so keys continue to the application unchanged.
+    if (keyboardSensitiveFocusWindowIds.has(contents.id)) return;
     keyboardVisualizerController.observeInput(input);
   };
   contents.on('before-input-event', onBeforeInput);
   contents.once('destroyed', () => {
+    keyboardSensitiveFocusWindowIds.delete(contents.id);
     contents.removeListener('before-input-event', onBeforeInput);
   });
 
@@ -758,8 +766,9 @@ function createToolbarWindow(): BrowserWindow {
   sharedState.toolbarPosition = savedSettings.toolbarPosition;
   sharedState.restoreButtonPosition = savedSettings.restoreButtonPosition || { x: 16, y: 76 };
   const displays = getDisplaysInfo();
-  const toolbarWidth = 44;
-  const toolbarHeight = 520;
+  const toolbarWidth = DESKTOP_TOOLBAR_WIDTH;
+  const toolbarDisplay = screen.getDisplayNearestPoint(savedSettings.toolbarPosition);
+  const toolbarHeight = getDesktopToolbarHeight(toolbarDisplay.workArea.height);
 
   const clamped = clampToolbarToDisplays(
     savedSettings.toolbarPosition.x,
@@ -797,9 +806,9 @@ function createToolbarWindow(): BrowserWindow {
   try {
     win.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
   } catch {}
-  try {
-    win.setContentProtection(true);
-  } catch {}
+
+  // Keep the active tool visible in screen recordings. The toolbar popout is a
+  // separate content-protected window, so temporary selection menus stay hidden.
 
   // Toolbar window is physically sized to the 36px toolbar buttons (42px) and directly interactive
   win.setIgnoreMouseEvents(false);
@@ -868,10 +877,6 @@ function createToolbarWindow(): BrowserWindow {
       }, 150);
     }
   });
-
-  try {
-    win.setContentProtection(true);
-  } catch {}
 
   const toolbarTarget = resolveDesktopHtmlTarget(__dirname, 'toolbar', isDev ? devServerUrl : undefined);
   loadWindowContent(win, 'toolbar', toolbarTarget);
@@ -962,6 +967,7 @@ function createPopoutWindow(): BrowserWindow {
   loadWindowContent(win, 'popout', popoutTarget, { query: { mode: 'dropdown' } });
 
   win.on('closed', () => {
+    stopPopoutHoverWatcher();
     popoutWindow = null;
     popoutCoordinator.reset();
     pendingPopoutPayload = null;
@@ -1057,6 +1063,61 @@ function openPopoutWindow(data: { popoutId: string; anchorOffsetY?: number; tran
 
   popoutWindow.show();
   applyDesktopWindowZOrder();
+  startPopoutHoverWatcher();
+}
+
+function stopPopoutHoverWatcher() {
+  if (popoutHoverWatchTimer) {
+    clearInterval(popoutHoverWatchTimer);
+    popoutHoverWatchTimer = null;
+  }
+  popoutPointerOutsideSince = null;
+}
+
+/**
+ * The toolbar and its dropdown are separate native windows, so renderer mouseleave events
+ * cannot cover the full interaction boundary. Track the desktop pointer across both windows
+ * and close only after it leaves both for a short grace period.
+ */
+function startPopoutHoverWatcher() {
+  if (popoutHoverWatchTimer) {
+    popoutPointerOutsideSince = null;
+    return;
+  }
+
+  popoutPointerOutsideSince = null;
+  popoutHoverWatchTimer = setInterval(() => {
+    if (
+      !toolbarWindow || toolbarWindow.isDestroyed() ||
+      !popoutWindow || popoutWindow.isDestroyed() || !popoutWindow.isVisible()
+    ) {
+      stopPopoutHoverWatcher();
+      return;
+    }
+
+    const pointer = screen.getCursorScreenPoint();
+    const pointerInside = isPointerInsidePopoutBoundary(
+      pointer,
+      toolbarWindow.getBounds(),
+      popoutWindow.getBounds()
+    );
+    const now = Date.now();
+    if (pointerInside) {
+      popoutPointerOutsideSince = null;
+      return;
+    }
+    if (popoutPointerOutsideSince === null) {
+      popoutPointerOutsideSince = now;
+      return;
+    }
+    if (shouldDismissPopoutForPointer({
+      pointerInside,
+      outsideSince: popoutPointerOutsideSince,
+      now,
+    })) {
+      closePopoutWindow(popoutCoordinator.currentSessionId ?? undefined);
+    }
+  }, 80);
 }
 
 function closePopoutWindow(transitionId?: number) {
@@ -1064,6 +1125,7 @@ function closePopoutWindow(transitionId?: number) {
   if (!closed.shouldClose) {
     return;
   }
+  stopPopoutHoverWatcher();
   const thisTransition = closed.transitionId;
   pendingPopoutPayload = null;
 
@@ -1534,21 +1596,23 @@ function setEyeState(visible: boolean) {
       overlayWindow.webContents.send('desktop:restore-annotations', authoritativeDesktopAnnotations);
     }
 
-    // Expand toolbarWindow to 44x520 at (openX, openY) clamped for height
+    // Restore the full-height toolbar at its last saved position, within this display's work area.
     if (toolbarWindow && !toolbarWindow.isDestroyed()) {
+      const toolbarDisplay = screen.getDisplayNearestPoint({ x: openX, y: openY });
+      const toolbarHeight = getDesktopToolbarHeight(toolbarDisplay.workArea.height);
       const clamped = clampToolbarToDisplays(
         openX,
         openY,
-        44,
-        520,
+        DESKTOP_TOOLBAR_WIDTH,
+        toolbarHeight,
         getDisplaysInfo()
       );
       isProgrammaticBoundsChange = true;
       toolbarWindow.setBounds({
         x: Math.round(clamped.x),
         y: Math.round(clamped.y),
-        width: 44,
-        height: 520,
+        width: DESKTOP_TOOLBAR_WIDTH,
+        height: toolbarHeight,
       });
       toolbarWindow.show();
       toolbarWindow.setAlwaysOnTop(true, 'screen-saver');
@@ -1860,6 +1924,11 @@ function setupIpcHandlers() {
   }
   ipcHandlersRegistered = true;
 
+  ipcMain.on('desktop:keyboard-sensitive-focus', (event, isEditable: unknown) => {
+    if (isEditable === true) keyboardSensitiveFocusWindowIds.add(event.sender.id);
+    else keyboardSensitiveFocusWindowIds.delete(event.sender.id);
+  });
+
   unregisterKeyboardVisualizerIpc = registerKeyboardVisualizerIpc(ipcMain, keyboardVisualizerController, () => {
     return toolbarWindow && !toolbarWindow.isDestroyed()
       ? toolbarWindow.webContents.id
@@ -1942,15 +2011,25 @@ function setupIpcHandlers() {
         const nextX = bounds.x !== undefined ? Math.round(bounds.x) : cur.x;
         const nextY = bounds.y !== undefined ? Math.round(bounds.y) : cur.y;
         const nextW = bounds.width !== undefined ? Math.round(bounds.width) : cur.width;
-        const nextH = bounds.height !== undefined ? Math.round(bounds.height) : cur.height;
-        const dx = Math.abs(cur.x - nextX);
-        const dy = Math.abs(cur.y - nextY);
+        const requestedHeight = bounds.height !== undefined ? Math.round(bounds.height) : cur.height;
+        if (cachedDisplays.length === 0) cachedDisplays = getDisplaysInfo();
+        const targetDisplay = screen.getDisplayNearestPoint({ x: nextX, y: nextY });
+        const nextH = Math.min(
+          requestedHeight,
+          getDesktopToolbarHeight(targetDisplay.workArea.height),
+          DESKTOP_TOOLBAR_MAX_HEIGHT
+        );
+        const clamped = clampToolbarToDisplays(nextX, nextY, nextW, nextH, cachedDisplays);
+        const finalX = Math.round(clamped.x);
+        const finalY = Math.round(clamped.y);
+        const dx = Math.abs(cur.x - finalX);
+        const dy = Math.abs(cur.y - finalY);
         const dw = Math.abs(cur.width - nextW);
         const dh = Math.abs(cur.height - nextH);
         if (dx > 1 || dy > 1 || dw > 1 || dh > 1) {
           logDesktopEvent('SET_TOOLBAR_BOUNDS_START', {
             cur,
-            next: { x: nextX, y: nextY, width: nextW, height: nextH },
+            next: { x: finalX, y: finalY, width: nextW, height: nextH },
             isExpanding: nextW > 50 && cur.width <= 50,
             isRestoring: nextW <= 50 && cur.width > 50,
           });
@@ -1959,8 +2038,8 @@ function setupIpcHandlers() {
             clearTimeout(programmaticBoundsTimer);
           }
           toolbarWindow.setBounds({
-            x: nextX,
-            y: nextY,
+            x: finalX,
+            y: finalY,
             width: nextW,
             height: nextH,
           });
@@ -2373,19 +2452,24 @@ function setupIpcHandlers() {
   ipcMain.handle('desktop:load-settings', () => loadSavedSettings());
   ipcMain.handle('desktop:save-settings', async (_event, settings: UserSettings) => {
     if (isShuttingDown || isShutdownCompleted) return false;
-    activeSettings = { ...settings };
+    activeSettings = mergeAndValidateSettings(settings);
+    if (activeSettings.keyboardVisualizer.enabled) {
+      void keyboardVisualizerController.start();
+    } else {
+      void keyboardVisualizerController.stop();
+    }
     currentSettingsVersion++;
     const version = currentSettingsVersion;
-    if (settings.toolbarPosition) {
-      sharedState.toolbarPosition = settings.toolbarPosition;
+    if (activeSettings.toolbarPosition) {
+      sharedState.toolbarPosition = activeSettings.toolbarPosition;
     }
-    if (settings.restoreButtonPosition) {
-      sharedState.restoreButtonPosition = settings.restoreButtonPosition;
+    if (activeSettings.restoreButtonPosition) {
+      sharedState.restoreButtonPosition = activeSettings.restoreButtonPosition;
     }
-    const ok = await performDiskWrite(settings, version);
-    if (settings.startWithWindows !== undefined) {
+    const ok = await performDiskWrite(activeSettings, version);
+    if (activeSettings.startWithWindows !== undefined) {
       app.setLoginItemSettings({
-        openAtLogin: Boolean(settings.startWithWindows),
+        openAtLogin: Boolean(activeSettings.startWithWindows),
         args: ['--background'],
       });
     }
@@ -2732,6 +2816,7 @@ void app.whenReady().then(startDesktopApp).catch((err) => {
 let isBeforeQuitStarted = false;
 
 function destroyAllDesktopWindows() {
+  stopPopoutHoverWatcher();
   if (popoutWindow && !popoutWindow.isDestroyed()) {
     popoutWindow.destroy();
     popoutWindow = null;

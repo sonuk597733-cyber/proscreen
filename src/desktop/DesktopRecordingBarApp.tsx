@@ -26,6 +26,7 @@ export const DesktopRecordingBarApp: React.FC = () => {
     selectedItemId: null,
     activePageIndex: 0,
     boardPageCount: 1,
+    activeTimerCountdownMs: null,
     isRecording: false,
     recordingStatus: 'recording',
     recordingElapsedMs: 0,

@@ -12,6 +12,7 @@ import {
   computeArrowHead,
   computeFadeAlpha,
   getAnnotationBoundingBox,
+  getShapeOutlinePoints,
   itemBoxToViewportBox,
 } from './geometry';
 
@@ -231,6 +232,28 @@ function drawShape(
       ctx.fill();
     }
     ctx.stroke();
+  } else {
+    const outline = getShapeOutlinePoints(shape.shapeType, {
+      minX: x,
+      minY: y,
+      maxX: x + w,
+      maxY: y + h,
+      width: w,
+      height: h,
+    });
+    if (outline?.length) {
+      ctx.beginPath();
+      ctx.moveTo(outline[0].x, outline[0].y);
+      for (let i = 1; i < outline.length; i++) {
+        ctx.lineTo(outline[i].x, outline[i].y);
+      }
+      ctx.closePath();
+      if (shape.fillOpacity && shape.fillOpacity > 0 && shape.fillColor) {
+        ctx.fillStyle = hexToRgbaString(shape.fillColor, shape.fillOpacity * alphaScale);
+        ctx.fill();
+      }
+      ctx.stroke();
+    }
   }
 
   ctx.restore();
@@ -293,24 +316,27 @@ function drawSelectionOverlay(
   const h = Math.max(12, box.height + pad * 2);
 
   ctx.save();
-  ctx.strokeStyle = '#3B82F6';
+  ctx.strokeStyle = '#38BDF8';
   ctx.lineWidth = 1.5;
-  ctx.setLineDash([5, 4]);
-  ctx.strokeRect(x, y, w, h);
   ctx.setLineDash([]);
+  ctx.strokeRect(x, y, w, h);
 
   const handles = [
     { cx: x, cy: y },
+    { cx: x + w / 2, cy: y },
     { cx: x + w, cy: y },
-    { cx: x, cy: y + h },
+    { cx: x + w, cy: y + h / 2 },
     { cx: x + w, cy: y + h },
+    { cx: x + w / 2, cy: y + h },
+    { cx: x, cy: y + h },
+    { cx: x, cy: y + h / 2 },
   ];
   for (const hPos of handles) {
     ctx.fillStyle = '#FFFFFF';
-    ctx.strokeStyle = '#2563EB';
-    ctx.lineWidth = 2;
+    ctx.strokeStyle = '#0284C7';
+    ctx.lineWidth = 1.5;
     ctx.beginPath();
-    ctx.rect(hPos.cx - 4, hPos.cy - 4, 8, 8);
+    ctx.roundRect(hPos.cx - 4, hPos.cy - 4, 8, 8, 2);
     ctx.fill();
     ctx.stroke();
   }
@@ -424,7 +450,8 @@ export function renderAnnotationLayer(
   const scroll = options.scroll ?? { x: 0, y: 0 };
 
   if (options.annotationsVisible) {
-    const allItems = options.activeDraftItem ? [...items, options.activeDraftItem] : items;
+    const draftItem = options.activeDraftItem;
+    const allItems = mergeActiveDraftItem(items, draftItem);
     for (const item of allItems) {
       const alpha = computeFadeAlpha(item, options.nowMs);
       if (alpha <= 0.01) continue;
@@ -449,7 +476,10 @@ export function renderAnnotationLayer(
     }
 
     if (options.selectedItemId && !options.includeTextOnCanvas) {
-      const selected = items.find((it) => it.id === options.selectedItemId);
+      const selected =
+        draftItem?.id === options.selectedItemId
+          ? draftItem
+          : items.find((it) => it.id === options.selectedItemId);
       if (selected) {
         drawSelectionOverlay(ctx, selected, scroll);
       }
@@ -511,6 +541,17 @@ export function renderAnnotationLayer(
       options.cursorSpotlight.dimOpacity
     );
   }
+}
+
+/** Replace an item being moved/resized instead of drawing its stale original underneath. */
+export function mergeActiveDraftItem(
+  items: AnnotationItem[],
+  draftItem: AnnotationItem | null | undefined
+): AnnotationItem[] {
+  if (!draftItem) return items;
+  const existingDraftIndex = items.findIndex((item) => item.id === draftItem.id);
+  if (existingDraftIndex < 0) return [...items, draftItem];
+  return items.map((item, index) => (index === existingDraftIndex ? draftItem : item));
 }
 
 export function buildPreviewSvgDataUrl(point: Point[], color: string, thickness: number): string {

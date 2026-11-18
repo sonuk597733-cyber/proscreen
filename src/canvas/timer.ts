@@ -24,6 +24,7 @@ export function createDefaultTimerSettings(): TimerSettings {
     enabled: false,
     durationMs: 15_000,
     paused: false,
+    showInRecording: false,
   };
 }
 

@@ -12,6 +12,8 @@ import { SettingsDashboard } from '../settings/SettingsDashboard';
 import { useProScreenEngine } from '../hooks/useProScreenEngine';
 import { formatRecordingDuration } from '../recorder/screenRecorder';
 import { RecordingPreviewModal } from '../recorder/RecordingPreviewModal';
+import { KeyboardVisualizerOverlay, TimerHud } from '../desktop/KeyboardVisualizerOverlay';
+import { isExtensionContext } from '../utils/env';
 
 interface ProScreenOverlayProps {
   engine: ReturnType<typeof useProScreenEngine>;
@@ -51,6 +53,7 @@ export const ProScreenOverlay: React.FC<ProScreenOverlayProps> = ({ engine }) =>
         activeTool={engine.activeTool}
         toolbarVisible={engine.toolbarVisible}
         annotationsVisible={engine.annotationsVisible}
+      isRecording={engine.recordingStatus !== 'idle'}
         interactionMode={engine.interactionMode}
         boardMode={engine.boardMode}
         items={engine.history.items}
@@ -64,6 +67,7 @@ export const ProScreenOverlay: React.FC<ProScreenOverlayProps> = ({ engine }) =>
         onMove={engine.moveStrokeOrShape}
         onEnd={engine.endStrokeOrShape}
         onTextClick={engine.createTextAt}
+        onSelectShape={engine.selectShapeForEditing}
       />
 
       <TextInputOverlay
@@ -164,6 +168,17 @@ export const ProScreenOverlay: React.FC<ProScreenOverlayProps> = ({ engine }) =>
         onCloseEye={engine.closeEye}
         onOpenEye={engine.openEye}
         onToggleEye={engine.toggleEye}
+        keyboardVisualizerEnabled={engine.settings.keyboardVisualizer.enabled}
+        keyboardVisualizerSupported={isExtensionContext()}
+        onToggleKeyboardVisualizer={() =>
+          engine.updateSettings((prev) => ({
+            ...prev,
+            keyboardVisualizer: {
+              ...prev.keyboardVisualizer,
+              enabled: !prev.keyboardVisualizer.enabled,
+            },
+          }))
+        }
         onRestoreToolbar={engine.openEye}
       />
       )}
@@ -337,6 +352,21 @@ export const ProScreenOverlay: React.FC<ProScreenOverlayProps> = ({ engine }) =>
         onClose={() => engine.setRecordingPreviewOpen(false)}
       />
 
+      <KeyboardVisualizerOverlay
+        enabled={engine.settings.keyboardVisualizer.enabled && isExtensionContext()}
+        position={engine.settings.keyboardVisualizer.position}
+        animate={engine.settings.keyboardVisualizer.animate}
+        showInRecording={engine.settings.keyboardVisualizer.showInRecording}
+        recording={engine.recordingStatus !== 'idle'}
+      />
+      <TimerHud
+        enabled={engine.settings.timer.enabled}
+        paused={engine.settings.timer.paused}
+        durationMs={engine.settings.timer.durationMs}
+        countdownMs={engine.activeTimerCountdownMs}
+        showInRecording={engine.settings.timer.showInRecording}
+        recording={engine.recordingStatus !== 'idle'}
+      />
       <SettingsDashboard
         open={engine.settingsOpen}
         settings={engine.settings}

@@ -10,7 +10,7 @@ import { AreaSelector } from '../components/AreaSelector';
 import { mergeAndValidateSettings } from '../storage/validation';
 import { HistoryScope } from '../canvas/history';
 import { shouldOverlayReceiveMouse } from './interactionLifecycle';
-import { KeyboardVisualizerOverlay } from './KeyboardVisualizerOverlay';
+import { KeyboardVisualizerOverlay, TimerHud } from './KeyboardVisualizerOverlay';
 
 export const DesktopOverlayApp: React.FC = () => {
   const engine = useProScreenEngine('desktop:global');
@@ -155,6 +155,10 @@ export const DesktopOverlayApp: React.FC = () => {
       selectedItemId: engine.selectedItemId,
       activePageIndex: engine.activePageIndex,
       boardPageCount: engine.boardPages.length,
+      activeTimerCountdownMs:
+        engine.activeTimerCountdownMs === null
+          ? null
+          : Math.ceil(engine.activeTimerCountdownMs / 1000) * 1000,
       isRecording: engine.recordingStatus !== 'idle',
       recordingStatus: engine.recordingStatus,
       recordingElapsedMs: engine.recordingElapsedMs,
@@ -186,6 +190,7 @@ export const DesktopOverlayApp: React.FC = () => {
     engine.selectedItemId,
     engine.activePageIndex,
     engine.boardPages.length,
+    engine.activeTimerCountdownMs,
     engine.recordingStatus,
     engine.recordingElapsedMs,
     engine.latestRecording,
@@ -254,6 +259,21 @@ export const DesktopOverlayApp: React.FC = () => {
           break;
         case 'toggle-presentation-mode':
           eng.togglePresentationMode();
+          break;
+        case 'toggle-timer-enabled':
+          eng.toggleTimerEnabled();
+          break;
+        case 'set-timer-duration':
+          if (typeof payload === 'number' && Number.isFinite(payload)) eng.setTimerDurationMs(payload);
+          break;
+        case 'toggle-timer-paused':
+          eng.toggleTimerPaused();
+          break;
+        case 'reset-timer':
+          eng.resetTimer();
+          break;
+        case 'cancel-timer':
+          eng.cancelTimer();
           break;
         case 'capture-screenshot':
           void eng.triggerCapture(null);
@@ -370,6 +390,7 @@ export const DesktopOverlayApp: React.FC = () => {
         activeTool={engine.activeTool}
         toolbarVisible={engine.toolbarVisible}
         annotationsVisible={engine.annotationsVisible}
+      isRecording={engine.recordingStatus !== 'idle'}
         interactionMode={engine.interactionMode}
         boardMode={engine.boardMode}
         items={engine.history.items}
@@ -388,6 +409,7 @@ export const DesktopOverlayApp: React.FC = () => {
           desktop?.moveToolbarTop();
         }}
         onTextClick={engine.createTextAt}
+        onSelectShape={engine.selectShapeForEditing}
       />
 
       <TextInputOverlay
@@ -455,7 +477,21 @@ export const DesktopOverlayApp: React.FC = () => {
         />
       )}
 
-      <KeyboardVisualizerOverlay />
+      <KeyboardVisualizerOverlay
+        enabled={engine.settings.keyboardVisualizer.enabled}
+        position={engine.settings.keyboardVisualizer.position}
+        animate={engine.settings.keyboardVisualizer.animate}
+        showInRecording={engine.settings.keyboardVisualizer.showInRecording}
+        recording={engine.recordingStatus !== 'idle'}
+      />
+      <TimerHud
+        enabled={engine.settings.timer.enabled}
+        paused={engine.settings.timer.paused}
+        durationMs={engine.settings.timer.durationMs}
+        countdownMs={engine.activeTimerCountdownMs}
+        showInRecording={engine.settings.timer.showInRecording}
+        recording={engine.recordingStatus !== 'idle'}
+      />
     </div>
   );
 };

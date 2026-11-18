@@ -6,11 +6,13 @@ import {
   computeFadeAlpha,
   distanceToSegment,
   getAnnotationBoundingBox,
+  getShapeOutlinePoints,
   getResizeHandleAtPoint,
   hitTestAnnotation,
   hitTestAnnotationAtClientPoint,
   itemToViewportPoint,
   normalizeCircleEnd,
+  resizeBoundingBoxFromHandle,
   scaleAnnotationItem,
   snapAnglePoint,
   translateAnnotationItem,
@@ -51,7 +53,7 @@ test('hitTestAnnotation detects strokes, shapes, double-arrows, freehand-shapes,
     createdAt: 1000,
   };
   assert.equal(hitTestAnnotation(rect, { x: 20, y: 50 }, 6), true);
-  assert.equal(hitTestAnnotation(rect, { x: 70, y: 50 }, 4), false);
+  assert.equal(hitTestAnnotation(rect, { x: 70, y: 50 }, 4), true);
 
   const doubleArrow: ShapeAnnotation = {
     id: 'da1',
@@ -195,4 +197,96 @@ test('translate, scale, and corner resize handles work accurately on annotations
   }) as ShapeAnnotation;
   assert.deepEqual(scaled.start, { x: 10, y: 20 });
   assert.deepEqual(scaled.end, { x: 210, y: 120 });
+});
+
+test('SHAPES-3: Triangle, diamond, star, and heart outlines are selectable at their perimeter', () => {
+  const box = { minX: 10, minY: 20, maxX: 110, maxY: 120, width: 100, height: 100 };
+  const shapeTypes = ['triangle', 'diamond', 'star', 'heart'] as const;
+  for (const shapeType of shapeTypes) {
+    const outline = getShapeOutlinePoints(shapeType, box);
+    assert.ok(outline && outline.length >= 3, `${shapeType} has a render/hit-test outline`);
+    const shape: ShapeAnnotation = {
+      id: `shape-${shapeType}`,
+      category: 'shape',
+      shapeType,
+      start: { x: box.minX, y: box.minY },
+      end: { x: box.maxX, y: box.maxY },
+      color: '#2563EB',
+      thickness: 3,
+      opacity: 1,
+      createdAt: 1000,
+    };
+    assert.equal(hitTestAnnotation(shape, outline![0], 1), true, `${shapeType} perimeter is selectable`);
+  }
+});
+
+test('SHAPES-5: Double-click and move hit testing accepts the interior of all closed shape tools', () => {
+  const shapeTypes = ['rect', 'circle', 'triangle', 'diamond', 'star', 'heart'] as const;
+  for (const shapeType of shapeTypes) {
+    const shape: ShapeAnnotation = {
+      id: `inside-${shapeType}`,
+      category: 'shape',
+      shapeType,
+      start: { x: 10, y: 20 },
+      end: { x: 110, y: 120 },
+      color: '#2563EB',
+      thickness: 4,
+      opacity: 1,
+      fillOpacity: 0,
+      createdAt: 1000,
+    };
+    assert.equal(
+      hitTestAnnotation(shape, { x: 60, y: 70 }, 0),
+      true,
+      `${shapeType} interior remains a selection and move target without visual fill`
+    );
+  }
+});
+
+test('SHAPES-6: Line and arrow remain hittable along their drawn segments', () => {
+  for (const shapeType of ['line', 'arrow'] as const) {
+    const shape: ShapeAnnotation = {
+      id: `segment-${shapeType}`,
+      category: 'shape',
+      shapeType,
+      start: { x: 10, y: 20 },
+      end: { x: 110, y: 120 },
+      color: '#2563EB',
+      thickness: 4,
+      opacity: 1,
+      createdAt: 1000,
+    };
+    assert.equal(
+      hitTestAnnotation(shape, { x: 60, y: 70 }, 4),
+      true,
+      `${shapeType} can be selected from its segment`
+    );
+  }
+});
+
+test('SHAPES-4: Selection exposes eight resize handles and preserves custom-shape proportions', () => {
+  const box = { minX: 10, minY: 20, maxX: 110, maxY: 70, width: 100, height: 50 };
+  const handles = [
+    ['nw', { x: 4, y: 14 }],
+    ['n', { x: 60, y: 14 }],
+    ['ne', { x: 116, y: 14 }],
+    ['e', { x: 116, y: 45 }],
+    ['se', { x: 116, y: 76 }],
+    ['s', { x: 60, y: 76 }],
+    ['sw', { x: 4, y: 76 }],
+    ['w', { x: 4, y: 45 }],
+  ] as const;
+  for (const [expected, point] of handles) {
+    assert.equal(getResizeHandleAtPoint(box, point, 3), expected);
+  }
+
+  const square = { minX: 10, minY: 20, maxX: 110, maxY: 120, width: 100, height: 100 };
+  const resized = resizeBoundingBoxFromHandle(square, 'se', { x: 166, y: 176 }, true);
+  assert.equal(resized.width, resized.height);
+  assert.equal(resized.minX, square.minX);
+  assert.equal(resized.minY, square.minY);
+
+  const sideResized = resizeBoundingBoxFromHandle(square, 'e', { x: 146, y: 70 }, true);
+  assert.equal(sideResized.width, sideResized.height);
+  assert.equal((sideResized.minY + sideResized.maxY) / 2, 70);
 });

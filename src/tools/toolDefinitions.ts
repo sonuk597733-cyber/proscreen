@@ -41,7 +41,7 @@ export const PRIMARY_TOOLS: ToolMeta[] = [
   {
     id: 'rect',
     label: 'Shapes',
-    description: 'Lines, arrows, rectangles, circles, ellipses, and freehand shapes',
+    description: 'Line, arrow, rectangle, circle, triangle, diamond, star, and heart tools',
     defaultShortcut: 'Alt+R',
   },
   {
@@ -64,14 +64,14 @@ export interface ShapeToolMeta {
 }
 
 export const SHAPE_TOOLS: ShapeToolMeta[] = [
-  { id: 'line', label: 'Straight Line' },
+  { id: 'line', label: 'Line' },
   { id: 'arrow', label: 'Arrow' },
-  { id: 'double-arrow', label: 'Double Arrow' },
-  { id: 'rect', label: 'Rectangle' },
-  { id: 'filled-rect', label: 'Filled Rectangle' },
+  { id: 'rect', label: 'Rectangle / Square' },
   { id: 'circle', label: 'Circle' },
-  { id: 'ellipse', label: 'Ellipse' },
-  { id: 'freehand-shape', label: 'Freehand Shape' },
+  { id: 'triangle', label: 'Triangle' },
+  { id: 'diamond', label: 'Diamond' },
+  { id: 'star', label: 'Star' },
+  { id: 'heart', label: 'Heart' },
 ];
 
 export function isShapeTool(tool: ToolType): tool is ShapeToolType {
@@ -82,6 +82,10 @@ export function isShapeTool(tool: ToolType): tool is ShapeToolType {
     tool === 'rect' ||
     tool === 'filled-rect' ||
     tool === 'circle' ||
+    tool === 'triangle' ||
+    tool === 'diamond' ||
+    tool === 'star' ||
+    tool === 'heart' ||
     tool === 'ellipse' ||
     tool === 'freehand-shape'
   );

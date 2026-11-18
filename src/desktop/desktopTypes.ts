@@ -53,6 +53,7 @@ export interface DesktopSharedState {
   selectedItemId: string | null;
   activePageIndex: number;
   boardPageCount: number;
+  activeTimerCountdownMs: number | null;
   isRecording: boolean;
   recordingStatus: RecordingStatus;
   recordingElapsedMs: number;

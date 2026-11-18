@@ -21278,6 +21278,18 @@ var SHAPE_TOOLS = [
 function isShapeTool(tool) {
 	return tool === "line" || tool === "arrow" || tool === "double-arrow" || tool === "rect" || tool === "filled-rect" || tool === "circle" || tool === "ellipse" || tool === "freehand-shape";
 }
+// src/desktop/keyboardVisualizer.ts
+function getKeyboardVisualizerButtonModel(input) {
+	const label = input.enabled ? "Turn keyboard visualizer off (ProScreen only)" : "Turn keyboard visualizer on (ProScreen only)";
+	const privacyDisclosure = input.enabled ? "Only detects shortcuts while a ProScreen window is focused. Other apps are not observed. Ordinary typing is ignored and keyboard history is not saved." : "When enabled, only detects shortcuts while a ProScreen window is focused. Other apps are not observed. Ordinary typing is ignored and keyboard history is not saved.";
+	const description = input.error ? `${privacyDisclosure} ${input.error}` : !input.supported ? "Keyboard shortcut visualization is available in the ProScreen desktop app only." : privacyDisclosure;
+	return {
+		pressed: input.enabled,
+		disabled: !input.supported || Boolean(input.busy),
+		label,
+		description
+	};
+}
 // src/utils/env.ts
 function isExtensionContext() {
 	return typeof chrome !== "undefined" && typeof chrome.runtime !== "undefined" && typeof chrome.runtime.id === "string" && chrome.runtime.id.length > 0;
@@ -25035,7 +25047,7 @@ var SubmenuCornerNotch = ({ active = false, activeTextDark = false, isDark }) =>
 		fill: "currentColor"
 	})
 });
-var FloatingToolbar = ({ activeTool, boardMode, boardPageIndex, boardPageCount, hasBoardBackground, settings, resolvedTheme, toolbarVisible, ghostMode, presentationMode, isCapturing, activeTimerCountdownMs, recordingStatus, recordingElapsedMs, latestRecording, recordingSupported, supportedRecordingFormats, canUndoAll, canRedoAll, canUndoStroke, canRedoStroke, canUndoShape, canRedoShape, annotationCount, hasSelectedObject, activeBrush, savedSessions, activePopout, onSetActivePopout, onSelectTool, onSwitchBoard, onPrevBoardPage, onNextBoardPage, onAddBoardPage, onClearBoard, onSaveBoard, onExportBoardPng, onImportBoardBackground, onClearBoardBackground, onUpdateSettings, onChangeColor, onChangeThickness, onChangeOpacity, onToggleFavorite, onDeleteSelected, onUndo, onRedo, onClearScreen, onToggleGhostMode, onTogglePresentationMode, onToggleTimerEnabled, onSetTimerDurationMs, onToggleTimerPaused, onResetTimer, onCancelTimer, onCaptureFull, onCaptureArea, onCopyScreenshot, onSavePng, onSelectRecordingArea, onStartRecording, onPauseRecording, onResumeRecording, onStopRecording, onCancelRecording, onDownloadLatestRecording, onPreviewLatestRecording, onClearTemporaryRecording, onSaveSession, onRestoreSession, onDeleteSession, onExportAnnotations, onImportAnnotations, onOpenSettings, onRestoreToolbar, interactionMode = "pointer", onCloseEye, onOpenEye, onToggleEye, isDesktopToolbarWindow = false, desktopOpenSide, onDesktopMove, onSaveDesktopPosition }) => {
+var FloatingToolbar = ({ activeTool, boardMode, boardPageIndex, boardPageCount, hasBoardBackground, settings, resolvedTheme, toolbarVisible, ghostMode, presentationMode, isCapturing, activeTimerCountdownMs, recordingStatus, recordingElapsedMs, latestRecording, recordingSupported, supportedRecordingFormats, canUndoAll, canRedoAll, canUndoStroke, canRedoStroke, canUndoShape, canRedoShape, annotationCount, hasSelectedObject, activeBrush, savedSessions, activePopout, onSetActivePopout, onSelectTool, onSwitchBoard, onPrevBoardPage, onNextBoardPage, onAddBoardPage, onClearBoard, onSaveBoard, onExportBoardPng, onImportBoardBackground, onClearBoardBackground, onUpdateSettings, onChangeColor, onChangeThickness, onChangeOpacity, onToggleFavorite, onDeleteSelected, onUndo, onRedo, onClearScreen, onToggleGhostMode, onTogglePresentationMode, onToggleTimerEnabled, onSetTimerDurationMs, onToggleTimerPaused, onResetTimer, onCancelTimer, onCaptureFull, onCaptureArea, onCopyScreenshot, onSavePng, onSelectRecordingArea, onStartRecording, onPauseRecording, onResumeRecording, onStopRecording, onCancelRecording, onDownloadLatestRecording, onPreviewLatestRecording, onClearTemporaryRecording, onSaveSession, onRestoreSession, onDeleteSession, onExportAnnotations, onImportAnnotations, onOpenSettings, onRestoreToolbar, interactionMode = "pointer", onCloseEye, onOpenEye, onToggleEye, keyboardVisualizerEnabled = false, keyboardVisualizerSupported = false, keyboardVisualizerBusy = false, keyboardVisualizerError, onToggleKeyboardVisualizer, isDesktopToolbarWindow = false, desktopOpenSide, onDesktopMove, onSaveDesktopPosition }) => {
 	const toolbarRef = (0, import_react.useRef)(null);
 	const panelRef = (0, import_react.useRef)(null);
 	const dragSessionRef = (0, import_react.useRef)(null);
@@ -25471,6 +25483,41 @@ var FloatingToolbar = ({ activeTool, boardMode, boardPageIndex, boardPageCount, 
 							strokeWidth: iconStroke
 						})
 					}),
+					onToggleKeyboardVisualizer && (() => {
+						const buttonModel = getKeyboardVisualizerButtonModel({
+							enabled: keyboardVisualizerEnabled,
+							supported: keyboardVisualizerSupported,
+							busy: keyboardVisualizerBusy,
+							error: keyboardVisualizerError
+						});
+						return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("button", {
+							type: "button",
+							"data-testid": "toolbar-keyboard-visualizer-btn",
+							"aria-label": "Keyboard shortcut visualizer, ProScreen windows only",
+							"aria-pressed": buttonModel.pressed,
+							"aria-description": buttonModel.description,
+							title: buttonModel.description,
+							disabled: buttonModel.disabled,
+							style: activeStyle(buttonModel.pressed),
+							onPointerDown: (e) => e.stopPropagation(),
+							onMouseEnter: (e) => scheduleHoverOpen(null, e.currentTarget, buttonModel.label),
+							onMouseLeave: hideTooltip,
+							onClick: (e) => {
+								e.stopPropagation();
+								hideTooltip();
+								onSetActivePopout(null);
+								onToggleKeyboardVisualizer();
+							},
+							className: `${toolBtnClass(buttonModel.pressed)} mt-[2px] disabled:cursor-not-allowed disabled:opacity-45`,
+							children: [/* @__PURE__ */ (0, import_jsx_runtime.jsx)(Keyboard, {
+								className: iconDim,
+								strokeWidth: iconStroke
+							}), buttonModel.pressed && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", {
+								"aria-hidden": "true",
+								className: "absolute top-[1px] right-[1px] w-1.5 h-1.5 rounded-full bg-emerald-400"
+							})]
+						});
+					})(),
 					!isCompactState && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", {
 						className: "flex flex-col items-center gap-[1px] mt-[2px]",
 						children: [
@@ -31974,4 +32021,4 @@ function App() {
 // src/main.tsx
 (0, import_client.createRoot)(document.getElementById("root")).render(/* @__PURE__ */ (0, import_jsx_runtime.jsx)(App, {}));
 
-//# sourceMappingURL=main-DNd-rkEQ.js.map
+//# sourceMappingURL=main-DuR7Ptss.js.map

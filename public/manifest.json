@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "ProScreen — Screen Annotation Studio",
   "short_name": "ProScreen",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "Professional browser screen annotation toolkit for teachers, developers, presenters, and video creators.",
   "icons": {
     "16": "icons/icon16.png",

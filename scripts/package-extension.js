@@ -1,6 +1,6 @@
 import fs from 'fs';
 import path from 'path';
-import { execSync } from 'child_process';
+import { execFileSync } from 'child_process';
 import crypto from 'crypto';
 
 console.log('=== PACKAGING CHROME EXTENSION DISTRIBUTABLE ZIP ===\n');
@@ -16,6 +16,21 @@ if (!fs.existsSync(distDir) || !fs.existsSync(path.join(distDir, 'manifest.json'
 // 1. Validate manifest.json
 const manifestRaw = fs.readFileSync(path.join(distDir, 'manifest.json'), 'utf-8');
 const manifest = JSON.parse(manifestRaw);
+const packageJson = JSON.parse(fs.readFileSync(path.resolve('package.json'), 'utf-8'));
+const sourceManifest = JSON.parse(fs.readFileSync(path.resolve('public/manifest.json'), 'utf-8'));
+
+for (const [source, version] of [
+  ['package.json', packageJson.version],
+  ['public/manifest.json', sourceManifest.version],
+  ['dist/manifest.json', manifest.version],
+]) {
+  if (version !== packageJson.version) {
+    throw new Error(
+      `Version mismatch: ${source} has ${version}, but package.json has ${packageJson.version}. Rebuild or synchronize the release versions before packaging.`
+    );
+  }
+}
+
 console.log(`- Extension Name: ${manifest.name}`);
 console.log(`- Version: ${manifest.version}`);
 console.log(`- Manifest Version: ${manifest.manifest_version}`);
@@ -68,7 +83,8 @@ const copyDirRecursive = (src, dest) => {
 copyDirRecursive(path.join(distDir, 'icons'), path.join(stageDir, 'icons'));
 copyDirRecursive(path.join(distDir, 'assets'), path.join(stageDir, 'assets'));
 
-// 3. Create ZIP using PowerShell Compress-Archive
+// 3. Create ZIP using Windows' built-in bsdtar. This avoids relying on the
+// optional Microsoft.PowerShell.Archive module being loadable in CI/local shells.
 const zipName = `ProScreen-Chrome-Extension-${manifest.version}.zip`;
 const zipPath = path.join(releaseDir, zipName);
 if (fs.existsSync(zipPath)) {
@@ -76,8 +92,9 @@ if (fs.existsSync(zipPath)) {
 }
 
 console.log(`- Compressing to ${zipPath}...`);
-execSync(
-  `powershell -NoProfile -Command "$ProgressPreference = 'SilentlyContinue'; Compress-Archive -Path '${stageDir}\\*' -DestinationPath '${zipPath}' -Force"`,
+execFileSync(
+  'tar.exe',
+  ['-a', '-c', '-f', zipPath, '-C', stageDir, ...fs.readdirSync(stageDir)],
   { stdio: 'inherit' }
 );
 

@@ -9,6 +9,7 @@ import {
   EyeOff,
   GripHorizontal,
   Highlighter,
+  Keyboard,
   Minus,
   MousePointer,
   Move,
@@ -37,6 +38,7 @@ import {
 } from '../recorder/screenRecorder';
 import { isShapeTool } from '../tools/toolDefinitions';
 import { hexToRgb } from '../utils/color';
+import { getKeyboardVisualizerButtonModel } from '../desktop/keyboardVisualizer';
 import { PopoutId, PopoutPosition, ToolbarPopouts } from './ToolbarPopouts';
 
 interface FloatingToolbarProps {
@@ -119,6 +121,11 @@ interface FloatingToolbarProps {
   onCloseEye?: () => void;
   onOpenEye?: () => void;
   onToggleEye?: () => void;
+  keyboardVisualizerEnabled?: boolean;
+  keyboardVisualizerSupported?: boolean;
+  keyboardVisualizerBusy?: boolean;
+  keyboardVisualizerError?: string | null;
+  onToggleKeyboardVisualizer?: () => void;
   isDesktopToolbarWindow?: boolean;
   desktopOpenSide?: 'left' | 'right';
   onDesktopMove?: (x: number, y: number) => void;
@@ -271,6 +278,11 @@ export const FloatingToolbar: React.FC<FloatingToolbarProps> = ({
   onCloseEye,
   onOpenEye,
   onToggleEye,
+  keyboardVisualizerEnabled = false,
+  keyboardVisualizerSupported = false,
+  keyboardVisualizerBusy = false,
+  keyboardVisualizerError,
+  onToggleKeyboardVisualizer,
   isDesktopToolbarWindow = false,
   desktopOpenSide,
   onDesktopMove,
@@ -855,6 +867,45 @@ export const FloatingToolbar: React.FC<FloatingToolbarProps> = ({
         >
           <EyeOff className={iconDim} strokeWidth={iconStroke} />
         </button>
+
+        {onToggleKeyboardVisualizer && (() => {
+          const buttonModel = getKeyboardVisualizerButtonModel({
+            enabled: keyboardVisualizerEnabled,
+            supported: keyboardVisualizerSupported,
+            busy: keyboardVisualizerBusy,
+            error: keyboardVisualizerError,
+          });
+          return (
+            <button
+              type="button"
+              data-testid="toolbar-keyboard-visualizer-btn"
+              aria-label="Keyboard shortcut visualizer"
+              aria-pressed={buttonModel.pressed}
+              aria-description={buttonModel.description}
+              title={buttonModel.description}
+              disabled={buttonModel.disabled}
+              style={activeStyle(buttonModel.pressed)}
+              onPointerDown={(e) => e.stopPropagation()}
+              onMouseEnter={(e) => scheduleHoverOpen(null, e.currentTarget, buttonModel.label)}
+              onMouseLeave={hideTooltip}
+              onClick={(e) => {
+                e.stopPropagation();
+                hideTooltip();
+                onSetActivePopout(null);
+                onToggleKeyboardVisualizer();
+              }}
+              className={`${toolBtnClass(buttonModel.pressed)} mt-[2px] disabled:cursor-not-allowed disabled:opacity-45`}
+            >
+              <Keyboard className={iconDim} strokeWidth={iconStroke} />
+              {buttonModel.pressed && (
+                <span
+                  aria-hidden="true"
+                  className="absolute top-[1px] right-[1px] w-1.5 h-1.5 rounded-full bg-emerald-400"
+                />
+              )}
+            </button>
+          );
+        })()}
 
         {/* EXPANDED STATE: Single Vertical Column Matching Epic Pen Layout */}
         {!isCompactState && (

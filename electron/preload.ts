@@ -8,6 +8,9 @@ import {
 } from '../src/desktop/desktopTypes';
 import { AnnotationItem } from '../src/types/annotation';
 import { UserSettings } from '../src/types/settings';
+import { createKeyboardVisualizerBridge } from '../src/desktop/keyboardVisualizerBridge';
+
+const keyboardVisualizerBridge = createKeyboardVisualizerBridge(ipcRenderer);
 
 const desktopAPI: ProScreenDesktopAPI = {
   isDesktop: true,
@@ -174,6 +177,8 @@ const desktopAPI: ProScreenDesktopAPI = {
       ipcRenderer.removeListener('desktop:popout-closed', handler);
     };
   },
+
+  ...keyboardVisualizerBridge,
 
   quitApp: () => {
     ipcRenderer.send('desktop:quit-app');

@@ -10,6 +10,7 @@ import { AreaSelector } from '../components/AreaSelector';
 import { mergeAndValidateSettings } from '../storage/validation';
 import { HistoryScope } from '../canvas/history';
 import { shouldOverlayReceiveMouse } from './interactionLifecycle';
+import { KeyboardVisualizerOverlay } from './KeyboardVisualizerOverlay';
 
 export const DesktopOverlayApp: React.FC = () => {
   const engine = useProScreenEngine('desktop:global');
@@ -453,6 +454,8 @@ export const DesktopOverlayApp: React.FC = () => {
           onDownload={(saveAs) => void engine.downloadLatestRecording(saveAs ?? true)}
         />
       )}
+
+      <KeyboardVisualizerOverlay />
     </div>
   );
 };

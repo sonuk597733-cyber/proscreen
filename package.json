@@ -4,7 +4,7 @@
   "description": "Professional Windows Desktop & Chrome Screen Annotation Studio",
   "author": "ProScreen Team",
   "private": true,
-  "version": "1.0.2",
+  "version": "1.0.3",
   "type": "module",
   "main": "dist-electron/main.cjs",
   "scripts": {

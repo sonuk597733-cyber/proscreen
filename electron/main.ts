@@ -15,7 +15,6 @@ import {
   Tray,
 } from 'electron';
 import fs from 'fs';
-import { createRequire } from 'module';
 import path from 'path';
 import { pathToFileURL } from 'url';
 import {
@@ -49,35 +48,12 @@ import {
 } from '../src/desktop/interactionLifecycle';
 import {
   KeyboardVisualizerController,
-  KeyboardVisualizerNativeAddon,
 } from '../src/desktop/keyboardVisualizer';
 import {
   KEYBOARD_SHORTCUT_EVENT_CHANNEL,
   KEYBOARD_VISUALIZER_DISABLED_CHANNEL,
 } from '../src/desktop/keyboardVisualizerBridge';
 import { registerKeyboardVisualizerIpc } from '../src/desktop/keyboardVisualizerIpc';
-import { resolveKeyboardVisualizerModulePath } from '../src/desktop/keyboardVisualizerRuntime';
-
-const requireNative = createRequire(path.join(__dirname, 'main.cjs'));
-
-function loadKeyboardVisualizerNativeAddon(): KeyboardVisualizerNativeAddon {
-  if (process.platform !== 'win32' || process.arch !== 'x64') {
-    throw new Error('The system-wide keyboard visualizer requires Windows x64.');
-  }
-  const modulePath = resolveKeyboardVisualizerModulePath({
-    isPackaged: app.isPackaged,
-    resourcesPath: process.resourcesPath,
-    mainDirectory: __dirname,
-  });
-  if (!fs.existsSync(modulePath)) {
-    throw new Error('The Windows keyboard visualizer native module is not installed.');
-  }
-  const nativeAddon = requireNative(modulePath) as Partial<KeyboardVisualizerNativeAddon>;
-  if (typeof nativeAddon.start !== 'function' || typeof nativeAddon.stop !== 'function') {
-    throw new Error('The Windows keyboard visualizer native module is invalid.');
-  }
-  return nativeAddon as KeyboardVisualizerNativeAddon;
-}
 
 function getDesktopLogPath(): string {
   try {
@@ -277,8 +253,6 @@ let sharedState: DesktopSharedState = {
 };
 
 const keyboardVisualizerController = new KeyboardVisualizerController({
-  platform: process.platform,
-  loadAddon: loadKeyboardVisualizerNativeAddon,
   onShortcut: (event) => {
     if (!keyboardVisualizerEnabled || !overlayWindow || overlayWindow.isDestroyed()) return;
     if (!overlayWindow.isVisible()) {
@@ -632,6 +606,17 @@ function instrumentWindow(win: BrowserWindow, name: string) {
   win.on('responsive', () => logDesktopEvent('WINDOW_RESPONSIVE', getWinMeta()));
   win.on('close', () => logDesktopEvent('WINDOW_CLOSING', getWinMeta()));
   win.on('closed', () => logDesktopEvent('WINDOW_CLOSED', { name, id: win.id, hwnd: `0x${hwnd.toString(16)}` }));
+
+  const contents = win.webContents;
+  const onBeforeInput = (_event: Electron.Event, input: Electron.Input) => {
+    // This passive Electron event only receives keys while this ProScreen window is focused.
+    // Deliberately do not call preventDefault so keys continue to the application unchanged.
+    keyboardVisualizerController.observeInput(input);
+  };
+  contents.on('before-input-event', onBeforeInput);
+  contents.once('destroyed', () => {
+    contents.removeListener('before-input-event', onBeforeInput);
+  });
 
   win.webContents.on('did-start-loading', () => {
     logDesktopEvent('RENDERER_START_LOADING', { name, id: win.id });

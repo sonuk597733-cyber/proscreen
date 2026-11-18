@@ -879,7 +879,7 @@ export const FloatingToolbar: React.FC<FloatingToolbarProps> = ({
             <button
               type="button"
               data-testid="toolbar-keyboard-visualizer-btn"
-              aria-label="Keyboard shortcut visualizer"
+              aria-label="Keyboard shortcut visualizer, ProScreen windows only"
               aria-pressed={buttonModel.pressed}
               aria-description={buttonModel.description}
               title={buttonModel.description}

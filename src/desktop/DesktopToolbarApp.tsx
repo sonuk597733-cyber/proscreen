@@ -516,7 +516,7 @@ export const DesktopToolbarApp: React.FC = () => {
         onOpenEye={() => desktop?.setEye(true)}
         onToggleEye={() => desktop?.toggleEye()}
         keyboardVisualizerEnabled={keyboardVisualizerEnabled}
-        keyboardVisualizerSupported={desktop?.platform === 'win32'}
+        keyboardVisualizerSupported={Boolean(desktop)}
         keyboardVisualizerBusy={keyboardVisualizerBusy}
         keyboardVisualizerError={keyboardVisualizerError}
         onToggleKeyboardVisualizer={toggleKeyboardVisualizer}

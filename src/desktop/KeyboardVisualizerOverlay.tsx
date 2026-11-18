@@ -7,7 +7,7 @@ export function KeyboardShortcutCards({ notifications }: { notifications: Shortc
   return (
     <section
       data-testid="keyboard-visualizer-overlay"
-      aria-label="Recent keyboard shortcuts"
+      aria-label="Recent shortcuts detected while a ProScreen window was focused"
       aria-live="polite"
       className="fixed right-6 top-6 z-[2147483647] flex w-[min(20rem,calc(100vw-3rem))] flex-col gap-2 pointer-events-none"
     >

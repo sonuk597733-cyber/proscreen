@@ -4,17 +4,24 @@ export const KEYBOARD_VISUALIZER_MAX_NOTIFICATIONS = 5;
 export interface KeyboardShortcutEvent {
   type: 'shortcut';
   label: string;
+  scope: 'application-window';
 }
 
 export interface KeyboardVisualizerStatus {
   enabled: boolean;
   supported: boolean;
+  scope: 'application-window';
   error?: string;
 }
 
-export interface KeyboardVisualizerNativeAddon {
-  start(callback: (event: unknown) => void): Promise<void>;
-  stop(): Promise<void>;
+export interface KeyboardVisualizerInput {
+  type: string;
+  key: string;
+  control: boolean;
+  alt: boolean;
+  shift: boolean;
+  meta: boolean;
+  isAutoRepeat?: boolean;
 }
 
 export interface ShortcutNotification {
@@ -24,13 +31,47 @@ export interface ShortcutNotification {
 
 export function parseKeyboardShortcutEvent(value: unknown): KeyboardShortcutEvent | null {
   if (!value || typeof value !== 'object') return null;
-  const event = value as { type?: unknown; label?: unknown };
-  if (event.type !== 'shortcut' || typeof event.label !== 'string') return null;
+  const event = value as { type?: unknown; label?: unknown; scope?: unknown };
+  if (event.type !== 'shortcut' || event.scope !== 'application-window' || typeof event.label !== 'string') return null;
   const label = event.label.trim();
   if (!label || label.length > 64 || !/^[A-Za-z0-9 ]+(?:\+[A-Za-z0-9 ]+){1,5}$/.test(label)) {
     return null;
   }
-  return { type: 'shortcut', label };
+  return { type: 'shortcut', label, scope: 'application-window' };
+}
+
+export function getKeyboardShortcutEventFromInput(input: KeyboardVisualizerInput): KeyboardShortcutEvent | null {
+  if (input.type !== 'keyDown' || input.isAutoRepeat) return null;
+  if (!input.control && !input.alt && !input.meta) return null;
+
+  const keyNames: Record<string, string> = {
+    ArrowDown: 'Down',
+    ArrowLeft: 'Left',
+    ArrowRight: 'Right',
+    ArrowUp: 'Up',
+    Backspace: 'Backspace',
+    Delete: 'Del',
+    Escape: 'Esc',
+    PageDown: 'PageDown',
+    PageUp: 'PageUp',
+    ' ': 'Space',
+  };
+  const key = keyNames[input.key] || input.key;
+  if (!/^(?:[A-Za-z0-9]|F(?:[1-9]|1[0-2])|Enter|Tab|Space|Backspace|Del|Esc|Home|End|Insert|PageUp|PageDown|Up|Down|Left|Right)$/.test(key)) {
+    return null;
+  }
+
+  const modifiers = [
+    input.control ? 'Ctrl' : '',
+    input.alt ? 'Alt' : '',
+    input.shift ? 'Shift' : '',
+    input.meta ? 'Meta' : '',
+  ].filter(Boolean);
+  return {
+    type: 'shortcut',
+    label: [...modifiers, /^[a-z]$/i.test(key) ? key.toUpperCase() : key].join('+'),
+    scope: 'application-window',
+  };
 }
 
 export function getKeyboardVisualizerButtonModel(input: {
@@ -39,14 +80,16 @@ export function getKeyboardVisualizerButtonModel(input: {
   busy?: boolean;
   error?: string | null;
 }): { pressed: boolean; disabled: boolean; label: string; description: string } {
-  const label = input.enabled ? 'Turn keyboard visualizer off' : 'Turn keyboard visualizer on';
+  const label = input.enabled
+    ? 'Turn keyboard visualizer off (ProScreen only)'
+    : 'Turn keyboard visualizer on (ProScreen only)';
   const privacyDisclosure = input.enabled
-    ? 'Supported keyboard shortcuts can be observed system-wide while enabled. Ordinary typing is ignored and keyboard history is not saved.'
-    : 'When enabled, supported keyboard shortcuts can be observed system-wide. Ordinary typing is ignored and keyboard history is not saved.';
+    ? 'Only detects shortcuts while a ProScreen window is focused. Other apps are not observed. Ordinary typing is ignored and keyboard history is not saved.'
+    : 'When enabled, only detects shortcuts while a ProScreen window is focused. Other apps are not observed. Ordinary typing is ignored and keyboard history is not saved.';
   const description = input.error
     ? `${privacyDisclosure} ${input.error}`
     : !input.supported
-      ? 'Keyboard shortcut visualization is available in the Windows desktop app only.'
+      ? 'Keyboard shortcut visualization is available in the ProScreen desktop app only.'
       : privacyDisclosure;
   return {
     pressed: input.enabled,
@@ -57,15 +100,10 @@ export function getKeyboardVisualizerButtonModel(input: {
 }
 
 export class KeyboardVisualizerController {
-  private addon: KeyboardVisualizerNativeAddon | null = null;
   private enabled = false;
-  private startOperation: Promise<KeyboardVisualizerStatus> | null = null;
-  private stopOperation: Promise<KeyboardVisualizerStatus> | null = null;
 
   constructor(
     private readonly options: {
-      platform: string;
-      loadAddon: () => KeyboardVisualizerNativeAddon;
       onShortcut: (event: KeyboardShortcutEvent) => void;
       onEnabledChange: (enabled: boolean) => void;
     }
@@ -76,92 +114,32 @@ export class KeyboardVisualizerController {
   }
 
   start(): Promise<KeyboardVisualizerStatus> {
-    if (this.options.platform !== 'win32') {
-      return Promise.resolve({
-        enabled: false,
-        supported: false,
-        error: 'System-wide keyboard monitoring is only available on Windows.',
-      });
+    if (!this.enabled) {
+      this.enabled = true;
+      try {
+        this.options.onEnabledChange(true);
+      } catch {}
     }
-    if (this.enabled) return Promise.resolve({ enabled: true, supported: true });
-    if (this.stopOperation) {
-      return this.stopOperation.then(() => this.start());
-    }
-    if (this.startOperation) return this.startOperation;
-
-    const operation = this.startNative();
-    this.startOperation = operation;
-    return operation.finally(() => {
-      if (this.startOperation === operation) this.startOperation = null;
-    });
+    return Promise.resolve({ enabled: true, supported: true, scope: 'application-window' });
   }
 
-  private async startNative(): Promise<KeyboardVisualizerStatus> {
-    let addon: KeyboardVisualizerNativeAddon | null = null;
-    try {
-      addon = this.addon || this.options.loadAddon();
-      this.addon = addon;
-      await addon.start((value) => {
-        if (!this.enabled) return;
-        const shortcut = parseKeyboardShortcutEvent(value);
-        if (shortcut) {
-          try {
-            this.options.onShortcut(shortcut);
-          } catch {}
-        }
-      });
-      this.enabled = true;
-      this.options.onEnabledChange(true);
-      return { enabled: true, supported: true };
-    } catch (error) {
-      if (addon) {
-        try {
-          await addon.stop();
-        } catch {}
-      }
-      this.addon = null;
+  stop(): Promise<KeyboardVisualizerStatus> {
+    if (this.enabled) {
       this.enabled = false;
       try {
         this.options.onEnabledChange(false);
       } catch {}
-      return {
-        enabled: false,
-        supported: true,
-        error: error instanceof Error ? error.message : String(error),
-      };
     }
+    return Promise.resolve({ enabled: false, supported: true, scope: 'application-window' });
   }
 
-  stop(): Promise<KeyboardVisualizerStatus> {
-    if (this.stopOperation) return this.stopOperation;
-    const pendingStart = this.startOperation;
-    if (pendingStart) {
-      return pendingStart.then(() => this.stop());
-    }
-
-    this.enabled = false;
+  observeInput(input: KeyboardVisualizerInput): void {
+    if (!this.enabled) return;
+    const shortcut = getKeyboardShortcutEventFromInput(input);
+    if (!shortcut) return;
     try {
-      this.options.onEnabledChange(false);
+      this.options.onShortcut(shortcut);
     } catch {}
-    const addon = this.addon;
-    if (!addon) {
-      return Promise.resolve({ enabled: false, supported: this.options.platform === 'win32' });
-    }
-
-    const operation = Promise.resolve()
-      .then(() => addon.stop())
-      .then(() => ({ enabled: false, supported: true } satisfies KeyboardVisualizerStatus))
-      .catch((error) => ({
-        enabled: false,
-        supported: true,
-        error: error instanceof Error ? error.message : String(error),
-      }))
-      .finally(() => {
-        if (this.addon === addon) this.addon = null;
-        if (this.stopOperation === operation) this.stopOperation = null;
-      });
-    this.stopOperation = operation;
-    return operation;
   }
 }
 

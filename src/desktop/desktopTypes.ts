@@ -134,7 +134,7 @@ export interface ProScreenDesktopAPI {
   onPopoutData?: (callback: (data: { popoutId: string | null; openSide: 'left' | 'right'; anchorOffsetY?: number; transitionId?: number }) => void) => () => void;
   onPopoutClosed?: (callback: (info?: { transitionId?: number }) => void) => () => void;
 
-  // Windows-only system-wide shortcut visualization
+  // Detects shortcuts only while a ProScreen desktop window is focused.
   startKeyboardVisualizer: () => Promise<KeyboardVisualizerStatus>;
   stopKeyboardVisualizer: () => Promise<KeyboardVisualizerStatus>;
   onKeyboardShortcut: (callback: (event: KeyboardShortcutEvent) => void) => () => void;

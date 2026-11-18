@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useEffect, useState, useMemo } from 'react';
 import { PageRoute } from './types';
+import { RELEASE_VERSION } from './constants';
 
 interface RouterContextType {
   currentRoute: PageRoute;
@@ -31,7 +32,7 @@ const ROUTE_TITLES: Record<PageRoute, string> = {
   download: 'Download ProScreen for Windows — Official Installer & Portable Release',
   'chrome-extension': 'ProScreen for Google Chrome — Manifest V3 Screen Annotation Extension',
   gallery: 'Product Gallery & Interface Showcase — ProScreen',
-  changelog: 'Changelog & Release Notes — ProScreen v1.0.2',
+  changelog: `Changelog & Release Notes — ProScreen v${RELEASE_VERSION}`,
   faq: 'Frequently Asked Questions & Knowledge Base — ProScreen',
   support: 'Support & Troubleshooting Center — ProScreen',
   privacy: 'Privacy Policy — 100% Local-First & Zero Telemetry — ProScreen',

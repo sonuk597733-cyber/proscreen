@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useRouter } from '../router';
 import { PageRoute } from '../types';
-import { IMPLEMENTED_FEATURES, FAQS, KEYBOARD_SHORTCUTS } from '../constants';
+import { IMPLEMENTED_FEATURES, FAQS, KEYBOARD_SHORTCUTS, RELEASE_VERSION } from '../constants';
 import {
   Search,
   X,
@@ -59,11 +59,11 @@ export const CommandPalette: React.FC = () => {
   const staticItems = [
     { id: 'p-home', title: 'Home', subtitle: 'Overview & cinematic introduction', route: 'home' as PageRoute, icon: Sparkles, cat: 'Pages' },
     { id: 'p-feat', title: 'Features & Architecture', subtitle: 'Detailed breakdown of all 11 implemented tools', route: 'features' as PageRoute, icon: Layers, cat: 'Pages' },
-    { id: 'p-down', title: 'Download for Windows', subtitle: 'Installer & Portable executables (v1.0.2)', route: 'download' as PageRoute, icon: Download, cat: 'Downloads' },
+    { id: 'p-down', title: 'Download for Windows', subtitle: `Installer & Portable executables (v${RELEASE_VERSION})`, route: 'download' as PageRoute, icon: Download, cat: 'Downloads' },
     { id: 'p-ext', title: 'Chrome Extension', subtitle: 'Manifest V3 unpacked installation & specs', route: 'chrome-extension' as PageRoute, icon: Chrome, cat: 'Pages' },
     { id: 'p-gal', title: 'Product Gallery', subtitle: 'High-definition interface views & mockups', route: 'gallery' as PageRoute, icon: Monitor, cat: 'Pages' },
     { id: 'p-play', title: 'Interactive Studio Playground', subtitle: 'Live in-browser annotation testbed', route: 'playground' as PageRoute, icon: Sparkles, cat: 'Interactive' },
-    { id: 'p-chg', title: 'Changelog v1.0.2', subtitle: 'Release history and architecture updates', route: 'changelog' as PageRoute, icon: FileText, cat: 'Docs' },
+    { id: 'p-chg', title: `Changelog v${RELEASE_VERSION}`, subtitle: 'Release history and architecture updates', route: 'changelog' as PageRoute, icon: FileText, cat: 'Docs' },
     { id: 'p-faq', title: 'Frequently Asked Questions', subtitle: 'Answers for Windows, Extension & UIPI', route: 'faq' as PageRoute, icon: HelpCircle, cat: 'Docs' },
     { id: 'p-sup', title: 'Support & System Diagnostics', subtitle: 'Browser/Hardware capability tester & troubleshooting', route: 'support' as PageRoute, icon: HelpCircle, cat: 'Support' },
     { id: 'p-priv', title: 'Privacy Policy', subtitle: '100% local data & zero telemetry guarantee', route: 'privacy' as PageRoute, icon: Shield, cat: 'Legal' },

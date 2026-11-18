@@ -3,6 +3,9 @@ import { ReleaseAsset, FeatureItem, FaqItem, ChangelogRelease } from './types';
 // GitHub Release Distribution Configuration
 export const GITHUB_USERNAME = (import.meta as any).env?.VITE_GITHUB_USERNAME || 'sonuk597733-cyber';
 export const GITHUB_REPO = (import.meta as any).env?.VITE_GITHUB_REPO || `${GITHUB_USERNAME}/proscreen`;
+export const RELEASE_VERSION = '1.0.3';
+export const RELEASE_TAG = `v${RELEASE_VERSION}`;
+export const RELEASE_MANIFEST_URL = `https://github.com/${GITHUB_REPO}/releases/download/${RELEASE_TAG}/release-manifest.json`;
 
 export const getReleaseDownloadUrl = (fileName: string): string => {
   // If running locally, serve from local /downloads/ folder; in production or GitHub Pages, route to GitHub Releases
@@ -12,7 +15,7 @@ export const getReleaseDownloadUrl = (fileName: string): string => {
       return `/downloads/${fileName}`;
     }
   }
-  return `https://github.com/${GITHUB_REPO}/releases/download/v1.0.2/${fileName}`;
+  return `https://github.com/${GITHUB_REPO}/releases/download/${RELEASE_TAG}/${fileName}`;
 };
 
 export const OFFICIAL_RELEASES: {
@@ -21,12 +24,12 @@ export const OFFICIAL_RELEASES: {
   extensionZip: ReleaseAsset;
 } = {
   installer: {
-    fileName: 'ProScreen-Setup-1.0.2.exe',
-    version: '1.0.2',
-    sizeBytes: 140351351,
+    fileName: 'ProScreen-Setup-1.0.3.exe',
+    version: RELEASE_VERSION,
+    sizeBytes: 140350424,
     sizeFormatted: '133.8 MB',
-    sha256: 'A4A965C9E486B3A91259B0D46891C20A9A941143E1D0DABC0A41177B5005B2F2',
-    downloadUrl: `https://github.com/${GITHUB_REPO}/releases/download/v1.0.2/ProScreen-Setup-1.0.2.exe`,
+    sha256: 'CD2EE7DCEDFCEA3F5C029CAD906798CFC6A41116901CB4DC86746D170C784713',
+    downloadUrl: `https://github.com/${GITHUB_REPO}/releases/download/${RELEASE_TAG}/ProScreen-Setup-1.0.3.exe`,
     releaseDate: 'November 2026',
     targetOS: 'Windows 10 / Windows 11 (64-bit)',
     architecture: 'x64 (Intel / AMD)',
@@ -41,12 +44,12 @@ export const OFFICIAL_RELEASES: {
     ],
   },
   portable: {
-    fileName: 'ProScreen-Portable-1.0.2.exe',
-    version: '1.0.2',
-    sizeBytes: 125316228,
+    fileName: 'ProScreen-Portable-1.0.3.exe',
+    version: RELEASE_VERSION,
+    sizeBytes: 125325365,
     sizeFormatted: '119.5 MB',
-    sha256: '6A610B473B5D711EE4F6319BE46F0877167C8A01AEC1785635F5A929EACD5F64',
-    downloadUrl: `https://github.com/${GITHUB_REPO}/releases/download/v1.0.2/ProScreen-Portable-1.0.2.exe`,
+    sha256: '1BACE4962CB9AFDF47AC578EE5DE5B865F1428DA440B0D7913D7E33875C4C0B7',
+    downloadUrl: `https://github.com/${GITHUB_REPO}/releases/download/${RELEASE_TAG}/ProScreen-Portable-1.0.3.exe`,
     releaseDate: 'November 2026',
     targetOS: 'Windows 10 / Windows 11 (64-bit)',
     architecture: 'x64 (Intel / AMD)',
@@ -61,12 +64,12 @@ export const OFFICIAL_RELEASES: {
     ],
   },
   extensionZip: {
-    fileName: 'ProScreen-Chrome-Extension-1.0.2.zip',
-    version: '1.0.2',
-    sizeBytes: 2194945,
+    fileName: 'ProScreen-Chrome-Extension-1.0.3.zip',
+    version: RELEASE_VERSION,
+    sizeBytes: 2207341,
     sizeFormatted: '2.1 MB',
-    sha256: '2CBC16A2D37DCAB6667290BDB2F48A1F688FC030DE9782C16B5DEA609EFB33FF',
-    downloadUrl: `https://github.com/${GITHUB_REPO}/releases/download/v1.0.2/ProScreen-Chrome-Extension-1.0.2.zip`,
+    sha256: 'EAFB7A568A4C28278DD537B1F19B07EA7457C71E77F7C3B891D656DB7C55F4E4',
+    downloadUrl: `https://github.com/${GITHUB_REPO}/releases/download/${RELEASE_TAG}/ProScreen-Chrome-Extension-1.0.3.zip`,
     releaseDate: 'November 2026',
     targetOS: 'Chromium Browsers (Chrome, Edge, Brave, Opera, Vivaldi)',
     architecture: 'Universal Manifest V3',
@@ -344,6 +347,37 @@ export const PLATFORM_MATRIX = [
 ];
 
 export const CHANGELOG: ChangelogRelease[] = [
+  {
+    version: '1.0.3',
+    date: 'November 18, 2026',
+    tagline: 'Keyboard Shortcut Visualizer & Verified Windows Release Assets',
+    status: 'stable',
+    highlights: [
+      'Official ProScreen v1.0.3 release with Windows NSIS Installer, Portable EXE, and Chrome Extension ZIP',
+      'Added an opt-in Keyboard Shortcut Visualizer with a bounded notification queue, auto-hide, and cleanup',
+      'Shortcut detection is limited to the ProScreen application window; system-wide passive monitoring is not provided',
+      'Published a release manifest containing the verified sizes and SHA-256 checksums for all three downloads',
+    ],
+    sections: [
+      {
+        category: 'Keyboard Shortcut Visualizer',
+        items: [
+          'Monitoring starts OFF and can be turned on or off by the user',
+          'Shows shortcuts detected while the ProScreen application window is focused',
+          'Limits notifications to five queued items and automatically hides and cleans up notifications',
+          'Does not register global shortcuts or intercept keystrokes from other applications',
+        ],
+      },
+      {
+        category: 'Release Integrity',
+        items: [
+          'Aligned the Chrome extension manifest version with the desktop package version',
+          'Added a packaging check that detects version drift before producing the extension ZIP',
+          'Verified published download checksums against the v1.0.3 release manifest',
+        ],
+      },
+    ],
+  },
   {
     version: '1.0.2',
     date: 'November 17, 2026',

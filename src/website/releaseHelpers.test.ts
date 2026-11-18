@@ -1,6 +1,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { OFFICIAL_RELEASES, GITHUB_REPO } from './constants';
+import {
+  GITHUB_REPO,
+  OFFICIAL_RELEASES,
+  RELEASE_MANIFEST_URL,
+  RELEASE_VERSION,
+} from './constants';
 import {
   buildGitHubReleaseUrl,
   buildPowerShellHashCommand,
@@ -29,35 +34,43 @@ test('OFFICIAL_RELEASES URLs point exclusively to valid GitHub Releases assets',
 });
 
 test('OFFICIAL_RELEASES metadata keeps consistent version and filenames', () => {
-  assert.equal(OFFICIAL_RELEASES.installer.version, '1.0.2');
-  assert.equal(OFFICIAL_RELEASES.installer.fileName, 'ProScreen-Setup-1.0.2.exe');
-  assert.equal(OFFICIAL_RELEASES.portable.fileName, 'ProScreen-Portable-1.0.2.exe');
-  assert.equal(OFFICIAL_RELEASES.extensionZip.fileName, 'ProScreen-Chrome-Extension-1.0.2.zip');
+  assert.equal(RELEASE_VERSION, '1.0.3');
+  assert.equal(RELEASE_MANIFEST_URL, 'https://github.com/sonuk597733-cyber/proscreen/releases/download/v1.0.3/release-manifest.json');
+  assert.equal(OFFICIAL_RELEASES.installer.version, RELEASE_VERSION);
+  assert.equal(OFFICIAL_RELEASES.portable.version, RELEASE_VERSION);
+  assert.equal(OFFICIAL_RELEASES.extensionZip.version, RELEASE_VERSION);
+  assert.equal(OFFICIAL_RELEASES.installer.fileName, 'ProScreen-Setup-1.0.3.exe');
+  assert.equal(OFFICIAL_RELEASES.portable.fileName, 'ProScreen-Portable-1.0.3.exe');
+  assert.equal(OFFICIAL_RELEASES.extensionZip.fileName, 'ProScreen-Chrome-Extension-1.0.3.zip');
+  assert.equal(OFFICIAL_RELEASES.installer.sizeBytes, 140350424);
+  assert.equal(OFFICIAL_RELEASES.portable.sizeBytes, 125325365);
+  assert.equal(OFFICIAL_RELEASES.extensionZip.sizeBytes, 2207341);
   assert.match(OFFICIAL_RELEASES.installer.sha256, /^[A-F0-9]{64}$/);
   assert.match(OFFICIAL_RELEASES.portable.sha256, /^[A-F0-9]{64}$/);
+  assert.match(OFFICIAL_RELEASES.extensionZip.sha256, /^[A-F0-9]{64}$/);
 });
 
 test('buildGitHubReleaseUrl and resolveAssetDownloadUrl never default to broken local URLs', () => {
-  const url = buildGitHubReleaseUrl('sonuk597733-cyber/proscreen', 'v1.0.2', 'ProScreen-Setup-1.0.2.exe');
+  const url = buildGitHubReleaseUrl('sonuk597733-cyber/proscreen', 'v1.0.3', 'ProScreen-Setup-1.0.3.exe');
   assert.equal(
     url,
-    'https://github.com/sonuk597733-cyber/proscreen/releases/download/v1.0.2/ProScreen-Setup-1.0.2.exe'
+    'https://github.com/sonuk597733-cyber/proscreen/releases/download/v1.0.3/ProScreen-Setup-1.0.3.exe'
   );
   assert.equal(resolveAssetDownloadUrl(OFFICIAL_RELEASES.installer), url);
   assert.equal(
     resolveAssetDownloadUrl(OFFICIAL_RELEASES.installer, { forceLocalDownloads: true }),
-    './downloads/ProScreen-Setup-1.0.2.exe'
+    './downloads/ProScreen-Setup-1.0.3.exe'
   );
 });
 
 test('buildPowerShellHashCommand and formatInstallerSummary output exact user-facing strings', () => {
   assert.equal(
-    buildPowerShellHashCommand('ProScreen-Setup-1.0.2.exe'),
-    'Get-FileHash -Path "$HOME\\Downloads\\ProScreen-Setup-1.0.2.exe" -Algorithm SHA256'
+    buildPowerShellHashCommand('ProScreen-Setup-1.0.3.exe'),
+    'Get-FileHash -Path "$HOME\\Downloads\\ProScreen-Setup-1.0.3.exe" -Algorithm SHA256'
   );
   assert.equal(
     formatInstallerSummary(OFFICIAL_RELEASES.installer),
-    'ProScreen-Setup-1.0.2.exe • v1.0.2 • 133.8 MB • Windows 10 / Windows 11 (64-bit)'
+    'ProScreen-Setup-1.0.3.exe • v1.0.3 • 133.8 MB • Windows 10 / Windows 11 (64-bit)'
   );
 });
 

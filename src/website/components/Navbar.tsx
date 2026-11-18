@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from '../router';
 import { PageRoute } from '../types';
+import { RELEASE_VERSION } from '../constants';
 import { Download, Menu, X, Sparkles } from 'lucide-react';
 
 type NavLinkItem = {
@@ -333,7 +334,7 @@ export const Navbar: React.FC = () => {
               </button>
 
               <p className="text-center text-xs text-slate-500">
-                Version 1.0.2 for Windows 11 and 10 (64-bit)
+                Version {RELEASE_VERSION} for Windows 11 and 10 (64-bit)
               </p>
             </div>
           </nav>

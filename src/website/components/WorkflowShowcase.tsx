@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { WORKFLOWS } from '../constants';
+import { RELEASE_VERSION, WORKFLOWS } from '../constants';
 import { GraduationCap, Code2, LayoutDashboard, Video, CheckCircle2, ArrowRight } from 'lucide-react';
 import { useRouter } from '../router';
 
@@ -94,7 +94,7 @@ export const WorkflowShowcase: React.FC = () => {
                   onClick={() => navigate('download')}
                   className="px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-sm font-bold shadow-lg shadow-blue-500/25 transition-all"
                 >
-                  Download Free v1.0.2
+                  Download Free v{RELEASE_VERSION}
                 </button>
                 <button
                   onClick={() => navigate('playground')}

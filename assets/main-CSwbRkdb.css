@@ -5713,6 +5713,10 @@
       color: currentColor;
     }
 
+    .hover\:text-emerald-200:hover {
+      color: var(--color-emerald-200);
+    }
+
     .hover\:text-emerald-400:hover {
       color: var(--color-emerald-400);
     }

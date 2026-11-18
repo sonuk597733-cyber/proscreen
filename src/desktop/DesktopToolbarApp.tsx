@@ -52,6 +52,27 @@ export const DesktopToolbarApp: React.FC = () => {
   });
 
   const isDraggingRef = useRef(false);
+  const [keyboardVisualizerEnabled, setKeyboardVisualizerEnabled] = useState(false);
+  const [keyboardVisualizerBusy, setKeyboardVisualizerBusy] = useState(false);
+  const [keyboardVisualizerError, setKeyboardVisualizerError] = useState<string | null>(null);
+
+  const toggleKeyboardVisualizer = async () => {
+    if (!desktop || keyboardVisualizerBusy) return;
+    setKeyboardVisualizerBusy(true);
+    setKeyboardVisualizerError(null);
+    try {
+      const status = keyboardVisualizerEnabled
+        ? await desktop.stopKeyboardVisualizer()
+        : await desktop.startKeyboardVisualizer();
+      setKeyboardVisualizerEnabled(status.enabled);
+      setKeyboardVisualizerError(status.error || null);
+    } catch (error) {
+      setKeyboardVisualizerError(error instanceof Error ? error.message : String(error));
+      setKeyboardVisualizerEnabled(false);
+    } finally {
+      setKeyboardVisualizerBusy(false);
+    }
+  };
 
   // Controlled diagnostic mode: bounded ring buffer (max 100 events) for mouse/drag tracing without memory leaks
   useEffect(() => {
@@ -494,6 +515,11 @@ export const DesktopToolbarApp: React.FC = () => {
         onCloseEye={() => desktop?.setEye(false)}
         onOpenEye={() => desktop?.setEye(true)}
         onToggleEye={() => desktop?.toggleEye()}
+        keyboardVisualizerEnabled={keyboardVisualizerEnabled}
+        keyboardVisualizerSupported={Boolean(desktop)}
+        keyboardVisualizerBusy={keyboardVisualizerBusy}
+        keyboardVisualizerError={keyboardVisualizerError}
+        onToggleKeyboardVisualizer={toggleKeyboardVisualizer}
         onRestoreToolbar={() => desktop?.setEye(true)}
       />
     </div>

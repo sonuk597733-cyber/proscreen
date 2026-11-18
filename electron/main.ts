@@ -46,6 +46,14 @@ import {
   computeFloatingZOrderStack,
   PopoutTransitionCoordinator,
 } from '../src/desktop/interactionLifecycle';
+import {
+  KeyboardVisualizerController,
+} from '../src/desktop/keyboardVisualizer';
+import {
+  KEYBOARD_SHORTCUT_EVENT_CHANNEL,
+  KEYBOARD_VISUALIZER_DISABLED_CHANNEL,
+} from '../src/desktop/keyboardVisualizerBridge';
+import { registerKeyboardVisualizerIpc } from '../src/desktop/keyboardVisualizerIpc';
 
 function getDesktopLogPath(): string {
   try {
@@ -210,6 +218,8 @@ let pendingPopoutPayload: {
 let targetRecordingDisplayId: string | null = null;
 let targetRecordingMode: string | null = null;
 let ipcHandlersRegistered = false;
+let keyboardVisualizerEnabled = false;
+let unregisterKeyboardVisualizerIpc: (() => void) | null = null;
 
 const isDev = Boolean(process.env.VITE_DEV_SERVER_URL);
 const devServerUrl = process.env.VITE_DEV_SERVER_URL;
@@ -241,6 +251,25 @@ let sharedState: DesktopSharedState = {
   recordingElapsedMs: 0,
   latestRecording: null,
 };
+
+const keyboardVisualizerController = new KeyboardVisualizerController({
+  onShortcut: (event) => {
+    if (!keyboardVisualizerEnabled || !overlayWindow || overlayWindow.isDestroyed()) return;
+    if (!overlayWindow.isVisible()) {
+      overlayWindow.showInactive();
+      overlayWindow.setIgnoreMouseEvents(sharedState.interactionMode !== 'drawing');
+      applyDesktopWindowZOrder({ ensureOverlayTopmost: true });
+    }
+    overlayWindow.webContents.send(KEYBOARD_SHORTCUT_EVENT_CHANNEL, event);
+  },
+  onEnabledChange: (enabled) => {
+    keyboardVisualizerEnabled = enabled;
+    if (!enabled && overlayWindow && !overlayWindow.isDestroyed()) {
+      overlayWindow.webContents.send(KEYBOARD_VISUALIZER_DISABLED_CHANNEL);
+    }
+    updateOverlayVisibility();
+  },
+});
 
 let activeSettings: UserSettings | null = null;
 let saveDebounceTimer: NodeJS.Timeout | null = null;
@@ -577,6 +606,17 @@ function instrumentWindow(win: BrowserWindow, name: string) {
   win.on('responsive', () => logDesktopEvent('WINDOW_RESPONSIVE', getWinMeta()));
   win.on('close', () => logDesktopEvent('WINDOW_CLOSING', getWinMeta()));
   win.on('closed', () => logDesktopEvent('WINDOW_CLOSED', { name, id: win.id, hwnd: `0x${hwnd.toString(16)}` }));
+
+  const contents = win.webContents;
+  const onBeforeInput = (_event: Electron.Event, input: Electron.Input) => {
+    // This passive Electron event only receives keys while this ProScreen window is focused.
+    // Deliberately do not call preventDefault so keys continue to the application unchanged.
+    keyboardVisualizerController.observeInput(input);
+  };
+  contents.on('before-input-event', onBeforeInput);
+  contents.once('destroyed', () => {
+    contents.removeListener('before-input-event', onBeforeInput);
+  });
 
   win.webContents.on('did-start-loading', () => {
     logDesktopEvent('RENDERER_START_LOADING', { name, id: win.id });
@@ -1380,7 +1420,7 @@ function applyInteractionMode(mode: 'pointer' | 'drawing') {
       globalShortcut.unregister('Escape');
     } catch {}
     // In Pointer mode, if there are NO annotations, hide overlay completely so Windows desktop is 100% untouched
-    if (sharedState.historyCount === 0 && !sharedState.isRecording) {
+    if (sharedState.historyCount === 0 && !sharedState.isRecording && !keyboardVisualizerEnabled) {
       if (overlayWindow.isVisible()) overlayWindow.hide();
     } else {
       if (!overlayWindow.isVisible()) overlayWindow.showInactive();
@@ -1405,6 +1445,32 @@ function applyInteractionMode(mode: 'pointer' | 'drawing') {
   }
 
   broadcastState();
+}
+
+function updateOverlayVisibility() {
+  if (!overlayWindow || overlayWindow.isDestroyed()) return;
+  const wasVisible = overlayWindow.isVisible();
+
+  if (keyboardVisualizerEnabled) {
+    if (!wasVisible) overlayWindow.showInactive();
+    overlayWindow.setIgnoreMouseEvents(sharedState.interactionMode !== 'drawing');
+    if (!wasVisible) applyDesktopWindowZOrder({ ensureOverlayTopmost: true });
+    return;
+  }
+
+  if (sharedState.interactionMode === 'drawing') {
+    if (!wasVisible) overlayWindow.showInactive();
+    overlayWindow.setIgnoreMouseEvents(false);
+    applyDesktopWindowZOrder({ ensureOverlayTopmost: !wasVisible });
+  } else if (!sharedState.annotationsVisible || !sharedState.toolbarVisible) {
+    if (wasVisible) overlayWindow.hide();
+  } else if (sharedState.historyCount === 0 && !sharedState.isRecording) {
+    if (wasVisible) overlayWindow.hide();
+  } else {
+    if (!wasVisible) overlayWindow.showInactive();
+    overlayWindow.setIgnoreMouseEvents(true);
+    if (!wasVisible) applyDesktopWindowZOrder({ ensureOverlayTopmost: true });
+  }
 }
 
 function broadcastState() {
@@ -1526,10 +1592,15 @@ function setEyeState(visible: boolean) {
     currentSettingsVersion++;
     scheduleAsyncSave(250);
 
-    // Hide overlay window completely so no visible annotations remain and 100% desktop pass-through
+    // Keep the pass-through overlay alive only when shortcut notifications are still enabled.
     if (overlayWindow && !overlayWindow.isDestroyed()) {
       overlayWindow.setIgnoreMouseEvents(true);
-      overlayWindow.hide();
+      if (keyboardVisualizerEnabled) {
+        overlayWindow.showInactive();
+        applyDesktopWindowZOrder({ ensureOverlayTopmost: true });
+      } else {
+        overlayWindow.hide();
+      }
     }
 
     // Shrink toolbarWindow to 44x44 at the EXACT screen coordinate (closeX, closeY)
@@ -1789,6 +1860,12 @@ function setupIpcHandlers() {
   }
   ipcHandlersRegistered = true;
 
+  unregisterKeyboardVisualizerIpc = registerKeyboardVisualizerIpc(ipcMain, keyboardVisualizerController, () => {
+    return toolbarWindow && !toolbarWindow.isDestroyed()
+      ? toolbarWindow.webContents.id
+      : null;
+  });
+
   ipcMain.handle('desktop:get-window-type', (event) => {
     if (overlayWindow && event.sender.id === overlayWindow.webContents.id) return 'overlay';
     if (toolbarWindow && event.sender.id === toolbarWindow.webContents.id) return 'toolbar';
@@ -1809,25 +1886,7 @@ function setupIpcHandlers() {
         hideRecordingControlWindow();
       }
     }
-    if (overlayWindow && !overlayWindow.isDestroyed()) {
-      const wasVisible = overlayWindow.isVisible();
-      if (sharedState.interactionMode === 'drawing') {
-        if (!wasVisible) overlayWindow.showInactive();
-        overlayWindow.setIgnoreMouseEvents(false);
-        // Never re-raise overlay alone above toolbar/popout when already visible
-        applyDesktopWindowZOrder({ ensureOverlayTopmost: !wasVisible });
-      } else if (!sharedState.annotationsVisible || !sharedState.toolbarVisible) {
-        if (wasVisible) overlayWindow.hide();
-      } else if (sharedState.historyCount === 0 && !sharedState.isRecording) {
-        if (wasVisible) overlayWindow.hide();
-      } else {
-        if (!wasVisible) overlayWindow.showInactive();
-        overlayWindow.setIgnoreMouseEvents(true);
-        if (!wasVisible) {
-          applyDesktopWindowZOrder({ ensureOverlayTopmost: true });
-        }
-      }
-    }
+    updateOverlayVisibility();
     broadcastState();
   });
 
@@ -2713,8 +2772,10 @@ app.on('before-quit', (event) => {
     return;
   }
   isBeforeQuitStarted = true;
+  unregisterKeyboardVisualizerIpc?.();
+  unregisterKeyboardVisualizerIpc = null;
 
-  void gracefulShutdown(1500).finally(() => {
+  void Promise.all([gracefulShutdown(1500), keyboardVisualizerController.stop()]).finally(() => {
     destroyAllDesktopWindows();
     requestAppQuit('before-quit-graceful-complete');
   });

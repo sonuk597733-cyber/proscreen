@@ -1,6 +1,7 @@
 import { AnnotationItem, BoardMode, ToolType } from '../types/annotation';
 import { ResolvedThemeMode, UserSettings } from '../types/settings';
 import type { RecordingArtifact, RecordingStatus } from '../recorder/screenRecorder';
+import type { KeyboardShortcutEvent, KeyboardVisualizerStatus } from './keyboardVisualizer';
 
 export type DesktopWindowType = 'overlay' | 'toolbar' | 'settings';
 
@@ -132,6 +133,12 @@ export interface ProScreenDesktopAPI {
   closePopout?: (data?: { transitionId?: number }) => void;
   onPopoutData?: (callback: (data: { popoutId: string | null; openSide: 'left' | 'right'; anchorOffsetY?: number; transitionId?: number }) => void) => () => void;
   onPopoutClosed?: (callback: (info?: { transitionId?: number }) => void) => () => void;
+
+  // Detects shortcuts only while a ProScreen desktop window is focused.
+  startKeyboardVisualizer: () => Promise<KeyboardVisualizerStatus>;
+  stopKeyboardVisualizer: () => Promise<KeyboardVisualizerStatus>;
+  onKeyboardShortcut: (callback: (event: KeyboardShortcutEvent) => void) => () => void;
+  onKeyboardVisualizerDisabled: (callback: () => void) => () => void;
 
   // App Lifecycle
   quitApp: () => void;

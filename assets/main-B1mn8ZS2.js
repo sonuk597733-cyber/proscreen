@@ -11454,18 +11454,18 @@ var require_client = /* @__PURE__ */ __commonJSMin(((exports, module) => {
 var import_react = /* @__PURE__ */ __toESM(require_react(), 1);
 var import_client = require_client();
 var GITHUB_REPO = `sonuk597733-cyber/proscreen`;
-var RELEASE_VERSION = "1.0.3";
+var RELEASE_VERSION = "3.0.0";
 var RELEASE_TAG = `v${RELEASE_VERSION}`;
 var RELEASE_MANIFEST_URL = `https://github.com/${GITHUB_REPO}/releases/download/${RELEASE_TAG}/release-manifest.json`;
 var OFFICIAL_RELEASES = {
 	installer: {
-		fileName: "ProScreen-Setup-1.0.3.exe",
+		fileName: "ProScreen-Setup-3.0.0.exe",
 		version: RELEASE_VERSION,
-		sizeBytes: 140350424,
+		sizeBytes: 140344712,
 		sizeFormatted: "133.8 MB",
-		sha256: "CD2EE7DCEDFCEA3F5C029CAD906798CFC6A41116901CB4DC86746D170C784713",
-		downloadUrl: `https://github.com/${GITHUB_REPO}/releases/download/${RELEASE_TAG}/ProScreen-Setup-1.0.3.exe`,
-		releaseDate: "November 2026",
+		sha256: "8B661BE5D6BDFA8EF9E3896E95D554C8708A69905F6041C78CAF9BDC7C7F23C1",
+		downloadUrl: `https://github.com/${GITHUB_REPO}/releases/download/${RELEASE_TAG}/ProScreen-Setup-3.0.0.exe`,
+		releaseDate: "November 19, 2026",
 		targetOS: "Windows 10 / Windows 11 (64-bit)",
 		architecture: "x64 (Intel / AMD)",
 		type: "installer",
@@ -11478,13 +11478,13 @@ var OFFICIAL_RELEASES = {
 		]
 	},
 	portable: {
-		fileName: "ProScreen-Portable-1.0.3.exe",
+		fileName: "ProScreen-Portable-3.0.0.exe",
 		version: RELEASE_VERSION,
-		sizeBytes: 125325365,
+		sizeBytes: 125304886,
 		sizeFormatted: "119.5 MB",
-		sha256: "1BACE4962CB9AFDF47AC578EE5DE5B865F1428DA440B0D7913D7E33875C4C0B7",
-		downloadUrl: `https://github.com/${GITHUB_REPO}/releases/download/${RELEASE_TAG}/ProScreen-Portable-1.0.3.exe`,
-		releaseDate: "November 2026",
+		sha256: "3E3FEE83A7F481C6A1A1E23EE6C8B198F0770A6DD66598D92E57FF12AD9937CE",
+		downloadUrl: `https://github.com/${GITHUB_REPO}/releases/download/${RELEASE_TAG}/ProScreen-Portable-3.0.0.exe`,
+		releaseDate: "November 19, 2026",
 		targetOS: "Windows 10 / Windows 11 (64-bit)",
 		architecture: "x64 (Intel / AMD)",
 		type: "portable",
@@ -11497,13 +11497,13 @@ var OFFICIAL_RELEASES = {
 		]
 	},
 	extensionZip: {
-		fileName: "ProScreen-Chrome-Extension-1.0.3.zip",
+		fileName: "ProScreen-Chrome-Extension-3.0.0.zip",
 		version: RELEASE_VERSION,
-		sizeBytes: 2207341,
-		sizeFormatted: "2.1 MB",
-		sha256: "EAFB7A568A4C28278DD537B1F19B07EA7457C71E77F7C3B891D656DB7C55F4E4",
-		downloadUrl: `https://github.com/${GITHUB_REPO}/releases/download/${RELEASE_TAG}/ProScreen-Chrome-Extension-1.0.3.zip`,
-		releaseDate: "November 2026",
+		sizeBytes: 2235289,
+		sizeFormatted: "2182.9 KB",
+		sha256: "2DD58C6FB785A3A141BD6909BC2DFF455F20319B8078A1D5647B0D16E7AD744B",
+		downloadUrl: `https://github.com/${GITHUB_REPO}/releases/download/${RELEASE_TAG}/ProScreen-Chrome-Extension-3.0.0.zip`,
+		releaseDate: "November 19, 2026",
 		targetOS: "Chromium Browsers (Chrome, Edge, Brave, Opera, Vivaldi)",
 		architecture: "Universal Manifest V3",
 		type: "portable",
@@ -11694,6 +11694,32 @@ var SYSTEM_REQUIREMENTS = {
 	display: "1280x720 minimum (1080p, 1440p, 4K and Ultrawide fully supported)"
 };
 var CHANGELOG = [
+	{
+		version: "3.0.0",
+		date: "November 19, 2026",
+		tagline: "ProScreen Studio Redesign — Eight Signature Shapes & Recording HUDs",
+		status: "stable",
+		highlights: [
+			"Official ProScreen v3.0.0 release with verified Windows Installer, Portable executable, and Chrome Extension downloads",
+			"Added eight signature shape choices: line, arrow, rectangle, circle, triangle, diamond, star, and heart",
+			"Added configurable timer and shortcut visualizer overlays with opt-in monitoring and recording visibility controls",
+			"Improved toolbar layout and dropdown behavior across desktop displays"
+		],
+		sections: [
+			{
+				category: "Drawing Tools",
+				items: ["Added eight signature shape choices with custom geometry and color-preserving annotation rendering"]
+			},
+			{
+				category: "Recording & Shortcuts",
+				items: ["Added a configurable timer HUD that can be shown or hidden in recordings", "Shortcut visualization remains OFF by default and observes only supported ProScreen windows or tabs"]
+			},
+			{
+				category: "Verified Downloads",
+				items: ["Published the v3.0.0 release manifest with sizes and SHA-256 checksums for all three download assets"]
+			}
+		]
+	},
 	{
 		version: "1.0.3",
 		date: "November 18, 2026",
@@ -32864,4 +32890,4 @@ function App() {
 // src/main.tsx
 (0, import_client.createRoot)(document.getElementById("root")).render(/* @__PURE__ */ (0, import_jsx_runtime.jsx)(App, {}));
 
-//# sourceMappingURL=main-DSOKXk5h.js.map
+//# sourceMappingURL=main-B1mn8ZS2.js.map
